@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.10 2003-12-22 14:30:29 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.11 2003-12-22 23:12:52 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -45,8 +45,8 @@ def getDelegateName(methodDecl):
       name = name + '_' + '_'.join(params)
    return name
 
-def getBridgeName(classVisitor):
-   return classVisitor.getGenericName() + '_Bridge'
+def getAdapterName(classVisitor):
+   return classVisitor.getGenericName() + '_Adapter'
 
 def getHolderName(classVisitor):
    return classVisitor.getGenericName() + '_Holder'

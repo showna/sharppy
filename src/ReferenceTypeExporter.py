@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.45 2003-12-22 22:21:57 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.46 2003-12-22 23:12:52 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -26,14 +26,14 @@ from Cheetah.Template import Template
 class ReferenceTypeExporter(Exporter.Exporter):
    'Generates C# P/Invoke bridging code to export a class declaration.'
 
-   cxx_bridge_template_file = os.path.dirname(__file__) + '/class_cxx_bridge.tmpl'
-   c_wrapper_template_file  = os.path.dirname(__file__) + '/class_cxx.tmpl'
-   csharp_template_file     = os.path.dirname(__file__) + '/class_cs.tmpl'
+   cxx_adapter_template_file = os.path.dirname(__file__) + '/class_cxx_adapter.tmpl'
+   c_wrapper_template_file   = os.path.dirname(__file__) + '/class_cxx.tmpl'
+   csharp_template_file      = os.path.dirname(__file__) + '/class_cs.tmpl'
  
    def __init__(self, info, parser_tail=None):
       Exporter.Exporter.__init__(self, info, parser_tail)
 
-      self.cxx_bridge_template = Template(file = self.cxx_bridge_template_file)
+      self.cxx_adapter_template = Template(file = self.cxx_adapter_template_file)
       self.c_wrapper_template = Template(file = self.c_wrapper_template_file)
       self.csharp_template = Template(file = self.csharp_template_file)
 
@@ -86,7 +86,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          # Set up the Cheetah template file names.
          base_fname = self.class_.getCleanName()
-         self.cxx_bridge_output_file = base_fname + '_Bridge.h'
+         self.cxx_adapter_output_file = base_fname + '_Adapter.h'
          self.c_wrapper_output_file = base_fname + '.cpp'
          self.csharp_output_file = base_fname + '.cs'
       else:
@@ -162,27 +162,28 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          # Execute the templates.
          if self.hasVirtualMethods():
-            self.cxx_bridge_template.exp_class = self
-            self.cxx_bridge_template.module    = self.module_bridge
-            self.cxx_bridge_template.includes  = copy.copy(self.includes)
-            cxx_bridge_out = os.path.join(self.cxx_dir, self.cxx_bridge_output_file)
+            self.cxx_adapter_template.exp_class = self
+            self.cxx_adapter_template.module    = self.module_bridge
+            self.cxx_adapter_template.includes  = copy.copy(self.includes)
+            cxx_adapter_out = os.path.join(self.cxx_dir, self.cxx_adapter_output_file)
 
-            # The C wrapper template will need to know about the bridge header.
-            self.includes.append(self.cxx_bridge_output_file)
+            # The C wrapper template will need to know about the adapter
+            # header.
+            self.includes.append(self.cxx_adapter_output_file)
 
             try:
-               print "\t[C++ Bridge]",
+               print "\t[C++ Adapter]",
                sys.__stdout__.flush()
-               cxx_file = open(cxx_bridge_out, 'w')
+               cxx_file = open(cxx_adapter_out, 'w')
                print ".",
                sys.__stdout__.flush()
-               cxx_file.write(str(self.cxx_bridge_template))
+               cxx_file.write(str(self.cxx_adapter_template))
                print ".",
                sys.__stdout__.flush()
                cxx_file.close()
                print "Done"
             except IOError, (errno, strerror):
-               print "I/O error (%s) [%s]: %s" % (errno, cxx_bridge_out, strerror)
+               print "I/O error (%s) [%s]: %s" % (errno, cxx_adapter_out, strerror)
 
          try:
             print "\t[C Wrappers]",

@@ -1,6 +1,6 @@
-## $Id: class_cxx.tmpl,v 1.45 2003-12-08 18:17:12 patrick Exp $
-// Generated from \$Revision: 1.45 $ of \$RCSfile: class_cxx.tmpl,v $
-#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName
+## $Id: class_cxx.tmpl,v 1.46 2003-12-22 23:12:52 patrick Exp $
+// Generated from \$Revision: 1.46 $ of \$RCSfile: class_cxx.tmpl,v $
+#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getAdapterName, getHolderName
 #import visitors
 
 #def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $className = None)
@@ -70,7 +70,7 @@ $return_visitor.getMethodCall($method_call, '      ')
 #silent $classObj.class_.accept($class_visitor)
 #set $class_id = $class_visitor.getGenericName()
 #if $classObj.hasVirtualMethods()
-#set $class_name = getBridgeName($class_visitor)
+#set $class_name = getAdapterName($class_visitor)
 #else
 #set $class_name = $class_visitor.getRawName()
 #end if
