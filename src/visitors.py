@@ -1,10 +1,11 @@
-# $Id: visitors.py,v 1.9 2003-11-11 20:57:00 patrick Exp $
+# $Id: visitors.py,v 1.10 2003-11-12 19:17:50 patrick Exp $
 
 import re
 from declarations import Function
 
 class DeclarationVisitor:
    def __init__(self):
+      self.decl         = None
       self.name         = None
       self.generic_name = None
       self.usage        = None
@@ -38,15 +39,21 @@ class DeclarationVisitor:
       '''
       return self.usage
 
-   def _makeGenericName(self, decl):
-      return '_'.join(decl.getFullNameAbstract())
+   def _makeGenericName(self):
+      return '_'.join(self.decl.getFullNameAbstract())
 
-   def _makeGenericFuncName(self, decl):
-      base_name = self._makeGenericName(decl)
-      param_types = [x[0].getCleanName() for x in decl.parameters]
+   def _makeGenericFuncName(self):
+      base_name = self._makeGenericName()
+      param_types = [x[0].getCleanName() for x in self.decl.parameters]
       return base_name + '__' +'_'.join(param_types)
 
-   def _handleProblemTypes(self, decl):
+   def _checkForProblemType(self):
+      '''
+      Template method used find and process "problem" types.
+      '''
+      assert(False)
+
+   def _processProblemType(self, typeName):
       '''
       Template method.
       '''
@@ -60,32 +67,37 @@ class CPlusPlusVisitor(DeclarationVisitor):
       DeclarationVisitor.__init__(self)
 
    def visit(self, decl):
+      self.decl         = decl
       self.problem_type = False
-      self.name = decl.FullName()
+      self.name         = decl.FullName()
 
       if isinstance(decl, Function):
-         self.generic_name = self._makeGenericFuncName(decl)
+         self.generic_name = self._makeGenericFuncName()
       else:
-         self.generic_name = self._makeGenericName(decl)
+         self.generic_name = self._makeGenericName()
 
       self.no_ns_name = '::'.join(decl.name)
       self.usage = self.name
 
       # Deal with types that need special handling.
-      self._handleProblemTypes(decl)
+      self._checkForProblemType()
 
-   def _handleProblemTypes(self, decl):
-      full_name = decl.getFullNameAbstract()
+   def _checkForProblemType(self):
+      full_name = self.decl.getFullNameAbstract()
       for s in full_name:
          if s.find('basic_string') != -1:
-            const = ''
-            if decl.const:
-               const = 'const '
-
-            self.usage = const + 'char*'
-            self.problem_type = True
-            decl.must_marshal = False
+            self._processProblemType(s)
             break
+
+   def _processProblemType(self, typeName):
+      if typeName.find('basic_string') != -1:
+         const = ''
+         if self.decl.const:
+            const = 'const '
+   
+         self.usage = const + 'char*'
+         self.problem_type = True
+         self.decl.must_marshal = False
 
 class CPlusPlusParamVisitor(CPlusPlusVisitor):
    '''
@@ -94,20 +106,65 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
    '''
    def __init__(self):
       CPlusPlusVisitor.__init__(self)
+      self.__initialize()
+      self.__param_name      = ''
+      self.__orig_param_name = ''
+
+   def __initialize(self):
+      self.__pre_marshal  = ''
+      self.__post_marshal = ''
+      self.__must_marshal = False
 
    def visit(self, decl):
+      self.__initialize()
       CPlusPlusVisitor.visit(self, decl)
 
       # If the parameter is passed by reference, we need to translate that into
       # being passed as a pointer instead.
       if decl.suffix == '&':
-         if self.problem_type:
-            # XXX: This seems sloppy.  Should this be handled in our own
-            # overloaded version of _handleProblemTypes()?
-            if not decl.const:
-               self.usage += '*'
-         else:
+         if not self.problem_type:
             self.usage = re.sub(r"&", "*", self.name)
+
+            self.__must_marshal = True
+            self.__pre_marshal  = '%s %s = *%s' % \
+                                  (self.getRawName(), self.__param_name,
+                                   self.__orig_param_name)
+#            self.__post_marshal = '*%s = %s' % \
+#                                  (self.__orig_param_name, self.__param_name)
+
+   def _processProblemType(self, typeName):
+      # Perform default problem type processing first.
+      CPlusPlusVisitor._processProblemType(self, typeName)
+
+      if self.decl.suffix == '&' and not self.decl.const:
+         self.usage += '*'
+
+      if typeName.find('basic_string') != -1:
+         if self.decl.suffix == '&' and not self.decl.const:
+            self.__must_marshal = True
+            self.__pre_marshal  = 'std::string %s = *%s' % \
+                                  (self.__param_name, self.__orig_param_name)
+            self.__post_marshal = '*%s = strdup(%s.c_str())' % \
+                                  (self.__orig_param_name, self.__param_name)
+
+   def mustMarshal(self):
+      return self.__must_marshal
+
+   def getMarshalParamName(self):
+      assert(self.mustMarshal())
+      return self.__param_name
+
+   def setParamName(self, paramName):
+      self.__param_name = 'marshal_' + paramName
+      self.__orig_param_name = paramName
+
+   def getPreCallMarshal(self):
+      assert(self.mustMarshal())
+      return self.__pre_marshal
+
+   def getPostCallMarshal(self):
+      assert(self.mustMarshal())
+      return self.__post_marshal
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''
@@ -119,7 +176,7 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    def visit(self, decl):
       CPlusPlusVisitor.visit(self, decl)
       if decl.must_marshal:
-         self.usage = self.usage + '*'
+         self.usage += '*'
 
 class CSharpVisitor(DeclarationVisitor):
    '''
@@ -129,22 +186,24 @@ class CSharpVisitor(DeclarationVisitor):
       DeclarationVisitor.__init__(self)
 
    def visit(self, decl):
+      self.decl         = decl
       self.problem_type = False
+
       full_name = decl.getFullNameAbstract()
       self.name = '.'.join(full_name)
 
       if isinstance(decl, Function):
-         self.generic_name = self._makeGenericFuncName(decl)
+         self.generic_name = self._makeGenericFuncName()
       else:
-         self.generic_name = self._makeGenericName(decl)
+         self.generic_name = self._makeGenericName()
 
       self.no_ns_name = '.'.join(decl.name)
       self.usage = self.name
       # Deal with types that need special handling.
-      self._handleProblemTypes(decl)
+      self._checkForProblemType()
 
-   def _handleProblemTypes(self, decl):
-      full_name = decl.getFullNameAbstract()
+   def _checkForProblemType(self):
+      full_name = self.decl.getFullNameAbstract()
 
       # XXX: Figure out if there is a simpler way of dealing with unsigned
       # integers.  It depends largely on the order that the type information
@@ -153,7 +212,7 @@ class CSharpVisitor(DeclarationVisitor):
          if s.find('basic_string') != -1:
             self.usage = 'String'
             self.problem_type = True
-            decl.must_marshal = False
+            self.decl.must_marshal = False
             break
          # Using long long probably indicates a desire for a 64-bit integer.
          elif s.find('long long') != -1:
