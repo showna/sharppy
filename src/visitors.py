@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.4 2003-11-03 22:39:04 patrick Exp $
+# $Id: visitors.py,v 1.5 2003-11-03 23:36:09 patrick Exp $
 
 class DeclarationVisitor:
    def __init__(self):
@@ -87,10 +87,28 @@ class CSharpVisitor(DeclarationVisitor):
       self.usage = self.name
 
       # Deal with types that need special handling.
+      # XXX: Figure out if there is a simpler way of dealing with unsigned
+      # integers.  It depends largely on the order that the type information
+      # is returned ("int unsigned" versus "unsigned int").
       for s in full_name:
          if s.find('basic_string') != -1:
             self.usage = 'String'
             decl.must_marshal = False
+            break
+         # Using long long probably indicates a desire for a 64-bit integer.
+         elif s.find('long long') != -1:
+            if s.find('unsigned') != -1:
+               self.usage = 'ulong'
+            else:
+               self.usage = 'long'
+            break
+         # Assume that a long (not a long long) is supposed to be a 32-bit
+         # integer.
+         elif s.find('long') != -1 or s.find('int') != -1:
+            if s.find('unsigned') != -1:
+               self.usage = 'uint'
+            else:
+               self.usage = 'int'
             break
 
 class CSharpReturnVisitor(CSharpVisitor):
