@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.35 2004-02-19 23:42:05 patrick Exp $
+# $Id: declarations.py,v 1.36 2004-02-20 21:06:22 patrick Exp $
 
 import copy
 import re
@@ -398,16 +398,14 @@ class Function(Declaration):
             params = ', '.join([x.getFullCPlusPlusName() for x in self.parameters]) 
             return '(%s (*)(%s))&%s' % (result, params, self.getFullCPlusPlusName())
 
-    
     def MinArgs(self):
         min = 0
-        for arg in self.parameters:
+        for (arg, name) in self.parameters:
             if arg.default is None:
                 min += 1
         return min
 
     minArgs = property(MinArgs)
-    
 
     def MaxArgs(self):
         return len(self.parameters)
