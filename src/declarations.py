@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.40 2004-02-25 21:02:40 patrick Exp $
+# $Id: declarations.py,v 1.41 2004-05-18 20:35:50 patrick Exp $
 
 import copy
 import re
@@ -945,8 +945,29 @@ class MethodType(FunctionType):
         params = [x.getFullCPlusPlusName() for x in self.parameters]
         full += '(%s)' % ', '.join(params)
         return full
-    
-     
+
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.result, self.parameters, self.class_)
+        memo[id(self)] = result
+
+        result.const        = self.const
+        result.volatile     = self.volatile
+        result.restricted   = self.restricted
+        result.incomplete   = self.incomplete
+        result.is_unique    = self.is_unique
+        result.must_marshal = self.must_marshal
+        result.cxx_name     = copy.deepcopy(self.cxx_name)
+        result.name         = copy.deepcopy(self.name)
+        result.namespace    = copy.deepcopy(self.namespace)
+        result.suffix       = copy.deepcopy(self.suffix)
+        result.location     = copy.deepcopy(self.location)
+
+        # Do not perform a deep copy of self.type_decl.
+        result.type_decl = self.type_decl
+
+        return result
+
+
 #==============================================================================
 # Variable
 #==============================================================================
