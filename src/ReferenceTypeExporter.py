@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.40 2003-11-24 22:17:06 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.41 2003-12-04 21:37:33 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -76,7 +76,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       if self.declarations:
          decl = self.GetDeclaration(self.info.name)
          if isinstance(decl, declarations.Typedef):
-            self.class_ = self.GetDeclaration(decl.type.name)
+            self.class_ = self.GetDeclaration(decl.type.FullName())
             if not self.info.rename:
                self.info.rename = decl.name
          else:

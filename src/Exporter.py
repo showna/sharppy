@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.11 2003-11-24 22:17:06 patrick Exp $
+# $Id: Exporter.py,v 1.12 2003-12-04 21:37:33 patrick Exp $
 
 import os
 
@@ -89,6 +89,7 @@ class Exporter(object):
       return decls
 
    def GetDeclaration(self, fullname):
+      assert(type(fullname) == str)
       decls = self.GetDeclarations(fullname)
       #assert len(decls) == 1
       return decls[0]
