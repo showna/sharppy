@@ -1,31 +1,24 @@
-## $Id: class_cxx_adapter.tmpl,v 1.1 2003-11-19 21:48:03 patrick Exp $
-// Generated from \$Revision: 1.1 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
-
+## $Id: class_cxx_adapter.tmpl,v 1.2 2003-11-19 22:04:13 patrick Exp $
+// Generated from \$Revision: 1.2 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #from TemplateHelpers import getBridgeName
 #import visitors
+
+#def exportClass($classObj)
 #set $class_visitor = visitors.CPlusPlusVisitor()
-#silent $exp_class.class_.accept($class_visitor)
+#silent $classObj.class_.accept($class_visitor)
 #set $class_name = getBridgeName($class_visitor)
 #set $wrapper_sym = '__%s__' % $class_name.upper()
-\#ifndef $wrapper_sym
-\#define $wrapper_sym
-
-#for $i in $includes
-\#include <$i>
-#end for
-
 #set $generic_visitor = visitors.CPlusPlusVisitor()
-#set $class_id   = $class_name
 ## Get the list of base classes (there will be at least one) for the bridge.
 #set $base_list = ['public ' + $class_visitor.getRawName()]
-#for $x in $exp_class.bridge_bases
+#for $x in $classObj.bridge_bases
 #silent $x.accept($generic_visitor)
 #silent $base_list.append('public %s' % getBridgeName($generic_visitor))
 #end for
 class $class_name : #echo ', '.join($base_list)
 {
 public:
-#for $c in $exp_class.constructors
+#for $c in $classObj.constructors
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
    ${class_name}($p)
@@ -37,7 +30,7 @@ public:
    {;}
 
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
-#for $m in $exp_class.virtual_methods
+#for $m in $classObj.virtual_methods
 #if not $m.abstract
 #set $callback_name = getCallbackName($m)
    $makeCPlusPlusTypedef($m);
@@ -59,5 +52,29 @@ public:
 #end if
 #end for
 }; // class $class_name
+
+#set $nested_visitor = visitors.CPlusPlusVisitor()
+#for $nc in $classObj.nested_classes
+#if $nc.hasVirtualMethods()
+#silent $nc.class_.accept($nested_visitor)
+// Nested class $nested_visitor.getRawName().
+$exportClass($nc)
+#end if
+#end for
+
+#end def
+
+#set $class_visitor = visitors.CPlusPlusVisitor()
+#silent $exp_class.class_.accept($class_visitor)
+#set $wrapper_sym = '__%s__' % getBridgeName($class_visitor).upper()
+#del $class_visitor
+\#ifndef $wrapper_sym
+\#define $wrapper_sym
+
+#for $i in $includes
+\#include <$i>
+#end for
+
+$exportClass($exp_class)
 
 \#endif
