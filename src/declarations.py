@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.39 2004-02-24 18:09:48 patrick Exp $
+# $Id: declarations.py,v 1.40 2004-02-25 21:02:40 patrick Exp $
 
 import copy
 import re
@@ -318,7 +318,7 @@ class NestedClass(Class):
         return self.cxx_name
 
 #==============================================================================
-# Scope    
+# Scope
 #==============================================================================
 class Scope:    
     '''Used to represent the visibility of various members inside a class.
@@ -332,7 +332,7 @@ class Scope:
 
 
 #==============================================================================
-# Base    
+# Base
 #==============================================================================
 class Base(Declaration):
     '''
@@ -351,7 +351,7 @@ class Base(Declaration):
         return self.class_decl.getMembers()
     
 #==============================================================================
-# Function    
+# Function
 #==============================================================================
 class Function(Declaration):
     '''The declaration of a function.
@@ -376,6 +376,20 @@ class Function(Declaration):
 
         # the exception specification
         self.throws = throws
+
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.cxx_name, self.namespace, self.result,
+                                self.parameters, self.throws)
+        memo[id(self)] = result
+
+        result.result     = copy.deepcopy(self.result)
+        result.parameters = copy.deepcopy(self.parameters)
+        result.throws     = copy.deepcopy(self.throws)
+
+        # Do not perform a deep copy of self.info.
+        result.info = self.info
+
+        return result
 
     def setInfo(self, info):
         self.info = info
@@ -464,6 +478,24 @@ class Method(Function):
         self.const = const
         self.override = False
 
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.cxx_name, self.class_, self.result,
+                                self.parameters, self.visibility, self.virtual,
+                                self.abstract, self.static, self.const,
+                                self.throws)
+        memo[id(self)] = result
+
+        result.class_     = copy.deepcopy(self.class_)
+        result.visibility = copy.deepcopy(self.visibility)
+        result.result     = copy.deepcopy(self.result)
+        result.parameters = copy.deepcopy(self.parameters)
+        result.throws     = copy.deepcopy(self.throws)
+
+        # Do not perform a deep copy of self.info.
+        result.info = self.info
+
+        return result
+
     def getFullCPlusPlusName(self):
         return '%s::%s' % (self.class_, self.cxx_name)
 
@@ -501,6 +533,22 @@ class Constructor(Method):
         Method.__init__(self, name, class_, None, params, visib, False, False,
                         False, False)
 
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.cxx_name, self.class_,
+                                self.parameters, self.visibility)
+        memo[id(self)] = result
+
+        result.class_     = copy.deepcopy(self.class_)
+        result.visibility = copy.deepcopy(self.visibility)
+        result.result     = copy.deepcopy(self.result)
+        result.parameters = copy.deepcopy(self.parameters)
+        result.throws     = copy.deepcopy(self.throws)
+
+        # Do not perform a deep copy of self.info.
+        result.info = self.info
+
+        return result
+
     def IsDefault(self):
         '''Returns True if this constructor is a default constructor.
         '''
@@ -536,6 +584,22 @@ class Destructor(Method):
     def __init__(self, name, class_, visib, virtual):
         Method.__init__(self, name, class_, None, [], visib, virtual, False, False, False)
 
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.cxx_name, self.class_, self.visibility,
+                                self.virtual)
+        memo[id(self)] = result
+
+        result.class_     = copy.deepcopy(self.class_)
+        result.visibility = copy.deepcopy(self.visibility)
+        result.result     = copy.deepcopy(self.result)
+        result.parameters = copy.deepcopy(self.parameters)
+        result.throws     = copy.deepcopy(self.throws)
+
+        # Do not perform a deep copy of self.info.
+        result.info = self.info
+
+        return result
+
     def getFullCPlusPlusName(self):
         return '::'.join(self.class_) + '::~' + self.name[0]
 
@@ -553,6 +617,24 @@ class ClassOperator(Method):
         Method.__init__(self, name, class_, result, params, visib, virtual,
                         abstract, static, const, throws)
         self.unary = len(params) == 0
+
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.cxx_name, self.class_, self.result,
+                                self.parameters, self.visibility, self.virtual,
+                                self.abstract, self.static, self.const,
+                                self.throws)
+        memo[id(self)] = result
+
+        result.class_     = copy.deepcopy(self.class_)
+        result.visibility = copy.deepcopy(self.visibility)
+        result.result     = copy.deepcopy(self.result)
+        result.parameters = copy.deepcopy(self.parameters)
+        result.throws     = copy.deepcopy(self.throws)
+
+        # Do not perform a deep copy of self.info.
+        result.info = self.info
+
+        return result
 
     def getID(self):
         name = self.getFullAbstractName()
