@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.72 2004-02-26 18:13:44 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.73 2004-05-19 18:42:55 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -607,6 +607,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       re.compile(r'(const)?\s*long$') : '__long__',
       re.compile(r'(const)?\s*char\s*\*?$') : 'ToString()',
       re.compile(r'(const)?.*::basic_string<.*>\s*(\*|\&)?$') : 'ToString()',
+      re.compile(r'(const)?\s*std::string\s*(\*|\&)?$') : 'ToString()',
    }
 
    def ExportOperators(self):

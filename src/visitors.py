@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.50 2004-05-18 21:21:08 patrick Exp $
+# $Id: visitors.py,v 1.51 2004-05-19 18:42:55 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -105,7 +105,7 @@ class CPlusPlusVisitor(DeclarationVisitor):
 
    def _checkForProblemType(self):
       cxx_name = self.decl.getCPlusPlusName()
-      if cxx_name.find('std::basic_string', 0) != -1:
+      if cxx_name == 'std::string' or cxx_name.find('std::basic_string', 0) != -1:
          self._processProblemType(STD_STRING)
       elif cxx_name.find('boost::shared_ptr', 0) != -1:
          self._processProblemType(SHARED_PTR)
@@ -743,7 +743,7 @@ class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
       if result_decl.must_marshal and result_decl.suffix != '*':
          marshal_str += '*'
 
-      if marshal_str.find('basic_string') != -1:
+      if marshal_str == 'std::string' or marshal_str.find('basic_string') != -1:
          marshal_str = 'char*'
 
       return marshal_str
@@ -894,7 +894,7 @@ class CSharpVisitor(DeclarationVisitor):
       cxx_name = self.decl.getCPlusPlusName()
       type_id  = UNKNOWN
 
-      if cxx_name.find('std::basic_string', 0) != -1:
+      if cxx_name == 'std::string' or cxx_name.find('std::basic_string', 0) != -1:
          type_id = STD_STRING
       elif cxx_name.find('boost::shared_ptr', 0) != -1:
          type_id = SHARED_PTR

@@ -363,6 +363,7 @@ class ValueTypeExporter(Exporter):
         re.compile(r'(const)?\s*long$') : '__long__',
         re.compile(r'(const)?\s*char\s*\*?$') : '__str__',
         re.compile(r'(const)?.*::basic_string<.*>\s*(\*|\&)?$') : '__str__',
+        re.compile(r'(const)?\s*std::string\s*(\*|\&)?$') : '__str__',
     }
         
     
