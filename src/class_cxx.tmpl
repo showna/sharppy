@@ -1,11 +1,12 @@
-## $Id: class_cxx.tmpl,v 1.24 2003-11-10 23:26:24 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.25 2003-11-11 20:52:31 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
-#from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
+#from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
 
 #def exportClass($classObj)
 #set $class_visitor = CPlusPlusVisitor()
 #set $generic_visitor = CPlusPlusVisitor()
+#set $param_visitor = CPlusPlusParamVisitor()
 #silent $classObj.class_.accept($class_visitor)
 #set $class_name = $class_visitor.getRawName()
 \#include "sharppy.h"
@@ -62,7 +63,7 @@ extern "C"
    // Copy constructor wrapper.
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
 #else
-#set $param_list = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters]
+#set $param_list = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters]
 #for $j in range(len($classObj.virtual_methods))
 #set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$j]), $j)
 #silent $param_list.append($q)
@@ -102,7 +103,7 @@ extern "C"
 ## ---------------------------- Non-virtual methods ---------------------------
 #set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.non_virtual_methods
-#set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -129,7 +130,7 @@ extern "C"
 #set $method_visitor = CPlusPlusVisitor()
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
-#set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -155,7 +156,7 @@ extern "C"
 #set $method_visitor = CPlusPlusVisitor()
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.static_methods
-#set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)
