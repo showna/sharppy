@@ -68,7 +68,7 @@ class Declaration(object):
         return name
 
     def getGenericName(self):
-        return makeid(self.getFullNameAbstract())
+        return '_'.join(self.getFullNameAbstract())
 
     def __repr__(self):        
         return '<Declaration %s at %s>' % (self.FullName(), id(self))
