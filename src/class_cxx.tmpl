@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.40 2003-11-20 05:36:39 patrick Exp $
-// Generated from \$Revision: 1.40 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.41 2003-11-23 16:43:34 patrick Exp $
+// Generated from \$Revision: 1.41 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #import visitors
 
@@ -115,6 +115,10 @@ extern "C"
 #set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$j]), $j)
 #silent $param_list.append($q)
 #end for
+#for $j in range(len($classObj.inherited_virtual_methods))
+#set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.inherited_virtual_methods[$j]), $j + len($classObj.virtual_methods))
+#silent $param_list.append($q)
+#end for
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}($p)
@@ -123,7 +127,7 @@ extern "C"
 ## Copy constructor body.
 #if $c.IsCopy()
       $class_name* obj = new ${class_name}(*p);
-#for $m in $classObj.virtual_methods
+#for $m in $classObj.virtual_methods + $classObj.inherited_virtual_methods
 #set $callback_name = getCallbackName($m)
       obj->$callback_name = p->$callback_name;
 #end for
@@ -146,6 +150,11 @@ extern "C"
 #for $count in range(len($classObj.virtual_methods))
 #set $callback_name = getCallbackName($classObj.virtual_methods[$count])
       obj->$callback_name = cb$count;
+#end for
+#for $count in range(len($classObj.inherited_virtual_methods))
+#set $callback_name = getCallbackName($classObj.inherited_virtual_methods[$count])
+#set $cb_param_name = 'cb' + str($count + len($classObj.virtual_methods))
+      obj->$callback_name = $cb_param_name;
 #end for
 ## Post-call parameter marshaling.
 #for $param in $c.parameters

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.37 2003-11-19 22:03:36 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.38 2003-11-23 16:43:34 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -45,7 +45,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.non_virtual_methods = []
       self.static_methods      = []
       self.virtual_methods     = []
-      self.callback_typedefs   = []
+
+      self.inherited_virtual_methods = []
+      self.virtual_method_callbacks  = []
 
       # Nested types.
       self.nested_classes = []
@@ -64,14 +66,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       interface or not.  Being an interface means having nothing but abstract
       (pure virtual) method declarations in the class body.
       '''
-      for member in self.class_:
-         if type(member) == declarations.Method:
-            if member.virtual and not member.abstract:
-               return False
-         else:
-            return False
-
-      return True
+      return self.class_.isInterface()
 
    def Name(self):
       return self.info.name
@@ -143,6 +138,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          self.ExportBases(exported_names)
          self.ExportConstructors()
          self.ExportVirtualMethods()
+         self.exportCallbacks(exported_names)
          self.ExportMethods()
          self.ExportOperators()
          self.ExportNestedClasses(exported_names)
@@ -228,13 +224,16 @@ class ReferenceTypeExporter(Exporter.Exporter):
                        declarations.NestedClass, declarations.ClassEnumeration)
          # these don't work INVESTIGATE!: (declarations.ClassOperator, declarations.ConverterOperator)
       fullnames = [x.FullName() for x in self.class_]
-      pointers = [x.PointerDeclaration(True) for x in self.class_ if isinstance(x, declarations.Method)]
+
+      # Convert fullnames into a dictionary for easier lookup.
       fullnames = dict([(x, None) for x in fullnames])
-      pointers = dict([(x, None) for x in pointers])
+
       for level in self.class_.hierarchy:
          level_exported = False
          for base in level:
             base = self.GetDeclaration(base.FullName())
+
+            # If base is not named in exported_names, it has not been exported.
             if base.FullName() not in exported_names:
                for member in base:
                   if type(member) in valid_members:
@@ -242,15 +241,13 @@ class ReferenceTypeExporter(Exporter.Exporter):
                      member_copy.class_ = self.class_.getFullNameAbstract()
                      member_info = self.info[member_copy.name[0]]
                      if not member_info.exclude:
-                        if isinstance(member_copy, declarations.Method):
-                           pointer = member_copy.PointerDeclaration(True)
-                           if pointer not in pointers:
-                              self.class_.AddMember(member)
-                              pointers[pointer] = None
-                        elif member_copy.FullName() not in fullnames:
+                        if not isinstance(member_copy, declarations.Method) and \
+                           member_copy.FullName() not in fullnames:
                            self.class_.AddMember(member)        
+            # This base class has been exported.
             else:
                level_exported = True
+
          if level_exported:
             break
 
@@ -258,7 +255,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          return isinstance(member, valid_members) and \
                 member.visibility == declarations.Scope.public
 
-      self.public_members = [x for x in self.class_ if IsValid(x)] 
+      self.public_members = [x for x in self.class_ if IsValid(x)]
 
    def WriteOperatorsCPlusPlus(self, indent, wrapperClassName, wrapperClassType):
       'Export all member operators and free operators related to this class'
@@ -399,8 +396,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       'Expose the bases of this class.'
       self.bases = self.getImmediateClassBases(exportedNames)
 
-      # self.bridge_bases contains the names of the base classes as simple
-      # Python string objects and nothing more.
+      # self.bridge_bases contains the declarations of the base bridge classes.
       self.bridge_bases = []
       exported = False
 
@@ -423,19 +419,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
                   # class.
                   for member in base_decl.getMembers():
                      if type(member) == declarations.Method and member.virtual:
-                        # Create a new base declaration using the bridge name
-                        # for b.
                         self.bridge_bases.append(b)
                         exported = True
                         break
-            if exported:
-               break
-      else:
-         for level in self.class_.hierarchy:
-            for b in level:
-               if b.visibility == declarations.Scope.public and b.FullName() in exportedNames:
-                  self.bridge_bases.exported.append(b)
-                  exported = True
             if exported:
                break
 
@@ -568,22 +554,76 @@ class ReferenceTypeExporter(Exporter.Exporter):
          for member in self.class_:
             member_info = self.info[member.name[0]]
             if not member_info.exclude and canExport(member):
+               found = False
                # XXX: This is a very slow way to figure out if a method is
                # overriding a base class method.  If gccxml would tell us
-               # when a method is an override, this coode would be obsoleted.
+               # when a method is an override, this code would be obsoleted.
                for b in self.all_bases:
                   for base_mem in b.getMembers():
                      # The second clause of this conditional is needed for
                      # those cases when a method is "inherited" from a base
                      # class that is not being exported.
+                     # XXX: This does not take method signatures into account.
+#                        member.parameters == base_mem.parameters and \
                      if member.name == base_mem.name and \
                         member.FullName() != base_mem.FullName():
                         member.override = True
+                        found = True
+                        break
+
+                  if found:
+                     break
+
                self.virtual_methods.append(member)
       else:
          if holder:
             assert(False)
 #            self.Add('template', holder(self.class_.FullName()))
+
+   def exportCallbacks(self, exportedNames):
+
+      def isInheritedVirtual(decl, methodNames):
+         return type(decl) == declarations.Method and \
+                decl.virtual and decl.name[0] not in methodNames
+
+#      method_names = [x.name[0] for x in self.class_ if type(x) == declarations.Method]
+      method_names = [x.name[0] for x in self.virtual_methods]
+
+      # Collect all virtual methods that are inherited (not overridden) into
+      # self.inherited_virtual_methods.
+      for level in self.class_.hierarchy:
+         level_exported = False
+         for base in level:
+            base = self.GetDeclaration(base.FullName())
+
+            for member in base:
+               member_info = self.info[member.name[0]]
+               if not member_info.exclude and isInheritedVirtual(member, method_names):
+                  self.inherited_virtual_methods.append(member)
+
+                  # Collect virtual methods that are newly introduced by this
+                  # class by being inherited from an unexported base class.
+                  if base.FullName() not in exportedNames:
+                     self.virtual_method_callbacks.append(member)
+
+               # If the current member is defined in an unexported base class
+               # but overridden in this class, we need a callback.
+               if member.name[0] in method_names and \
+                  base.FullName() not in exportedNames:
+                  self.virtual_method_callbacks.append(member)
+
+            if base.FullName() in exportedNames:
+               level_exported = True
+
+         if level_exported:
+            break
+
+      # Collect virtual methods that are newly introduced by this class
+      # directly.  Inherited virtual methods will already have been handled at
+      # this point, so we can safely ignore methods that are overrides.
+      for method in self.virtual_methods:
+         if not method.override:
+            self.virtual_method_callbacks.append(method)
 
    # Operators natively supported by C#.  This list comes from page 46 of
    # /C# Essentials/, Second Edition.

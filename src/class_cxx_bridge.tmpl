@@ -1,5 +1,5 @@
-## $Id: class_cxx_bridge.tmpl,v 1.3 2003-11-19 23:05:24 patrick Exp $
-// Generated from \$Revision: 1.3 $ of \$RCSfile: class_cxx_bridge.tmpl,v $
+## $Id: class_cxx_bridge.tmpl,v 1.4 2003-11-23 16:43:34 patrick Exp $
+// Generated from \$Revision: 1.4 $ of \$RCSfile: class_cxx_bridge.tmpl,v $
 #from TemplateHelpers import getBridgeName
 #import visitors
 
@@ -15,7 +15,7 @@
 #silent $x.accept($generic_visitor)
 #silent $base_list.append('public %s' % getBridgeName($generic_visitor))
 #end for
-class $class_name : #echo ', '.join($base_list)
+class SHARPPY_API $class_name : #echo ', '.join($base_list)
 {
 public:
 #for $c in $classObj.constructors
@@ -30,8 +30,7 @@ public:
    {;}
 
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
-#for $m in $classObj.virtual_methods
-#if not $m.abstract
+#for $m in $classObj.virtual_method_callbacks
 #set $callback_name = getCallbackName($m)
    $makeCPlusPlusTypedef($m);
    ${callback_name}_t $callback_name;
@@ -49,7 +48,6 @@ public:
       #if $returns then 'return ' else ''#$call;
    }
 
-#end if
 #end for
 }; // class $class_name
 
@@ -70,6 +68,7 @@ $exportClass($nc)
 \#ifndef $wrapper_sym
 \#define $wrapper_sym
 
+\#include "sharppy.h"
 #for $i in $includes
 \#include <$i>
 #end for

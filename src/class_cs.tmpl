@@ -1,12 +1,12 @@
-## $Id: class_cs.tmpl,v 1.41 2003-11-20 06:07:42 patrick Exp $
-// Generated from \$Revision: 1.41 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.42 2003-11-23 16:43:34 patrick Exp $
+// Generated from \$Revision: 1.42 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
-
+using System.Reflection;
 #from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName, getBridgeName, getHolderName
 #import visitors
 
-#def generateMethod($methodDecl)
+#def generateMethod($methodDecl, $hasBase)
 #set $method_visitor    = visitors.CSharpVisitor()
 #set $pi_param_visitor  = visitors.CSharpPInvokeParamVisitor()
 #set $param_visitor     = visitors.CSharpParamVisitor()
@@ -16,9 +16,10 @@ using System.Runtime.InteropServices;
 #silent $methodDecl.result.accept($result_visitor)
 #set $method_name = $methodDecl.name[0]
 #set $method_params = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters])
-## If this method is virtual and is not an override, declare the delegate type
-## and member variable.
-#if $methodDecl.virtual and not $methodDecl.override
+## If this method is virtual and either not an override of a non-abstract
+## method, then we need a delegate and member variable to hold the delegate.
+## XXX: Can this expression be simplified?
+#if ($methodDecl.virtual and $methodDecl.override) or ($methodDecl.virtual and not $hasBase)
 #set $delegate_name = getDelegateName($methodDecl)
    // Delegate for the ${method_name}() callback.
 ## If the reutrn value on the delegate must be marshaled, define an adapter
@@ -83,7 +84,10 @@ using System.Runtime.InteropServices;
    private #if $unsafe then 'unsafe ' else ''#extern static $result_visitor.getUsage() ${pi_name}($pi_p);
 
 #if $methodDecl.virtual
-#if $methodDecl.override
+## If we are overriding a method but do not have a base class, then the method
+## comes from an interface we are implementing.  In that case, it needs to be
+## virtual.
+#if $methodDecl.override and $hasBase
 #set $method_type = 'override'
 #else
 #set $method_type = 'virtual'
@@ -140,7 +144,7 @@ using System.Runtime.InteropServices;
 
 #def generateClass($classObj)
 #set $bases = []
-#set $has_base = False
+#set $has_base_class = False
 #set $class_visitor = visitors.CSharpVisitor()
 #set $base_visitor = visitors.CSharpVisitor()
 #set $generic_visitor = visitors.CSharpVisitor()
@@ -148,9 +152,11 @@ using System.Runtime.InteropServices;
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
 #silent $bases.append($base_visitor.getRawName())
-#set $has_base = True
+#if not $has_base_class and not $b.class_decl.interface
+#set $has_base_class = True
+#end if
 #end for
-#if not $has_base
+#if not $has_base_class
 #silent bases.append('IDisposable')
 #end if
 #set $b = ', '.join($bases)
@@ -161,10 +167,15 @@ abstract #slurp
 class $class_visitor.getRawName(False) : $b
 {
 ## If we have a base class, it will hold mRawObject.
-#if not $has_base
+#if not $has_base_class
    protected internal IntPtr mRawObject = IntPtr.Zero;
    protected bool mWeOwnMemory = false;
    protected class NoInitTag {}
+
+   internal IntPtr RawObject
+   {
+      get { return mRawObject; }
+   }
 #end if
 
 ## Do not define constructors if this class is abstract or it appears only as
@@ -183,7 +194,7 @@ class $class_visitor.getRawName(False) : $b
 #set $delegate_type = getDelegateName($m)
       m_$delegate_type = new ${delegate_type}($callback_name);
 #silent $delegate_args.append('m_' + $delegate_type)
-#end if
+#end for
    }
 #end if
 
@@ -192,7 +203,7 @@ class $class_visitor.getRawName(False) : $b
 ## delegate data members--if there are any.  This is critical in making
 ## inheritance from C++ work correctly.
    protected ${class_visitor.getRawName(False)}(NoInitTag doInit)
-#if $has_base
+#if $has_base_class
       : base(doInit)
 #end if
    {
@@ -215,20 +226,28 @@ class $class_visitor.getRawName(False) : $b
 #set $delegate_name = getDelegateName($m)
 #silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j))
 #end for
+## Add the inherited delegates to the P/Invoke function call parameter list.
+#for $j in range(len($classObj.inherited_virtual_methods))
+#set $m = $classObj.inherited_virtual_methods[$j]
+#set $delegate_name = getDelegateName($m)
+#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j + len($classObj.virtual_methods)))
+#end for
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static IntPtr ${cons_name}($pi_p);
 
    $c.visibility ${class_visitor.getRawName(False)}($cons_params)
-#if $has_base
+#if $has_base_class
       : base(new NoInitTag())   // Do not initialize mRawObject in base class
 #end if
    {
 #if $has_virtuals
       allocDelegates();
 #end if
-## XXX: This does not handle the case when the parent class has delegates.
 #set $cons_args = [x[1] for x in $c.parameters]
+#for $base_virtual in $classObj.inherited_virtual_methods
+#silent $delegate_args.append('m_' + getDelegateName($base_virtual))
+#end for
 #silent $cons_args += $delegate_args
 #set $arg_list = ', '.join($cons_args)
       mRawObject   = ${cons_name}($arg_list);
@@ -238,7 +257,7 @@ class $class_visitor.getRawName(False) : $b
 #end for
    // Internal constructor needed for marshaling purposes.
    internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)
-#if $has_base
+#if $has_base_class
       : base(new NoInitTag())
 #end if
    {
@@ -248,7 +267,7 @@ class $class_visitor.getRawName(False) : $b
 
 #end if
 ## If we have a base class, we let it worry about this stuff.
-#if not $has_base
+#if not $has_base_class
    // Destructor.
    public void Dispose()
    {
@@ -284,7 +303,7 @@ class $class_visitor.getRawName(False) : $b
 
    // Start of non-virtual methods.
 #for $m in $classObj.non_virtual_methods
-$generateMethod($m)
+$generateMethod($m, $has_base_class)
 #end for
    // End of non-virtual methods.
 #end if
@@ -293,7 +312,7 @@ $generateMethod($m)
 
    // Start of virtual methods.
 #for $m in $classObj.virtual_methods
-$generateMethod($m)
+$generateMethod($m, $has_base_class)
 #end for
    // End of virtual methods.
 #end if
@@ -302,7 +321,7 @@ $generateMethod($m)
 
    // Start of static methods.
 #for $m in $classObj.static_methods
-$generateMethod($m)
+$generateMethod($m, $has_base_class)
 #end for
    // End of static methods.
 #end if
@@ -377,26 +396,43 @@ $generateClass($nc)
 #end for
 } // class $class_visitor.getRawName()
 
+$generateCustomMarshaler($classObj, False)
+#end def
+
+#def generateCustomMarshaler($classObj, $isInterface)
+#set $class_visitor = visitors.CSharpVisitor()
+#silent $classObj.class_.accept($class_visitor)
 #set $marshaler_name = $class_visitor.getRawName(False) + 'Marshaler'
-## XXX: Change this over to the C# documentation format.
-// Custom marshaler for $class_visitor.getRawName().  Use this with P/Invoke
-// calls when a C# object of this type needs to be passed to native code.
+/// <summary>
+/// Custom marshaler for $class_visitor.getRawName().  Use this with P/Invoke
+/// calls when a C# object of this type needs to be passed to native code or
+/// vice versa.  Essentially, this marshaler hides the existence of mRawObject.
+/// </summary>
 public class $marshaler_name : ICustomMarshaler
 {
 ## To allow marshaling of abstract base types, define a dummy class that
 ## allows the raw pointer passed to MarshalNativeToManaged() to be used.
-#if $classObj.class_.abstract
+#if $isInterface or $classObj.class_.abstract
 #set $dummy_name = 'Dummy' + $class_visitor.getRawName(False)
    private class $dummy_name : $class_visitor.getRawName()
    {
-      public ${dummy_name}(IntPtr rawObject) : base(new NoInitTag())
+#if $isInterface
+      protected internal IntPtr mRawObject = IntPtr.Zero;
+#end if
+
+      public ${dummy_name}(IntPtr rawObject)
+#if not $isInterface
+         : base(new NoInitTag())
+#end if
       {
-         mRawObject   = rawObject;
+         mRawObject = rawObject;
+#if not $isInterface
          mWeOwnMemory = false;
+#end if
       }
 
 ## Override abstract methods.
-#for $m in $classObj.virtual_methods
+#for $m in $classObj.virtual_methods + $classObj.inherited_virtual_methods
 #if $m.abstract
 #set $method_visitor   = visitors.CSharpVisitor()
 #set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
@@ -426,7 +462,7 @@ public class $marshaler_name : ICustomMarshaler
 #end if
       private #if $unsafe then 'unsafe ' else ''#extern static $result_visitor.getUsage() ${pi_name}($pi_p);
 
-      public override $result_visitor.getUsage() ${method_name}($p)
+      public #if $isInterface then '' else 'override '#$result_visitor.getUsage() ${method_name}($p)
       {
 ## Pre-call parameter marshaling.
 #set $pi_call_args = ['mRawObject']
@@ -491,7 +527,23 @@ public class $marshaler_name : ICustomMarshaler
    // Marshaling for managed data being passed to C++.
    public IntPtr MarshalManagedToNative(Object obj)
    {
+#if $isInterface
+## XXX: I would prefer to simplify this to something that can query the field
+## directly instead of requiring the existing of a property accessor.
+## XXX: The performance of this could be horrible.
+      PropertyInfo raw_obj_prop =
+         obj.GetType().GetProperty("RawObject",
+                                   BindingFlags.NonPublic | BindingFlags.Instance);
+      if ( null != raw_obj_prop )
+      {
+         return (IntPtr) raw_obj_prop.GetValue(obj, null);
+      }
+
+## XXX: Turn this into an exception or something ...
+      return IntPtr.Zero;
+#else
       return (($class_visitor.getRawName()) obj).mRawObject;
+#end if
    }
 
 #if $classObj.info.only_smart_ptr
@@ -503,7 +555,7 @@ public class $marshaler_name : ICustomMarshaler
    // Marshaling for native memory coming from C++.
    public Object MarshalNativeToManaged(IntPtr nativeObj)
    {
-#if $classObj.class_.abstract
+#if $isInterface or $classObj.class_.abstract
       return new ${dummy_name}(nativeObj);
 #else
 #if $classObj.info.only_smart_ptr
@@ -542,6 +594,7 @@ public interface $class_visitor.getRawName(False)
 #end if
 {
 ## ------------------------------ Virtual methods -----------------------------
+#set $has_virtuals = $classObj.hasVirtualMethods()
 #if $has_virtuals
 #set $method_visitor = visitors.CSharpVisitor()
 #set $result_visitor = visitors.CSharpVisitor()
@@ -550,11 +603,13 @@ public interface $class_visitor.getRawName(False)
 #silent $m.result.accept($result_visitor)
 #set $method_name = $m.name[0]
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
-   public $result_visitor.getUsage() ${method_name}($p);
+   $result_visitor.getUsage() ${method_name}($p);
 
 #end for
 #end if
 }
+
+$generateCustomMarshaler($classObj, True)
 #end def
 
 #for $n in $exp_class.class_.namespace
