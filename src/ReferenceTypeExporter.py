@@ -104,7 +104,6 @@ class ReferenceTypeExporter(Exporter):
             self.ExportBasics()
             self.ExportBases(exported_names)
             self.ExportConstructors()
-            self.ExportVariables()
             self.ExportVirtualMethods()
             self.ExportMethods()
             self.ExportVirtualMethodWrappers()
@@ -161,6 +160,25 @@ class ReferenceTypeExporter(Exporter):
 
     def WriteCPlusPlus(self, codeunit):
         'Generates the C++ and C code needed for the bridging.'
+
+        def GetResultType(result):
+            result_type_name = result.name
+            by_value         = True
+            is_fundamental   = True
+
+            if result_type_name != 'void':
+                by_value = not isinstance(result, PointerType)
+
+                # If we are returning by value and we do not have a fundamental
+                # type being returned, convert things to returning by pointer
+                # instead.
+                if by_value and not isinstance(result, FundamentalType):
+                    result_type_name += '*'
+                    by_value = False
+                    is_fundamental = False
+
+            return result_type_name, by_value, is_fundamental
+
         indent = self.INDENT
         sharppy_ns = namespaces.sharppy
         code = ''
@@ -254,11 +272,63 @@ class ReferenceTypeExporter(Exporter):
                 if param_list:
                     param_list = ", " + param_list
 
+                # Set up the information we need for constructing the wrapper
+                # function.
+                result_type, by_value, is_fund = GetResultType(method.result)
+                call_str = "self->%s(%s)" % (method.name, arg_list)
+
                 code += "SHARPPY_API %s %s(%s* self_%s)\n" %\
-                        (method.result.FullName(), c_wrapper,
-                         wrapper_class_name, param_list)
+                        (result_type, c_wrapper, wrapper_class_name, param_list)
                 code += "{\n"
-                code += indent + "self->%s(%s);\n" % (method.name, arg_list)
+
+                # Deal with the case of returning a non-fundamental type as a
+                # pointer created via the copy constructor.
+                if not is_fund:
+                    code += indent + "return new %s(%s);\n" % \
+                            (method.result.FullName(), call_str)
+                # Otherwise, just operate as normal.
+                else:
+                    return_str = 'return '
+                    if result_type == 'void':
+                        return_str = ''
+                    code += indent + "%sself->%s(%s);\n" % (return_str, method.name, arg_list)
+
+                code += "}\n\n"
+
+        vars = [x for x in self.public_members if isinstance(x, Variable)]
+        for var in vars:
+            if self.info[var.name].exclude: 
+                continue
+            name = self.info[var.name].rename or var.name
+            print "Working on", name
+            fullname = var.FullName()
+
+            self_arg = "%s* self_" % wrapper_class_type
+            self_use = "self_->"
+            if var.static:
+                self_arg = ''
+                self_use = ''
+
+            result_type, by_value, is_fund = GetResultType(var.type)
+            call_str = "%s%s" % (self_use, var.name)
+            
+            if not is_fund:
+                call_str = "new %s(%s)" % (var.type.name, call_str)
+
+            code += "SHARPPY_API %s %s_%s_get(%s)\n" %\
+                    (result_type, wrapper_class_name, name, self_arg)
+            code += "{\n"
+            code += indent + "return %s;\n" % call_str
+            code += "}\n\n"
+
+            if not var.type.const:
+                if self_arg:
+                    self_arg += ", "
+                code += "SHARPPY_API void %s_set(%s%s v)\n" %\
+                        (makeid(var.FullName()), self_arg,
+                         var.type.FullName())
+                code += "{\n"
+                code += indent + "%s%s = v;\n" % (self_use, var.name)
                 code += "}\n\n"
 
         # export the inside section
@@ -388,24 +458,7 @@ class ReferenceTypeExporter(Exporter):
         if not self.class_.HasCopyConstructor() or self.class_.abstract:
             self.non_copyable = True
 #            self.Add('template', 'noncopyable')
-            
-        
-    def ExportVariables(self):
-        'Export the variables of the class, both static and simple variables'
-        vars = [x for x in self.public_members if isinstance(x, Variable)]
-        for var in vars:
-            if self.info[var.name].exclude: 
-                continue
-            name = self.info[var.name].rename or var.name
-            fullname = var.FullName() 
-            if var.type.const:
-                def_ = '.def_readonly'
-            else:
-                def_ = '.def_readwrite'
-            code = '%s("%s", &%s)' % (def_, name, fullname)
-            self.Add('inside', code)
 
-    
     def OverloadName(self, method):
         'Returns the name of the overloads struct for the given method'
         name = makeid(method.FullName())
@@ -534,12 +587,12 @@ class ReferenceTypeExporter(Exporter):
     def ExportVirtualMethods(self):        
         holder = self.info.holder
         if self.HasVirtualMethods():
-            if holder:
-                self.Add('template', holder(self.wrapper_generator.FullName()))
-            else:
-                self.Add('template', self.wrapper_generator.FullName())
-            for definition in self.wrapper_generator.GenerateDefinitions():
-                self.Add('inside', definition)
+#            if holder:
+#                self.Add('template', holder(self.wrapper_generator.FullName()))
+#            else:
+#                self.Add('template', self.wrapper_generator.FullName())
+#            for definition in self.wrapper_generator.GenerateDefinitions():
+#                self.Add('inside', definition)
             self.Add('declaration', self.wrapper_generator.GenerateVirtualWrapper(self.INDENT))
         else:
             if holder:
