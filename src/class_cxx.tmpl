@@ -1,13 +1,13 @@
-## $Id: class_cxx.tmpl,v 1.44 2003-11-24 22:24:57 patrick Exp $
-// Generated from \$Revision: 1.44 $ of \$RCSfile: class_cxx.tmpl,v $
-#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
+## $Id: class_cxx.tmpl,v 1.45 2003-12-08 18:17:12 patrick Exp $
+// Generated from \$Revision: 1.45 $ of \$RCSfile: class_cxx.tmpl,v $
+#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName
 #import visitors
 
-#def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $classVisitor = None)
+#def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $className = None)
 #set $param_visitor  = visitors.CPlusPlusParamVisitor()
 #set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
 #if not $methodDecl.static
-#silent $params[0:0] = ["%s self_" % $getSelfType($classObj, $classVisitor)]
+#silent $params[0:0] = ["%s* self_" % $className]
 #if $classObj.info.smart_ptr
 #set $methodCall = $methodCall % 'mPtr->'
 #else
@@ -188,7 +188,7 @@ extern "C"
 #end for
 ## Simple destructor wrapper.  All classes will have one.
 ## XXX: What about classes with non-public destructors?
-   SHARPPY_API void delete_${class_id}($getSelfType($classObj, $class_visitor) self_)
+   SHARPPY_API void delete_${class_id}($class_name* self_)
    {
       delete self_;
    }
@@ -196,7 +196,7 @@ extern "C"
 ## ---------------------------- Non-virtual methods ---------------------------
 #for $m in $classObj.non_virtual_methods
 #set $method_call = 'self_->%s' + $m.name[0]
-$fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
+$fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
 
 ## ------------------------------ Virtual methods -----------------------------
@@ -211,7 +211,7 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 #silent $m.accept($method_visitor)
 #set $method_call = 'self_->%s' + $method_visitor.getRawName()
 #end if
-$fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
+$fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
 
 ## ------------------------------ Static methods ------------------------------
