@@ -3,6 +3,7 @@
 
 import os.path
 import copy
+import re
 import exporters 
 import ReferenceTypeExporter
 import ValueTypeExporter
@@ -125,22 +126,34 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
 
     def Instantiate(self, type_list, headers = [], rename=None):
         if not rename:
-            rename = GenerateName(self._Attribute('name'), type_list)
+            generic_name = GenerateName(self._Attribute('name'), type_list)
+        else:
+            generic_name = rename
+
         # generate code to instantiate the template
         types = ', '.join(type_list)
         tail = ''
         for h in headers:
            tail += '#include <%s>\n' % h
         # XXX: I don't think that this should be in the global namespace...
-        tail += 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
-        tail += 'void __instantiate_%s()\n' % rename
-        tail += '{ sizeof(%s); }\n\n' % rename
-        # create a ReferenceTypeInfo.
-        class_ = ReferenceTypeInfo(self._Attribute('module'),
-                                   rename, self._Attribute('include'), tail,
-                                   self, headers)
-        return class_
+        tail += 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types,
+                                            generic_name)
+        tail += 'void __instantiate_%s()\n' % generic_name
+        tail += '{ sizeof(%s); }\n\n' % generic_name
 
+        if not rename:
+            name = '%s<%s>' % (self._Attribute('name'), ','.join(type_list))
+        else:
+            name = rename
+
+        # Remove all but the most necessary whitespace from name.
+        name = re.sub(r'\s+', '', name)
+        name = re.sub(r'>>', '> >', name)
+
+        # Create a ReferenceTypeInfo using the template instantiation we forced.
+        return ReferenceTypeInfo(self._Attribute('module'), name,
+                                 self._Attribute('include'), tail, self,
+                                 headers)
 
     def __call__(self, types, headers = [], rename=None):
         if isinstance(types, str):

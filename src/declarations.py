@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.25 2004-01-09 20:27:56 patrick Exp $
+# $Id: declarations.py,v 1.26 2004-01-09 23:15:25 patrick Exp $
 
 import copy
 import re
@@ -28,6 +28,8 @@ class Declaration(object):
 
     template_search = re.compile(r'^([\w:]+)<')
     template_match  = re.compile(r'^([^<]+)<\s*(.+)\s*>\s*[\*&]?\s*$')
+    ws_match        = re.compile(r'\s+')
+    template_munge  = re.compile(r'>>')
 
     def _toAbstractName(self, origName):
         match_obj = self.template_match.search(origName)
@@ -49,7 +51,14 @@ class Declaration(object):
         @type namespace: string
         @param namespace: the full namespace where this declaration resides.
         '''
-        self.cxx_name = cxxName
+        # If we have a template, strip all whitespace from cxxName except what
+        # is absolutely required to prevent parse errors.
+        if cxxName.find('<') != -1:
+            temp_cxx_name = self.ws_match.sub('', cxxName)
+            self.cxx_name = self.template_munge.sub('> >', temp_cxx_name)
+        # If we do not have a template, keep the original name intact.
+        else:
+            self.cxx_name = cxxName
 
         # self.name is the language-agnostic name.  Subclasses should set this
         # themselves if special handling is required for different syntactic
