@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.48 2004-02-26 00:31:46 patrick Exp $
+# $Id: visitors.py,v 1.49 2004-02-26 17:47:01 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -589,7 +589,6 @@ class CPlusPlusConstructorWrapperVisitor(CPlusPlusVisitor):
       self.__class_obj         = None
       self.__raw_class_name    = ''
       self.__class_name        = ''
-      self.__adapter_name      = ''
       self.__param_count       = -1
       self.__method_call       = []
       self.__return_type       = ''
@@ -656,7 +655,7 @@ class CPlusPlusConstructorWrapperVisitor(CPlusPlusVisitor):
 
       if self.__class_obj.needsAdapter():
          class_visitor = CPlusPlusVisitor()
-         self.decl.accept(class_visitor)
+         self.__class_obj.class_.accept(class_visitor)
          adapter_name = class_visitor.getGenericName() + '_Adapter'
          del class_visitor
       else:
@@ -666,7 +665,7 @@ class CPlusPlusConstructorWrapperVisitor(CPlusPlusVisitor):
       # constructor's class.
       for i in range(len(self.__class_obj.virtual_methods)):
          cb_name = getCallbackName(self.__class_obj.virtual_methods[i])
-         cb_param_type = '%s::%s_t cb%d' % (self.__adapter_name, cb_name, i)
+         cb_param_type = '%s::%s_t cb%d' % (adapter_name, cb_name, i)
          self.__param_type_list.append(cb_param_type)
          method_call.append('%s->%s = cb%d;' % (obj_ref, cb_name, i))
 
@@ -676,7 +675,7 @@ class CPlusPlusConstructorWrapperVisitor(CPlusPlusVisitor):
          cb_name = getCallbackName(self.__class_obj.inherited_virtual_methods[i])
          cb_param_num = i + len(self.__class_obj.virtual_methods)
          cb_param_type = '%s::%s_t cb%d' % \
-                            (self.__adapter_name, cb_name, cb_param_num)
+                            (adapter_name, cb_name, cb_param_num)
          self.__param_type_list.append(cb_param_type)
          method_call.append('%s->%s = cb%d;' % (obj_ref, cb_name, cb_param_num))
 
