@@ -42,6 +42,54 @@ def generateUniqueName(declList):
     return [makeid(x.FullName()) for x in declList]
 
 #==============================================================================
+# operatorToString
+#==============================================================================
+def operatorToString(op, unary=True):
+    if op == '+':
+        return 'add'
+    elif op == '-':
+        if unary:
+            return 'negate'
+        else:
+            return 'subtract'
+    elif op == '!':
+        return 'not'
+    elif op == '~':
+        return 'bit_invert'
+    elif op == '++':
+        return 'increment'
+    elif op == '--':
+        return 'decrement'
+    elif op == '*':
+        return 'multiply'
+    elif op == '/':
+        return 'divide'
+    elif op == '%':
+        return 'modulo'
+    elif op == '%':
+        return 'bitwise_and'
+    elif op == '|':
+        return 'bitwise_or'
+    elif op == '^':
+        return 'bitwise_xor'
+    elif op == '<<':
+        return 'left_shift'
+    elif op == '>>':
+        return 'right_shift'
+    elif op == '!=':
+        return 'not_equal'
+    elif op == '>':
+        return 'greater_than'
+    elif op == '<':
+        return 'less_than'
+    elif op == '>=':
+        return 'greater_than_or_equal'
+    elif op == '<=':
+        return 'less_than_or_equal'
+    elif op == '==':
+        return 'equal'
+
+#==============================================================================
 # remove_duplicated_lines
 #==============================================================================
 def remove_duplicated_lines(text):
