@@ -212,17 +212,25 @@ class ReferenceTypeExporter(Exporter):
             for j in range(0, len(cons_params)):
                 arg_list.append('p' + str(j))
 
-            if not c.IsCopy():
+            cons_wrapper_name = "new_%s_c%d" % (wrapper_class_name, i)
+
+            # If this is a copy constructor, prepend "copy_" to the wrapper
+            # name.
+            if c.IsCopy():
+                cons_wrapper_name = "copy_%s" % wrapper_class_name
+            # If this is not the copy constructor, we need to append the
+            # virtual function callback arguments to the parameter list.
+            else:
                 cons_params.extend(callback_args)
+
             cons_params = ', '.join(cons_params)
             arg_list = ', '.join(arg_list)
 
-            code += 'SHARPPY_API %s* new_%s_c%d(%s)\n' % (self.class_.FullName(), wrapper_class_name, i, cons_params)
+            code += 'SHARPPY_API %s* %s(%s)\n' % \
+                    (self.class_.FullName(), cons_wrapper_name, cons_params)
             code += '{\n'
-            code += indent + '%s* o = new %s(%s)' % (wrapper_class_type, wrapper_class_type, arg_list)
-
-            # Fill in constructor parameters.
-            code += ';\n'
+            code += indent + '%s* o = new %s(%s);\n' % \
+                    (wrapper_class_type, wrapper_class_type, arg_list)
 
             # Initialize all virtual method callbacks (if there are any).
             if len(self.callback_typedefs) > 0:
