@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 #from TemplateHelpers import getCSharpName
 
 #for $m, $c in $marshalers
-// Marshaler for $c.getCSharpName(False).
-class $c.getCSharpName(False)_Marshaler : ICustomMarshaler
+// Marshaler for $c.getCSharpName().
+class $c.getCSharpName()_Marshaler : ICustomMarshaler
 {
 }
 #end for
@@ -21,7 +21,7 @@ class $c.getCSharpName(False)_Marshaler : ICustomMarshaler
 #end for
 #silent bases.append('IDisposable')
 #set $b = ', '.join($bases)
-public class $classObj.getCSharpName(False) : $b
+public class $classObj.getCSharpName() : $b
 {
 ## If we have a base class, it will hold mRawObject.
 #if not $has_base
@@ -37,7 +37,7 @@ public class $classObj.getCSharpName(False) : $b
 
 #set $p = $pi_p
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-   public ${classObj.getCSharpName(False)}($p)
+   public ${classObj.getCSharpName()}($p)
    {
       mRawObject   = new_${classObj.bridge_name}($arg_list);
       mWeOwnMemory = true;
