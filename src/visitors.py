@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.14 2003-11-13 21:07:46 patrick Exp $
+# $Id: visitors.py,v 1.15 2003-11-14 21:35:34 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -327,7 +327,7 @@ class CSharpVisitor(DeclarationVisitor):
 
    def _processProblemType(self, typeID):
       if typeID == STD_STRING:
-         self.usage = 'String'
+         self.usage = 'string'
          self.problem_type = True
          self.decl.must_marshal = False
       # Translate char, which is 1 byte in C/C++, into byte.
