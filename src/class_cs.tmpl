@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.77 2004-05-25 21:33:52 patrick Exp $
-// Generated from \$Revision: 1.77 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.78 2004-07-06 04:54:43 patrick Exp $
+// Generated from \$Revision: 1.78 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -24,8 +24,7 @@ using System.Reflection;
 #set $adapter_params = ', '.join([x[1] for x in $methodDecl.parameters])
    protected IntPtr ${method_name}Adapter($method_params)
    {
-## XXX: See if we can take advantage of custom marshalers here.
-      return ${method_name}($adapter_params).mRawObject;
+      return ${method_name}($adapter_params).RawObject;
    }
 
 #set $dlg_return_type = 'IntPtr'
@@ -100,13 +99,18 @@ class $class_visitor.getRawName(False)
    : $b
 #end if
 {
-## If we have a base class, it will hold mRawObject.
+## If we have a base class, it will hold and manage access to mRawObject.
 #if not $has_base_class
-   protected internal IntPtr mRawObject = IntPtr.Zero;
+   protected IntPtr mRawObject = IntPtr.Zero;
    protected bool mWeOwnMemory = false;
    protected class NoInitTag {}
 
-   internal IntPtr RawObject
+   /// <summary>
+   /// This is needed for the custom marshaler to be able to perform a
+   /// reflective lookup.  The custom marshaler also uses this method to get
+   /// access to the value of mRawObject when necessary.
+   /// </summary>
+   public IntPtr RawObject
    {
       get { return mRawObject; }
    }
@@ -430,7 +434,7 @@ $generateMethod($m, $has_base_class)
 ## XXX: Allocating a new object for every get() call seems wasteful.
       get { return new ${data_type_visitor.getUsage()}(${get_name}(), false); }
 #if not $m.type.const
-      set { ${set_name}(value.mRawObject); }
+      set { ${set_name}(value.RawObject); }
 #end if
 #else
       get { return ${get_name}(); }
@@ -490,7 +494,7 @@ public class $custom_marshaler_name : ICustomMarshaler
    private class $dummy_name : $class_visitor.getRawName()
    {
 #if $isInterface
-      protected internal IntPtr mRawObject = IntPtr.Zero;
+      private IntPtr mRawObject = IntPtr.Zero;
 
       internal IntPtr RawObject
       {
@@ -571,12 +575,12 @@ public class $custom_marshaler_name : ICustomMarshaler
       // and use the slow technique instead.
       try
       {
-         return (($dummy_name) obj).mRawObject;
+         return (($dummy_name) obj).RawObject;
       }
       catch(System.InvalidCastException ex)
       {
 ## XXX: I would prefer to simplify this to something that can query the field
-## directly instead of requiring the existing of a property accessor.
+## directly instead of checking for the existance of a property accessor.
 ## XXX: The performance of this could be horrible.
          PropertyInfo raw_obj_prop =
             obj.GetType().GetProperty("RawObject",
@@ -591,7 +595,7 @@ public class $custom_marshaler_name : ICustomMarshaler
       // Marshaling failed.
       return IntPtr.Zero;
 #else
-      return (($class_visitor.getRawName()) obj).mRawObject;
+      return (($class_visitor.getRawName()) obj).RawObject;
 #end if
    }
 
