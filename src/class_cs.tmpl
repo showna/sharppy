@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.33 2003-11-14 17:54:47 patrick Exp $
+## $Id: class_cs.tmpl,v 1.34 2003-11-14 20:53:55 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -38,11 +38,6 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
    public abstract $result_visitor.getUsage() ${method_name}($p);
 ## Otherwise, set up the P/Invoke information and the method body.
 #else
-#if $methodDecl.result.must_marshal
-#set $native_return_type = 'IntPtr'
-#else
-#set $native_return_type = $result_visitor.getUsage()
-#end if
 #set $unsafe = False
 #if $methodDecl.static
 #set $pi_params = []
@@ -61,7 +56,12 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #set $pi_name = $method_visitor.getGenericName()
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("vpr_bridge", CharSet = CharSet.Ansi)]
-   private #if $unsafe then 'unsafe ' else ''#extern static $native_return_type ${pi_name}($pi_p);
+#if $methodDecl.result.must_marshal
+#set $marshaler_name = $result_visitor.getRawName(False) + 'Marshaler'
+   [return : MarshalAs(UnmanagedType.CustomMarshaler,
+                       MarshalTypeRef = typeof($marshaler_name))]
+#end if
+   private #if $unsafe then 'unsafe ' else ''#extern static $result_visitor.getUsage() ${pi_name}($pi_p);
 
 #if $methodDecl.virtual
 #if $methodDecl.override
@@ -101,11 +101,7 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
       unsafe
       {
 #end if
-#if $methodDecl.result.must_marshal
-      result = new ${result_visitor.getUsage()}($method_call, true);
-#else
       #if $returns then 'result = ' else ''#$method_call;
-#end if
 #if $unsafe
       }
 #end if
