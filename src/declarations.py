@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.24 2004-01-08 22:55:25 patrick Exp $
+# $Id: declarations.py,v 1.25 2004-01-09 20:27:56 patrick Exp $
 
 import copy
 import re
@@ -42,7 +42,7 @@ class Declaration(object):
 
         return abstract_name
 
-    def __init__(self, cxxName, namespace, mustMarshal = False):
+    def __init__(self, cxxName, namespace, mustMarshal = False, typeStr = ''):
         '''
         @type name: string
         @param name: The name of this declaration
@@ -65,6 +65,7 @@ class Declaration(object):
         self.location = '', -1  # (filename, line)
         self.incomplete = False
         self.is_unique = True
+        self.type_str  = typeStr
         # XXX: must_marshal is pretty much a failure.  It should be removed.
         self.must_marshal = mustMarshal
 
@@ -767,6 +768,7 @@ class Enumeration(Declaration):
     
     def __init__(self, name, namespace):
         Declaration.__init__(self, name, namespace)
+        self.type_str = 'enumeration'
         self.values = {} # dict of str => int
 
 

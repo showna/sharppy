@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.25 2003-12-22 02:26:15 patrick Exp $
+# $Id: visitors.py,v 1.26 2004-01-09 20:27:56 patrick Exp $
 
 import re
 
@@ -389,7 +389,7 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
       CSharpVisitor.visit(self, decl)
 
       if decl.suffix == '&' or decl.suffix == '*':
-         if not self.problem_type:
+         if not self.problem_type and not decl.type_decl.type_str == 'enumeration':
             if self._isFundamentalType(decl):
                self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
                self.__needs_unsafe = False
@@ -428,7 +428,11 @@ class CSharpParamVisitor(CSharpVisitor):
 
       if decl.suffix == '&' or decl.suffix == '*':
          if not self.problem_type:
-            if self._isFundamentalType(decl):
+            if decl.type_decl.type_str == 'enumeration':
+#               self.usage = re.sub(r"[&*]", "", self.usage)
+               self.__must_marshal = False
+               self.__param_name   = self.__orig_param_name
+            elif self._isFundamentalType(decl):
                self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
                self.__must_marshal = True
                self.__needs_unsafe = False
