@@ -29,12 +29,10 @@ class ReferenceTypeExporter(Exporter):
  
     def __init__(self, info, parser_tail=None):
         Exporter.__init__(self, info, parser_tail)
-        self.cxx_template = Template(file = self.cxx_template_file)
-        self.cxx_template.exp_class = self
-        self.csharp_template = Template(file = self.csharp_template_file)
-        self.csharp_template.exp_class = self
+        self.marshalers = {}
 
-        self.exportable_methods = {}
+        self.cxx_template = Template(file = self.cxx_template_file)
+        self.csharp_template = Template(file = self.csharp_template_file)
 
         # Abstract data information for the reference type to be exported.
         self.no_init             = False
@@ -49,8 +47,11 @@ class ReferenceTypeExporter(Exporter):
     def getCPlusPlusName(self):
         return '::'.join(self.class_.getFullNameAbstract())
 
-    def getCSharpName(self):
-        return '.'.join(self.class_.getFullNameAbstract())
+    def getCSharpName(self, withNamespace = True):
+        if withNamespace:
+            return '.'.join(self.class_.getFullNameAbstract())
+        else:
+            return '.'.join(self.class_.name)
 
     def getClassName(self):
         return makeid(self.class_.FullName())
@@ -116,8 +117,18 @@ class ReferenceTypeExporter(Exporter):
             self.ExportNestedEnums(exported_names)
             self.ExportSmartPointer()
             self.ExportOpaquePointerPolicies()
+
+            # Set up the mapping information for the templates.
+            self.cxx_template.exp_class     = self
+            self.cxx_template.module        = self.module
+            self.csharp_template.exp_class  = self
+            self.csharp_template.marshalers = self.marshalers
+            self.csharp_template.module     = self.module
+
+            # Execute the templates.
             print self.cxx_template
             print self.csharp_template
+
             exported_names[self.Name()] = 1
 
 

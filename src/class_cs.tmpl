@@ -1,2 +1,84 @@
 import System;
 import System.Runtime.InteropServices;
+
+#from TemplateHelpers import getCSharpName
+
+#for $n in $exp_class.class_.namespace
+nameapace $n
+{
+#end for
+
+// Marshalers.
+#for $m, $c in $marshalers
+class $c.getCSharpName(False)_Marshaler : ICustomMarshaler
+{
+}
+#end for
+
+#set $bases = []
+#set $has_base = False
+#for $b in $exp_class.bases
+#if $getCSharpName($b) != $exp_class.getCSharpName()
+#silent $bases.append($getCSharpName($b))
+#set $has_base = True
+#end if
+#end for
+#silent bases.append('IDisposable')
+#set $b = ', '.join($bases)
+public class $exp_class.getCSharpName(False) : $b
+{
+## If we have a base class, it will hold mRawObject.
+#if not $has_base
+   protected internal IntPtr mRawObject;
+   protected bool mWeOwnMemory;
+#end if
+
+   // Constructors.
+#for $c in $exp_class.constructors
+   [DllImport("$module", CharSet = CharSet.Ansi)]
+   private static extern IntPtr new_$exp_class.getClassName();
+
+#set $p = ', '.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $c.parameters])
+#set $arg_list = ', '.join([x[1] for x in $c.parameters])
+   public ${exp_class.getCSharpName(False)}($p)
+   {
+      mRawObject   = new_${exp_class.getClassName()}($arg_list);
+      mWeOwnMemory = true;
+   }
+
+#end for
+
+   // Destructor.
+   public void Dispose()
+   {
+      delete();
+   }
+
+   [DllImport("$module", CharSet = CharSet.Ansi)]
+   private extern static void delete_${exp_class.getClassName()}(IntPtr obj);
+
+   protected void delete()
+   {
+      if ( mWeOwnMemory && IntPtr.Zero != mRawObject )
+      {
+         delete_${exp_class.getClassName()}(mRawObject);
+         mWeOwnMemory = false;
+         mRawObject   = IntPtr.Zero;
+      }
+   }
+
+   // Overloads.
+
+   // Non-virtual methods.
+
+   // Virtual methods.
+
+   // Static methods.
+
+   // Static data.
+
+}
+
+#for $n in $exp_class.class_.namespace
+}
+#end for
