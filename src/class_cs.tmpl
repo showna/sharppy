@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.39 2003-11-20 05:40:59 patrick Exp $
-// Generated from \$Revision: 1.39 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.40 2003-11-20 05:50:16 patrick Exp $
+// Generated from \$Revision: 1.40 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 
@@ -167,14 +167,13 @@ class $class_visitor.getRawName(False) : $b
    protected class NoInitTag {}
 #end if
 
-#set $method_visitor = visitors.CSharpVisitor()
 ## Do not define constructors if this class is abstract or it appears only as
 ## as smart pointer.
 #if not $classObj.info.only_smart_ptr
+#set $delegate_args = []
 #if $classObj.hasVirtualMethods()
    private void allocDelegates()
    {
-#set $delegate_args = []
 #for $m in $classObj.virtual_methods
 ## We only have to initialize delegate members for virtual functions that we
 ## declare.  Those that are overridden are initialized in the base class.
@@ -199,25 +198,25 @@ class $class_visitor.getRawName(False) : $b
 #end if
    }
 
-#set $cons_visitor = visitors.CSharpVisitor()
+#set $method_visitor   = visitors.CSharpVisitor()
+#set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
+#set $param_visitor    = visitors.CSharpParamVisitor()
 #for $c in $classObj.constructors
 #silent $c.accept($method_visitor)
 #set $cons_name = $method_visitor.getGenericName()
-#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters]
-#set $p = ', '.join($pi_params)
-#if $classObj.hasVirtualMethods()
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $pi_param_visitor), x[1]) for x in $c.parameters]
+#set $cons_params = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters])
+## Add the delegates to the P/Invoke function call parameter list.
 #for $j in range(len($classObj.virtual_methods))
 #set $m = $classObj.virtual_methods[$j]
 #set $delegate_name = getDelegateName($m)
 #silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j))
 #end for
-#end if
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static IntPtr ${cons_name}($pi_p);
 
-#set $cons_args = [x[1] for x in $c.parameters]
-   $c.visibility ${class_visitor.getRawName(False)}($p)
+   $c.visibility ${class_visitor.getRawName(False)}($cons_params)
 #if $has_base
       : base(new NoInitTag())   // Do not initialize mRawObject in base class
 #end if
@@ -226,6 +225,7 @@ class $class_visitor.getRawName(False) : $b
       allocDelegates();
 #end if
 ## XXX: This does not handle the case when the parent class has delegates.
+#set $cons_args = [x[1] for x in $c.parameters]
 #silent $cons_args += $delegate_args
 #set $arg_list = ', '.join($cons_args)
       mRawObject   = ${cons_name}($arg_list);
