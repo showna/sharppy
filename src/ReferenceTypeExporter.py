@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.38 2003-11-23 16:43:34 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.39 2003-11-24 20:20:04 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -30,8 +30,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
    c_wrapper_template_file  = os.path.dirname(__file__) + '/class_cxx.tmpl'
    csharp_template_file     = os.path.dirname(__file__) + '/class_cs.tmpl'
  
-   def __init__(self, info, parser_tail=None, module = 'Unknown'):
-      Exporter.Exporter.__init__(self, info, parser_tail, module)
+   def __init__(self, info, parser_tail=None):
+      Exporter.Exporter.__init__(self, info, parser_tail)
 
       self.cxx_bridge_template = Template(file = self.cxx_bridge_template_file)
       self.c_wrapper_template = Template(file = self.c_wrapper_template_file)
@@ -698,9 +698,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
          if not nested_info.exclude:
             nested_info.include = self.info.include
             nested_info.name = nested_class.FullName()
+            nested_info.module = self.module
             exporter = ReferenceTypeExporter(nested_info)
-            exporter.setModule(self.module)
-            exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
             exporter.SetDeclarations(self.declarations)
             exporter.Export(exported_names)
             self.nested_classes.append(exporter)
@@ -712,9 +711,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
          if not enum_info.exclude:
             enum_info.include = self.info.include
             enum_info.name = enum.FullName()
+            enum_info.module = self.module
             exporter = EnumExporter.EnumExporter(enum_info)
-            exporter.setModule(self.module)
-            exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
             exporter.SetDeclarations(self.declarations)
             exporter.Export(exported_names)
             self.nested_enums.append(exporter)

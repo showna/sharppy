@@ -49,7 +49,6 @@ class DeclarationInfo:
             # set value
             self.__attributes[name] = value
 
-
 #==============================================================================
 # FunctionInfo
 #==============================================================================
@@ -72,11 +71,12 @@ class FunctionInfo(DeclarationInfo):
 #==============================================================================
 class ReferenceTypeInfo(DeclarationInfo):
 
-    def __init__(self, name, include, tail=None, otherInfo=None):
+    def __init__(self, module, name, include, tail=None, otherInfo=None):
         DeclarationInfo.__init__(self, otherInfo)
         self._Attribute('name', name)
         self._Attribute('include', include)
         self._Attribute('exclude', False)
+        self._Attribute('module', module)
         # create a ReferenceTypeExporter
         exporter = ReferenceTypeExporter.ReferenceTypeExporter(InfoWrapper(self), tail)
         if exporter not in exporters.exporters: 

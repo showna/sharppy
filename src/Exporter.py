@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.8 2003-11-13 20:12:22 patrick Exp $
+# $Id: Exporter.py,v 1.9 2003-11-24 20:20:04 patrick Exp $
 
 import os
 
@@ -13,15 +13,21 @@ class Exporter(object):
 
    INDENT = ' ' * 3
 
-   def __init__(self, info, parser_tail=None, module = 'Unknown'):
+   def __init__(self, info, parser_tail=None):
       self.info = info
       self.parser_tail = parser_tail
       self.interface_file = None
       self.declarations = []
       self.includes = []
-      self.module = module
+      self.module = info.module
+      if self.module == '' or self.module == None:
+         # XXX: Come up with a better name for this...
+         self.module = 'my_bridge'
+      else:
+         self.module += '_bridge'
       self.cxx_dir = self.module + '_cpp'
       self.csharp_dir = self.module + '_cs'
+      self._createOutputDirs()
 
    def Name(self):
       raise NotImplementedError(self.__class__.__name__)
@@ -41,10 +47,10 @@ class Exporter(object):
       if parsed_header not in self.includes:
          self.includes.append(parsed_header)
 
-   def setModule(self, module):
-      self.module = module
+   def _createOutputDirs(self):
+      cxx    = self.cxx_dir
+      csharp = self.csharp_dir
 
-   def setOutputDirs(self, cxx, csharp):
       if os.access(cxx, os.F_OK):
          if not os.access(cxx, os.R_OK):
             # XXX: Need to throw an exception here.
@@ -52,16 +58,12 @@ class Exporter(object):
       else:
          os.mkdir(cxx)
 
-      self.cxx_dir = cxx
-
       if os.access(csharp, os.F_OK):
          if not os.access(csharp, os.R_OK):
             # XXX: Need to throw an exception here.
             print 'C# Crap'
       else:
          os.mkdir(csharp)
-
-      self.csharp_dir = csharp
 
    def SetDeclarations(self, declarations):
       self.declarations = declarations

@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.10 2003-11-19 22:30:40 patrick Exp $
+# $Id: sharppy.py,v 1.11 2003-11-24 20:20:04 patrick Exp $
 
 """
 Sharppy version %s
@@ -79,7 +79,7 @@ def ParseArguments():
 
    try:
       options, files = getopt.getopt(sys.argv[1:], 'R:I:D:vh',
-                                     ['module=', 'out-cxx=', 'out-csharp=',
+                                     ['out-cxx=', 'out-csharp=',
                                       'sharppy-ns=', 'debug', 'cache-dir=',
                                       'only-create-cache', 'version', 'help'])
    except getopt.GetoptError, e:
@@ -89,7 +89,6 @@ def ParseArguments():
 
    includes = GetDefaultIncludes()
    defines = []
-   module = None
    out_cxx = None
    out_csharp = None
    cache_dir = None
@@ -102,8 +101,6 @@ def ParseArguments():
          defines.append(value)
       elif opt == '-R':
          includes.extend(RecursiveIncludes(value))
-      elif opt == '--module':
-         module = value
       elif opt == '--out-cxx':
          out_cxx = value
       elif opt == '--out-csharp':
@@ -127,8 +124,7 @@ def ParseArguments():
 
    if not files:
       Usage()
-   if not module:
-      module = os.path.splitext(files[0])[0]
+
    for file in files:
       d = os.path.dirname(os.path.abspath(file))
       if d not in sys.path:
@@ -140,8 +136,7 @@ def ParseArguments():
       sys.exit(3)
 
    ProcessIncludes(includes)
-   return includes, defines, module, out_cxx, out_csharp, files, cache_dir, create_cache
-
+   return includes, defines, out_cxx, out_csharp, files, cache_dir, create_cache
 
 def CreateContext():
    'create the context where a interface file will be executed'
@@ -182,10 +177,9 @@ def CreateContext():
    context['module_code'] = lambda code: infos.CodeInfo(code, 'module')
    return context
 
-
 def Begin():
    # parse arguments
-   includes, defines, module, out_cxx, out_csharp, interfaces, cache_dir, create_cache = ParseArguments()
+   includes, defines, out_cxx, out_csharp, interfaces, cache_dir, create_cache = ParseArguments()
    # run sharppy scripts
    for interface in interfaces:
       ExecuteInterface(interface)
@@ -194,12 +188,11 @@ def Begin():
                                 declarations.version)
    try:
       if not create_cache:
-         return GenerateCode(parser, module, out_cxx, out_csharp, interfaces)
+         return GenerateCode(parser, out_cxx, out_csharp, interfaces)
       else:
          return CreateCaches(parser)
    finally:
       parser.Close()
-
 
 def CreateCaches(parser):
    # There is one cache file per interface so we organize the headers
@@ -262,7 +255,7 @@ def OrderInterfaces(interfaces):
    return [x for _, x in interfaces_order]
 
 
-def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
+def GenerateCode(parser, out_cxx, out_csharp, interfaces):
    # stop referencing the exporters here
    exports = exporters.exporters
    exporters.exporters = None
@@ -282,12 +275,7 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
    del order
    del interfaces_order
 
-   module += '_bridge'
-
-   if not out_cxx:
-      out_cxx = module + '_cpp'
-   if not out_csharp:
-      out_csharp = module + '_cs'
+   modules = []
 
    # now generate the code in the correct order
    #print exported_names
@@ -310,8 +298,8 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
          declarations = []
          parsed_header = None
       ExpandTypedefs(declarations, exported_names)
-      export.setModule(module)
-      export.setOutputDirs(out_cxx, out_csharp)
+      if export.info.module not in modules:
+         modules.append(export.info.module)
       export.SetDeclarations(declarations)
       export.SetParsedHeader(parsed_header)
       export.GenerateCode(exported_names)
@@ -321,7 +309,7 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
       del export
       gc.collect()
 
-   print 'Module %s generated' % module
+   print 'Modules (%s) generated' % ', '.join(modules)
    return 0
 
 def ExpandTypedefs(decls, exported_names):
