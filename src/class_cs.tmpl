@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.54 2003-12-23 20:05:51 patrick Exp $
-// Generated from \$Revision: 1.54 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.55 2003-12-23 20:19:13 patrick Exp $
+// Generated from \$Revision: 1.55 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -582,8 +582,6 @@ public interface $class_visitor.getRawName(False)
 #end if
 {
 ## ------------------------------ Virtual methods -----------------------------
-#set $has_virtuals = $classObj.hasVirtualMethods()
-#if $has_virtuals
 #set $method_visitor = visitors.CSharpVisitor()
 #set $result_visitor = visitors.CSharpVisitor()
 #for $m in $classObj.virtual_methods
@@ -594,7 +592,8 @@ public interface $class_visitor.getRawName(False)
    $result_visitor.getUsage() ${method_name}($p);
 
 #end for
-#end if
+#del $method_visitor
+#del $result_visitor
 }
 
 $generateCustomMarshaler($classObj, True)

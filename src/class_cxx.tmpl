@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.47 2003-12-23 18:17:27 patrick Exp $
-// Generated from \$Revision: 1.47 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.48 2003-12-23 20:19:13 patrick Exp $
+// Generated from \$Revision: 1.48 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getAdapterName, getHolderName
 #import visitors
 
@@ -69,7 +69,7 @@ $return_visitor.getMethodCall($method_call, '      ')
 #set $param_visitor = visitors.CPlusPlusParamVisitor()
 #silent $classObj.class_.accept($class_visitor)
 #set $class_id = $class_visitor.getGenericName()
-#if $classObj.hasVirtualMethods()
+#if $classObj.needsAdapter()
 #set $class_name = getAdapterName($class_visitor)
 #else
 #set $class_name = $class_visitor.getRawName()

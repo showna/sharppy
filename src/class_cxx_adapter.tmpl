@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.8 2003-12-23 18:29:54 patrick Exp $
-// Generated from \$Revision: 1.8 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.9 2003-12-23 20:19:13 patrick Exp $
+// Generated from \$Revision: 1.9 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #from TemplateHelpers import getAdapterName
 #import visitors
 
@@ -78,7 +78,7 @@ public:
 
 #set $nested_visitor = visitors.CPlusPlusVisitor()
 #for $nc in $classObj.nested_classes
-#if $nc.hasVirtualMethods()
+#if $nc.needsAdapter()
 #silent $nc.class_.accept($nested_visitor)
 // Nested class $nested_visitor.getRawName().
 $exportClass($nc)
