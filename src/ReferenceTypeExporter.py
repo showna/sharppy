@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.44 2003-12-22 21:03:39 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.45 2003-12-22 22:21:57 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -137,9 +137,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
          self.ExportBasics()
          self.ExportBases(exported_names)
          self.ExportConstructors()
+         self.ExportMethods()
          self.ExportVirtualMethods()
          self.exportCallbacks(exported_names)
-         self.ExportMethods()
          self.ExportOperators()
          self.ExportNestedClasses(exported_names)
          self.ExportNestedEnums(exported_names)
@@ -444,24 +444,46 @@ class ReferenceTypeExporter(Exporter.Exporter):
       Export all the non-virtual methods of this class, plus any function
       that is to be exported as a method.
       '''
-
-      def IsExportable(m):
+      def canExport(m):
          'Returns true if the given method is exportable by this routine'
          ignore = (declarations.Constructor, declarations.ClassOperator,
                    declarations.Destructor)
          method_info = self.info[m.name[0]]
          return not method_info.exclude and \
                 isinstance(m, declarations.Function) and \
-                not isinstance(m, ignore) and not m.virtual        
+                not isinstance(m, ignore)
 
-      methods = [x for x in self.public_members if IsExportable(x)]
+      methods = [x for x in self.public_members if canExport(x)]
       methods.extend(self.GetAddedMethods())
 
-      for m in methods:
-         if m.static:
-            self.static_methods.append(m)
+      for member in methods:
+         found = False
+
+         # XXX: This is a very slow way to figure out if a method is
+         # overriding a base class method.  If gccxml would tell us
+         # when a method is an override, this code would be obsoleted.
+         for b in self.all_bases:
+            for base_mem in b.getMembers():
+               # The second clause of this conditional is needed for
+               # those cases when a method is "inherited" from a base
+               # class that is not being exported.
+               # XXX: This does not take method signatures into account.
+#                  member.parameters == base_mem.parameters and \
+               if member.name == base_mem.name and \
+                  member.FullName() != base_mem.FullName():
+                  member.override = True
+                  found = True
+                  break
+
+            if found:
+               break
+
+         if member.static:
+            self.static_methods.append(member)
+         elif member.virtual:
+            self.virtual_methods.append(member)
          else:
-            self.non_virtual_methods.append(m)
+            self.non_virtual_methods.append(member)
 
    def MakeNonVirtual(self):
       '''
@@ -514,42 +536,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
       return False
 
    def ExportVirtualMethods(self):
-      def canExport(methodDecl):
-         return type(methodDecl) == declarations.Method and \
-                methodDecl.virtual and \
-                methodDecl.visibility != declarations.Scope.private
-
       holder = self.info.holder
-      self.virtual_methods = []
-      if self.hasVirtualMethods():
-         for member in self.class_:
-            member_info = self.info[member.name[0]]
-            if not member_info.exclude and canExport(member):
-               found = False
-               # XXX: This is a very slow way to figure out if a method is
-               # overriding a base class method.  If gccxml would tell us
-               # when a method is an override, this code would be obsoleted.
-               for b in self.all_bases:
-                  for base_mem in b.getMembers():
-                     # The second clause of this conditional is needed for
-                     # those cases when a method is "inherited" from a base
-                     # class that is not being exported.
-                     # XXX: This does not take method signatures into account.
-#                        member.parameters == base_mem.parameters and \
-                     if member.name == base_mem.name and \
-                        member.FullName() != base_mem.FullName():
-                        member.override = True
-                        found = True
-                        break
-
-                  if found:
-                     break
-
-               self.virtual_methods.append(member)
-      else:
-         if holder:
-            assert(False)
-#            self.Add('template', holder(self.class_.FullName()))
+      if holder:
+         assert(False)
+#         self.Add('template', holder(self.class_.FullName()))
 
    def exportCallbacks(self, exportedNames):
 
