@@ -40,7 +40,6 @@ class Exporter(object):
             self.includes.append(parsed_header)
 
     def setModule(self, module):
-        print "Setting module to", module
         self.module = module
 
     def setOutputDirs(self, cxx, csharp):
