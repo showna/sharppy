@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.48 2003-12-23 20:19:13 patrick Exp $
-// Generated from \$Revision: 1.48 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.49 2003-12-23 20:43:24 patrick Exp $
+// Generated from \$Revision: 1.49 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getAdapterName, getHolderName
 #import visitors
 
@@ -260,9 +260,58 @@ $fillMethodWrapperBody($m, $method_visitor.getRawName())
 #end for
 ## --------------------------------- Operators --------------------------------
 #for $o in $classObj.member_operators
-#set $method_call = 'self_->operator%s' + $o.name[0]
+#set $method_call = 'self_->%soperator' + $o.name[0]
 $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #end for
+
+#set $param_visitor  = visitors.CPlusPlusParamVisitor()
+#set $func_visitor   = visitors.CPlusPlusVisitor()
+#set $return_visitor = visitors.CPlusPlusReturnVisitor()
+#for $o in $classObj.global_operators
+#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $o.parameters]
+#set $p = ', '.join($params)
+#silent $o.result.accept($return_visitor)
+#silent $o.accept($func_visitor)
+   // Wrapper for free operator$o.name[0]
+   SHARPPY_API $return_visitor.getUsage() ${func_visitor.getGenericName()}($p)
+   {
+## Pre-call parameter marshaling.
+#set $all_args = []
+#for $param in $o.parameters
+#silent $param_visitor.setParamName($param[1])
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+      $param_visitor.getPreCallMarshal(); // Pre-call marshaling for $param[1]
+#silent $all_args.append($param_visitor.getMarshalParamName())
+#else
+#silent $all_args.append($param[1])
+#end if
+#end for
+#set $arg_list = ', '.join($all_args)
+#set $returns = $return_visitor.getRawName() != 'void'
+#set $method_call = 'operator' + $o.name[0] + '(' + $arg_list + ')'
+## Return value marshaling.
+#if $returns
+$return_visitor.getMethodCall($method_call, '      ')
+#else
+      $method_call;
+#end if
+## Post-call parameter marshaling.
+#for $param in $o.parameters
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+      $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
+#end if
+#end for
+#if $returns
+      return $return_visitor.getResultVarName();
+#end if
+   }
+
+#end for
+#del $param_visitor
+#del $func_visitor
+#del $return_visitor
 } // extern "C" for $class_visitor.getRawName()
 
 #set $nested_visitor = visitors.CPlusPlusVisitor()
