@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.21 2003-11-06 19:45:01 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.22 2003-11-06 21:10:33 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -69,6 +69,21 @@ class ReferenceTypeExporter(Exporter):
    # smart pointer instances.
    def getHolderName(self):
       return makeid(self.class_.FullName()) + '_holder'
+
+   def isInterface(self):
+      '''
+      Determines whether the class associated with can be considered an
+      interface or not.  Being an interface means having nothing but abstract
+      (pure virtual) method declarations in the class body.
+      '''
+      for member in self.class_:
+         if type(member) == Method:
+            if member.virtual and not member.abstract:
+               return False
+         else:
+            return False
+
+      return True
 
    def Name(self):
       return self.info.name

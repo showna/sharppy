@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.18 2003-11-06 17:45:28 patrick Exp $
+## $Id: class_cs.tmpl,v 1.19 2003-11-06 21:10:33 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -31,7 +31,11 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #end for
 #silent bases.append('IDisposable')
 #set $b = ', '.join($bases)
-public class $class_visitor.getRawName(False) : $b
+public #slurp
+#if classObj.class_.abstract
+abstract #slurp
+#end if
+class $class_visitor.getRawName(False) : $b
 {
 ## If we have a base class, it will hold mRawObject.
 #if not $has_base
@@ -101,12 +105,12 @@ public class $class_visitor.getRawName(False) : $b
 
    // Overloads.
 
+#set $method_visitor = CSharpVisitor()
+#set $result_visitor = CSharpVisitor()
 ## ---------------------------- Non-virtual methods ---------------------------
 #if $classObj.hasNonVirtualMethods()
 
    // Start of non-virtual methods.
-#set $method_visitor = CSharpVisitor()
-#set $result_visitor = CSharpVisitor()
 #for $m in $classObj.non_virtual_methods
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
@@ -157,6 +161,11 @@ public class $class_visitor.getRawName(False) : $b
    public delegate $result_visitor.getUsage() ${method_name}Delegate($delegate_params);
    protected ${method_name}Delegate m_${method_name}Delegate;
 
+## XXX: More marshaling is necessary here.
+#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+#if $m.abstract
+   public abstract $result_visitor.getUsage() ${method_name}($p);
+#else
 #if $m.result.must_marshal
 #set $native_return_type = 'IntPtr'
 #else
@@ -167,19 +176,18 @@ public class $class_visitor.getRawName(False) : $b
    [DllImport("vpr_bridge", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${pi_name}($pi_p);
 
-## XXX: More marshaling is necessary here.
-#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+   public virtual $result_visitor.getUsage() ${method_name}($p)
+   {
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']
 #set $arg_list = ', '.join($args)
-   public virtual $result_visitor.getUsage() ${method_name}($p)
-   {
 #if $m.result.must_marshal
       return new ${result_visitor.getUsage()}(${pi_name}($arg_list), true);
 #else
       #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${pi_name}($arg_list);
 #end if
    }
+#end if
 
 #end for
    // End of virtual methods.
@@ -282,9 +290,49 @@ public class $class_visitor.getRawName(False) : $b
 #for $nc in $classObj.nested_classes
 #silent $nc.class_.accept($nested_visitor)
    // Nested class $nested_visitor.getRawName().
+#if $nc.isInterface()
+$generateInterface($nc)
+#else
 $generateClass($nc)
+#end if
 #end for
 } // class $class_visitor.getRawName()
+#end def
+
+#def generateInterface($classObj)
+#set $bases = []
+#set $has_base = False
+#set $class_visitor = CSharpVisitor()
+#set $base_visitor = CSharpVisitor()
+#set $generic_visitor = CSharpVisitor()
+#silent $classObj.class_.accept($class_visitor)
+#for $b in $classObj.bases
+#silent $b.accept($base_visitor)
+#if $base_visitor.getRawName() != $class_visitor.getRawName()
+#silent $bases.append($base_visitor.getRawName())
+#set $has_base = True
+#end if
+#end for
+public interface $class_visitor.getRawName(False)
+#if $has_base
+#set $base_list = ', '.join($bases)
+   : $base_list
+#end if
+{
+## ------------------------------ Virtual methods -----------------------------
+#if $classObj.hasVirtualMethods()
+#set $method_visitor = CSharpVisitor()
+#set $result_visitor = CSharpVisitor()
+#for $m in $classObj.virtual_methods
+#silent $m.accept($method_visitor)
+#silent $m.result.accept($result_visitor)
+#set $method_name = $m.name[0]
+#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+   public $result_visitor.getUsage() ${method_name}($p);
+
+#end for
+#end if
+}
 #end def
 
 #for $n in $exp_class.class_.namespace
@@ -293,7 +341,11 @@ namespace $n
 #end for
 
 ## Begin the recursive process of exporting $exp_class.
+#if $exp_class.isInterface()
+$generateInterface($exp_class)
+#else
 $generateClass($exp_class)
+#end if
 #for $n in $exp_class.class_.namespace
 } // namespace $n
 #end for
