@@ -2,8 +2,7 @@
 # See http://www.boost.org/ for more information.
 
 from utils import makeid
-import re
-
+import copy
 
 '''
 Defines classes that represent declarations found in C++ header files.
@@ -358,11 +357,13 @@ class Method(Function):
                 (result, self.class_, params, const, self.Exceptions(), self.FullName())  
 
 class Callback:
-    def __init__(self, method):
-        self.type = method.name #+ '_callback_t'
-#        param_types = ', '.join([p[0].name for p in method.parameters])
-#        self.typedef = 'typedef %s(%s_callback_t*)(%s)' % \
-#                       (method.result, method.name, param_types)
+    def __init__(self, func):
+        # XXX: This is wrong.  It should not be necessary to copy func.
+        self.func = copy.deepcopy(func)
+        self.class_ = func.class_
+        self.type = func.name[0] + '_callback_t'
+        self.scoped_type = [self.type]
+        self.scoped_type[0:0] = self.class_
 
 #==============================================================================
 # Constructor
@@ -468,7 +469,7 @@ class Type(Declaration):
             const = 'const '
         else:
             const = ''
-        return '<Type ' + const + self.name + '>'
+        return '<Type ' + const + '::'.join(self.name) + '>'
 
     def FullName(self):
         if self.const:
