@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.26 2003-11-10 22:36:50 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.27 2003-11-10 23:47:26 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -206,13 +206,15 @@ class ReferenceTypeExporter(Exporter):
                   if type(member) in valid_members:
                      member_copy = copy.deepcopy(member)   
                      member_copy.class_ = self.class_.getFullNameAbstract()
-                     if isinstance(member_copy, Method):
-                        pointer = member_copy.PointerDeclaration(True)
-                        if pointer not in pointers:
-                           self.class_.AddMember(member)
-                           pointers[pointer] = None
-                     elif member_copy.FullName() not in fullnames:
-                        self.class_.AddMember(member)        
+                     member_info = self.info[member_copy.name[0]]
+                     if not member_info.exclude:
+                        if isinstance(member_copy, Method):
+                           pointer = member_copy.PointerDeclaration(True)
+                           if pointer not in pointers:
+                              self.class_.AddMember(member)
+                              pointers[pointer] = None
+                        elif member_copy.FullName() not in fullnames:
+                           self.class_.AddMember(member)        
             else:
                level_exported = True
          if level_exported:
