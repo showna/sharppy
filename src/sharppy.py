@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.14 2003-12-04 21:36:26 patrick Exp $
+# $Id: sharppy.py,v 1.15 2004-01-13 05:15:26 patrick Exp $
 
 """
 Sharppy version %s
@@ -45,6 +45,7 @@ import declarations
 
 __version__ = '0.0.1'
 
+
 def RecursiveIncludes(include):
    'Return a list containg the include dir and all its subdirectories'
    dirs = [include]
@@ -54,7 +55,6 @@ def RecursiveIncludes(include):
          dirs.append(dir)
    os.path.walk(include, visit, None)
    return dirs
-
 
 def GetDefaultIncludeDirs():
    if 'INCLUDE' in os.environ:
@@ -318,7 +318,7 @@ def ExpandTypedefs(decls, exported_names):
    for name in exported_names.keys():
       for decl in decls:
          if isinstance(decl, declarations.Typedef):
-            exported_names[decl.type.FullName()] = None
+            exported_names[decl.type.getFullCPlusPlusName()] = None
 
 def UsePsyco():
    'Tries to use psyco if possible'
