@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.59 2004-01-12 22:31:34 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.60 2004-01-13 16:47:22 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -91,6 +91,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
          else:
             self.class_ = decl
          self.class_ = copy.deepcopy(self.class_)
+         if self.info.rename:
+#            self.info.name = self.info.rename
+            self.class_.setCPlusPlusName(self.info.rename)
          self.all_bases = self.getAllClassBases()
 
          # Set up the Cheetah template file names.

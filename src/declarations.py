@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.28 2004-01-13 05:16:08 patrick Exp $
+# $Id: declarations.py,v 1.29 2004-01-13 16:47:22 patrick Exp $
 
 import copy
 import re
@@ -9,13 +9,14 @@ import utils
 
 '''
 Defines classes that represent declarations found in C++ header files.
-    
 '''
 
 # version indicates the version of the declarations. Whenever a declaration
 # changes, this variable should be updated, so that the caches can be rebuilt
 # automatically
 version = '1.0'
+
+rename_map = {}
 
 #==============================================================================
 # Declaration
@@ -64,10 +65,13 @@ class Declaration(object):
         else:
             self.cxx_name = cxxName
 
+        if self.cxx_name in rename_map:
+            self.cxx_name = rename_map[self.cxx_name]
+
         # self.name is the language-agnostic name.  Subclasses should set this
         # themselves if special handling is required for different syntactic
         # issues.
-        self.name = self._toAbstractName(cxxName)
+        self.name = self._toAbstractName(self.cxx_name)
 
         if namespace is None:
            self.namespace = []
@@ -95,6 +99,19 @@ class Declaration(object):
         @rtype: string
         '''
         return self.cxx_name
+
+    def setCPlusPlusName(self, name):
+        # XXX: Brute-force hack to deal with namespace issues.  I don't
+        # understand how self.namespace gets set.  :(
+        if len(self.namespace) > 0:
+            namespace = '::'.join(self.namespace)
+            namespace_re = re.compile(namespace)
+            if namespace_re.match(name):
+                namespace += '::'
+                name = re.sub(namespace, '', name)
+
+        self.cxx_name = name
+        self.name     = self._toAbstractName(name)
 
     def getFullCPlusPlusName(self):
         '''
@@ -282,6 +299,8 @@ class NestedClass(Class):
 
     def __init__(self, cxxName, class_, visib, members, abstract):
         Class.__init__(self, cxxName, None, members, abstract)
+        if class_ in rename_map:
+            class_ = rename_map[class_]
         self.class_ = class_
         self.visibility = visib
         self.cxx_name = '%s::%s' % (class_, cxxName)

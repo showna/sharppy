@@ -14,6 +14,7 @@ import VarExporter
 import CodeExporter
 import exporterutils
 import utils
+import declarations
 
 
 #==============================================================================
@@ -73,8 +74,11 @@ class FunctionInfo(DeclarationInfo):
 class ReferenceTypeInfo(DeclarationInfo):
 
     def __init__(self, module, name, include, tail = None, otherInfo = None,
-                 extraHeaders = None):
+                 extraHeaders = None, rename = None):
         DeclarationInfo.__init__(self, otherInfo)
+        if rename:
+            declarations.rename_map[name] = rename
+            self._Attribute('rename', rename)
         self._Attribute('name', name)
         self._Attribute('include', include)
         if None == extraHeaders:
@@ -125,10 +129,11 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
         self._Attribute('module', module)
 
     def Instantiate(self, type_list, headers = [], rename=None):
-        if not rename:
-            generic_name = GenerateName(self._Attribute('name'), type_list)
-        else:
-            generic_name = rename
+#        if not rename:
+#            generic_name = GenerateName(self._Attribute('name'), type_list)
+#        else:
+#            generic_name = rename
+        generic_name = GenerateName(self._Attribute('name'), type_list)
 
         # generate code to instantiate the template
         types = ', '.join(type_list)
@@ -141,10 +146,7 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
         tail += 'void __instantiate_%s()\n' % generic_name
         tail += '{ sizeof(%s); }\n\n' % generic_name
 
-        if not rename:
-            name = '%s<%s>' % (self._Attribute('name'), ','.join(type_list))
-        else:
-            name = rename
+        name = '%s<%s>' % (self._Attribute('name'), ','.join(type_list))
 
         # Remove all but the most necessary whitespace from name.
         name = re.sub(r'\s+', '', name)
@@ -156,7 +158,7 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
         # Create a ReferenceTypeInfo using the template instantiation we forced.
         return ReferenceTypeInfo(self._Attribute('module'), name,
                                  self._Attribute('include'), tail, self,
-                                 headers)
+                                 headers, rename)
 
     def __call__(self, types, headers = [], rename=None):
         if isinstance(types, str):
@@ -285,6 +287,7 @@ def set_policy(info, policy):
 
 def rename(info, name):
     info._Attribute('rename', name)
+    declarations.rename_map[info.name] = name
 
 def set_wrapper(info, wrapper):
     if isinstance(wrapper, str):
