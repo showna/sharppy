@@ -73,7 +73,7 @@ extern "C"
 
 #for $m in $exp_class.non_virtual_methods
 #set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["${exp_class.getCPlusPlusName()}* self_"]
+#silent $params[0:0] = ["%s* self_" % $exp_class.getCPlusPlusName()]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
