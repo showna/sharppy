@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.69 2004-01-20 04:42:46 patrick Exp $
-// Generated from \$Revision: 1.69 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.70 2004-01-26 22:16:56 patrick Exp $
+// Generated from \$Revision: 1.70 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -708,24 +708,13 @@ public class $custom_marshaler_name : ICustomMarshaler
 #end if
    }
 
-#if $classObj.info.smart_ptr
-#set $holder_name = TemplateHelpers.getHolderName($class_visitor)
-   [DllImport("$module")]
-   private extern static IntPtr new_${holder_name}(IntPtr obj);
-
-#end if
    // Marshaling for native memory coming from C++.
    public Object MarshalNativeToManaged(IntPtr nativeObj)
    {
 #if $isInterface or $classObj.class_.abstract
       return new ${dummy_name}(nativeObj);
 #else
-#if $classObj.info.smart_ptr
-#set $ptr_str = 'new_' + $holder_name + '(nativeObj)'
-#else
-#set $ptr_str = 'nativeObj'
-#end if
-      return new ${class_visitor.getRawName()}($ptr_str, false);
+      return new ${class_visitor.getRawName()}(nativeObj, false);
 #end if
    }
 

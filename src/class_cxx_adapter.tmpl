@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.13 2004-01-12 22:31:34 patrick Exp $
-// Generated from \$Revision: 1.13 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.14 2004-01-26 22:16:56 patrick Exp $
+// Generated from \$Revision: 1.14 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -26,27 +26,34 @@ public:
    {;}
 
 #set $base_name = $class_visitor.getRawName()
-#set $return_visitor = visitors.CPlusPlusReturnVisitor()
+#set $method_visitor = visitors.CPlusPlusMethodVisitor()
 #for $m in $classObj.virtual_method_callbacks
-#set $callback_name = TemplateHelpers.getCallbackName($m)
-   $TemplateHelpers.makeCPlusPlusTypedef($m);
+#silent $m.accept($method_visitor)
+#for $holder in $method_visitor.getParamHolderDecls()
+   $holder
+#end for
+#set $callback_name = $method_visitor.getCallbackName()
+   $method_visitor.getCallbackTypedef()
    ${callback_name}_t $callback_name;
 
-#silent $m.result.accept($return_visitor)
-#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
-#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+#set $param_types = ', '.join($method_visitor.getParamTypeList())
    /// Override for virtual function $m.getFullCPlusPlusName().
-   virtual $return_visitor.getRawName() ${m.name[0]}($p)
+   virtual $method_visitor.getReturnType() ${m.name[0]}($param_types)
    {
-#set $returns = $return_visitor.getRawName() != 'void'
-#set $call = '%s(%s)' % ($TemplateHelpers.getCallbackName($m), $arg_list)
-#if $return_visitor.mustMarshal()
-#set $call = '*(%s)' % $call
+#for $pre_marshal in $method_visitor.getPreCallMarshalList()
+      $pre_marshal;
+#end for
+      $method_visitor.getMethodCall();
+#for $post_marshal in $method_visitor.getPostCallMarshalList()
+      $post_marshal;
+#end for
+#if $method_visitor.returns()
+      $method_visitor.getReturnStatement();
 #end if
-      #if $returns then 'return ' else ''#$call;
    }
 
 #end for
+#del $method_visitor
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $m in $classObj.protected_virtual_methods
 #silent $m.result.accept($return_visitor)

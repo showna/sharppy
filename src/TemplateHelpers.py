@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.13 2004-01-16 21:26:56 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.14 2004-01-26 22:16:56 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -7,21 +7,6 @@ def getDeclName(decl, visitor):
 def getDeclUsage(decl, visitor):
    decl.accept(visitor)
    return visitor.getUsage()
-
-def makeCPlusPlusTypedef(func):
-   def getResultType(resultDecl):
-      if resultDecl.must_marshal and resultDecl.suffix != '*':
-         marshal_ptr = '*'
-      else:
-         marshal_ptr = ''
-      return resultDecl.getFullCPlusPlusName() + marshal_ptr
-
-   param_types = ', '.join([p[0].getFullCPlusPlusName() for p in func.parameters])
-   typedef = 'typedef %s (*%s_t)(%s)' % \
-             (getResultType(func.result), getCallbackName(func),
-              param_types)
-
-   return typedef
 
 def getCallbackName(methodDecl):
    '''

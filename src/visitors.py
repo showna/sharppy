@@ -1,6 +1,7 @@
-# $Id: visitors.py,v 1.29 2004-01-17 22:43:14 patrick Exp $
+# $Id: visitors.py,v 1.30 2004-01-26 22:16:56 patrick Exp $
 
 import re
+import TemplateHelpers as th
 
 UNKNOWN            = -1
 STD_STRING         = 0
@@ -95,6 +96,8 @@ class CPlusPlusVisitor(DeclarationVisitor):
       cxx_name = self.decl.getCPlusPlusName()
       if cxx_name.find('std::basic_string', 0) != -1:
          self._processProblemType(STD_STRING)
+      elif cxx_name.find('boost::shared_ptr', 0) != -1:
+         self._processProblemType(SHARED_PTR)
 
    def _processProblemType(self, typeID):
       if typeID == STD_STRING:
@@ -121,13 +124,20 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
    def __init__(self):
       CPlusPlusVisitor.__init__(self)
       self.__initialize()
+      self.__func_name       = ''
       self.__param_name      = ''
       self.__orig_param_name = ''
 
    def __initialize(self):
+      # Basic data members needed for parameter marshaling.
       self.__pre_marshal  = ''
       self.__post_marshal = ''
       self.__must_marshal = False
+
+      # Data members needed for parameter holder objects.
+      self.__needs_param_holder = False
+      self.__param_holder_type  = ''
+      self.__param_holder_decl  = ''
 
    def visit(self, decl):
       self.__initialize()
@@ -160,6 +170,22 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
                                   (self.__param_name, self.__orig_param_name)
             self.__post_marshal = '*%s = strdup(%s.c_str())' % \
                                   (self.__orig_param_name, self.__param_name)
+      elif typeID == SHARED_PTR:
+         self.__needs_param_holder = True
+         self.__param_holder_type  = 'holder_%s_%s' % \
+                                        (self.__orig_param_name,
+                                         self.__func_name)
+         self.__param_holder_decl  = 'struct %s { %s mPtr; };' % \
+                                        (self.__param_holder_type,
+                                         self.decl.getCPlusPlusName())
+
+         self.__must_marshal = True
+         self.__pre_marshal  = '%s* h = new %s; h->mPtr = %s' % \
+                                  (self.__param_holder_type,
+                                   self.__param_holder_type,
+                                   self.__orig_param_name)
+         self.__post_marshal = ''
+         self.__param_name   = 'h'
 
    def mustMarshal(self):
       return self.__must_marshal
@@ -167,6 +193,9 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
    def getMarshalParamName(self):
       assert(self.mustMarshal())
       return self.__param_name
+
+   def setFunctionName(self, funcName):
+      self.__func_name = funcName
 
    def setParamName(self, paramName):
       self.__param_name = 'marshal_' + paramName
@@ -179,6 +208,17 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
    def getPostCallMarshal(self):
       assert(self.mustMarshal())
       return self.__post_marshal
+
+   def needsParamHolder(self):
+      return self.__needs_param_holder
+
+   def getParamHolderDecl(self):
+      assert(self.needsParamHolder())
+      return self.__param_holder_decl
+
+   def getParamHolderType(self):
+      assert(self.needsParamHolder())
+      return self.__param_holder_type
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''
@@ -268,6 +308,133 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
          self.__call_marshal = ''
          self.__pre_marshal  = ['%s %s;' % (self.getRawName(), self.__temp_result_var)]
          self.__post_marshal = ['%s = strdup(%s.c_str());' % (self.__result_var, self.__temp_result_var)]
+
+class CPlusPlusMethodVisitor(CPlusPlusVisitor):
+   def __init__(self):
+      CPlusPlusVisitor.__init__(self)
+      self.__initialize()
+
+   def __initialize(self):
+      self.__orig_method_call   = '%s(%s)'
+      self.__method_call        = ''
+      self.__callback_name      = ''
+      self.__callback_typedef   = ''
+      self.__returns            = False
+      self.__return_type        = ''
+      self.__return_statement   = ''
+      self.__param_holder_decls = []
+      self.__param_type_list    = []
+      self.__param_list         = []
+      self.__pre_call_marshal   = []
+      self.__post_call_marshal  = []
+
+   def setMethodCall(self, methodCall):
+      self.__orig_method_call = methodCall
+
+   def __getCallbackResultType(self):
+      result_decl = self.decl.result
+      if result_decl.must_marshal and result_decl.suffix != '*':
+         marshal_ptr = '*'
+      else:
+         marshal_ptr = ''
+      return result_decl.getFullCPlusPlusName() + marshal_ptr
+
+   def visit(self, decl):
+      self.__initialize()
+      CPlusPlusVisitor.visit(self, decl)
+
+      # Handle the result type first.
+      result_visitor = CPlusPlusReturnVisitor()
+      decl.result.accept(result_visitor)
+      self.__return_type = result_visitor.getRawName()
+
+      self.__returns = self.__return_type != 'void'
+
+      callback_param_types = []
+      param_visitor = CPlusPlusParamVisitor()
+      for p in self.decl.parameters:
+         param_visitor.setFunctionName(self.getGenericName())
+         param_visitor.setParamName(p[1])
+         p[0].accept(param_visitor)
+
+         param_type = param_visitor.getUsage()
+         callback_param_type = param_type
+
+         # If this parameter needs a holder, we must declare the holder type.
+         # The type of this parameter used in the callback will be a pointer to
+         # the holder type.
+         if param_visitor.needsParamHolder():
+            self.__param_holder_decls.append(param_visitor.getParamHolderDecl())
+            callback_param_type = '%s*' % param_visitor.getParamHolderType()
+
+         if param_visitor.mustMarshal():
+            self.__pre_call_marshal.append(param_visitor.getPreCallMarshal())
+            self.__post_call_marshal.append(param_visitor.getPostCallMarshal())
+            self.__param_list.append(param_visitor.getMarshalParamName())
+         else:
+            self.__param_list.append(p[1])
+
+         self.__param_type_list.append(param_type + ' ' + p[1])
+         callback_param_types.append(callback_param_type)
+
+      # Only work out the callback information if we're actually going to have
+      # a callback.
+      if self.needsCallback():
+         self.__callback_name = th.getCallbackName(self.decl)
+         self.__callback_typedef = 'typedef %s (*%s_t)(%s);' % \
+                                      (self.__getCallbackResultType(),
+                                       self.__callback_name,
+                                       ', '.join(callback_param_types))
+
+      arg_list = ', '.join(self.__param_list)
+      method_call = self.__orig_method_call % (self.__callback_name, arg_list)
+      if result_visitor.mustMarshal():
+         method_call = '*(%s)' % method_call
+
+      if self.returns():
+         method_call = result_visitor.getMethodCall(method_call, '      ')
+         self.__return_statement = 'return ' + result_visitor.getResultVarName()
+
+      self.__method_call = method_call
+
+   def getParamHolderDecls(self):
+      return self.__param_holder_decls
+
+   def needsCallback(self):
+      return self.decl.virtual
+
+   def getCallbackName(self):
+      assert(self.needsCallback())
+      return self.__callback_name
+
+   def getCallbackTypedef(self):
+      assert(self.needsCallback())
+      return self.__callback_typedef
+
+   def returns(self):
+      return self.__returns
+
+   def getReturnType(self):
+      return self.__return_type
+
+   def getParamTypeList(self):
+      return self.__param_type_list
+
+   def getParamList(self):
+      return self.__param_list
+
+   def getPreCallMarshalList(self):
+      return self.__pre_call_marshal
+
+   def getMethodCall(self):
+      return self.__method_call
+
+   def getPostCallMarshalList(self):
+      return self.__post_call_marshal
+
+   def getReturnStatement(self):
+      assert(self.returns())
+      return self.__return_statement
 
 class CSharpVisitor(DeclarationVisitor):
    '''
