@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.2 2003-11-01 23:10:34 patrick Exp $
+# $Id: visitors.py,v 1.3 2003-11-01 23:24:42 patrick Exp $
 
 class DeclarationVisitor:
    def __init__(self):
@@ -46,15 +46,18 @@ class CPlusPlusVisitor(DeclarationVisitor):
       self.name = decl.FullName()
       self.generic_name = '_'.join(full_name)
       self.no_ns_name = '::'.join(decl.name)
+      self.usage = self.name
 
       # Deal with types that need special handling.
-      if 'basic_string' in full_name:
-         const = ''
-         if decl.const:
-            const = 'const '
-         self.usage = const + 'char*' + decl.suffix
-      else:
-         self.usage = self.name
+      for s in full_name:
+         if s.find('basic_string') != -1:
+            const = ''
+            if decl.const:
+               const = 'const '
+
+            # XXX: How do we deal with by-reference parameters?
+            self.usage = const + 'char*' # + decl.suffix
+            break
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''

@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.12 2003-11-01 23:18:29 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.13 2003-11-01 23:24:42 patrick Exp $
 
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
@@ -21,7 +21,7 @@ class SHARPPY_API $classObj.bridge_name : $bases
 public:
 #for $c in $classObj.constructors
 
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
 #silent $classObj.bases[0].accept($generic_visitor)
 #set $base_cons = $generic_visitor.getRawName()
@@ -56,7 +56,7 @@ extern "C"
    // Copy constructor wrapper.
    SHARPPY_API $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
 #else
-#set $param_list = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters]
+#set $param_list = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
 #set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
 #silent $param_list.append($q)
@@ -96,7 +96,7 @@ extern "C"
 #end if
 
 #for $m in $classObj.non_virtual_methods
-#set $params = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -120,7 +120,7 @@ extern "C"
 #end for
 
 #for $m in $classObj.virtual_methods
-#set $params = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -146,7 +146,7 @@ extern "C"
 
 #*
 #for $m in $classObj.static_methods
-#set $params = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
