@@ -393,10 +393,10 @@ class Constructor(Method):
         '''
         if len(self.parameters) != 1:
             return False
-        param = self.parameters[0]
-        class_as_param = self.parameters[0][0].name == self.class_
+        param = self.parameters[0][0]
+        class_as_param = param.name == self.class_
         param_reference = isinstance(param, ReferenceType) 
-        is_public = self.visibility = Scope.public
+        is_public = self.visibility == Scope.public
         return param_reference and class_as_param and param.const and is_public
         
 
