@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.41 2004-02-22 22:21:55 patrick Exp $
+# $Id: visitors.py,v 1.42 2004-02-23 22:33:21 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -856,7 +856,13 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
       if decl.suffix == '&' or decl.suffix == '*':
          if not self.problem_type and not decl.type_decl.type_str == 'enumeration':
             if self._isFundamentalType(decl):
-               self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
+               self.usage = re.sub(r"[&*]", "", self.usage)
+
+               # Do not bother with passing fundamental types by reference if
+               # the native code expects a const reference.
+               if not decl.const:
+                  self.usage = 'ref ' + self.usage
+
                self.__needs_unsafe = False
             else:
                self.usage = self.__toCustomMarshaler(self.usage)
@@ -898,10 +904,19 @@ class CSharpParamVisitor(CSharpVisitor):
                self.__must_marshal = False
                self.__param_name   = self.__orig_param_name
             elif self._isFundamentalType(decl):
-               self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
-               self.__must_marshal = True
-               self.__needs_unsafe = False
-               self.__param_name   = 'ref ' + self.__orig_param_name
+               self.usage = re.sub(r"[&*]", "", self.usage)
+
+               # Do not bother with passing fundamental types by reference if
+               # the native code expects a const reference.
+               if decl.const:
+                  self.__must_marshal = False
+                  self.__needs_unsafe = False
+                  self.__param_name   = self.__orig_param_name
+               else:
+                  self.usage = 'ref ' + self.usage
+                  self.__must_marshal = True
+                  self.__needs_unsafe = False
+                  self.__param_name   = 'ref ' + self.__orig_param_name
             else:
                self.__must_marshal = True
                self.__param_name = self.__orig_param_name
@@ -944,7 +959,13 @@ class CSharpDelegateParamVisitor(CSharpVisitor):
       if decl.suffix == '&' or decl.suffix == '*':
          if not self.problem_type:
             if self._isFundamentalType(decl):
-               self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
+               self.usage = re.sub(r"[&*]", "", self.usage)
+
+               # Do not bother with passing fundamental types by reference if
+               # the native code expects a const reference.
+               if not decl.const:
+                  self.usage = 'ref ' + self.usage
+
                self.__must_marshal = False
             else:
                self.__must_marshal = True
