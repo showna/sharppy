@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.38 2003-11-18 22:36:18 patrick Exp $
-// Generated from \$Revision: 1.38 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.39 2003-11-20 05:40:59 patrick Exp $
+// Generated from \$Revision: 1.39 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 
@@ -162,15 +162,43 @@ class $class_visitor.getRawName(False) : $b
 {
 ## If we have a base class, it will hold mRawObject.
 #if not $has_base
-   protected internal IntPtr mRawObject;
+   protected internal IntPtr mRawObject = IntPtr.Zero;
    protected bool mWeOwnMemory = false;
+   protected class NoInitTag {}
 #end if
 
 #set $method_visitor = visitors.CSharpVisitor()
 ## Do not define constructors if this class is abstract or it appears only as
 ## as smart pointer.
-#if not $classObj.class_.abstract and not $classObj.info.only_smart_ptr
+#if not $classObj.info.only_smart_ptr
+#if $classObj.hasVirtualMethods()
+   private void allocDelegates()
+   {
+#set $delegate_args = []
+#for $m in $classObj.virtual_methods
+## We only have to initialize delegate members for virtual functions that we
+## declare.  Those that are overridden are initialized in the base class.
+#if not $m.override
+#set $delegate_name = getDelegateName($m)
+      m_$delegate_name = new ${delegate_name}($m.name[0]);
+#silent $delegate_args.append('m_' + $delegate_name)
+#end if
+#silent $delegate_args.append('m_' + $getDelegateName($m))
+#end for
+   }
+#end if
+
    // Constructors.
+## Allocate a special protected constructor that will only allocate the
+## delegate data members--if there are any.  This is critical in making
+## inheritance from C++ work correctly.
+   protected ${class_visitor.getRawName(False)}(NoInitTag doInit)
+   {
+#if $classObj.hasVirtualMethods()
+      allocDelegates();
+#end if
+   }
+
 #set $cons_visitor = visitors.CSharpVisitor()
 #for $c in $classObj.constructors
 #silent $c.accept($method_visitor)
@@ -189,20 +217,16 @@ class $class_visitor.getRawName(False) : $b
    private extern static IntPtr ${cons_name}($pi_p);
 
 #set $cons_args = [x[1] for x in $c.parameters]
-   public ${class_visitor.getRawName(False)}($p)
+   $c.visibility ${class_visitor.getRawName(False)}($p)
+#if $has_base
+      : base(new NoInitTag())   // Do not initialize mRawObject in base class
+#end if
    {
 #if $classObj.hasVirtualMethods()
-#for $m in $classObj.virtual_methods
-## We only have to initialize delegate members for virtual functions that we
-## declare.  Those that are overridden are initialized in the base class.
-#if not $m.override
-#set $delegate_name = getDelegateName($m)
-      m_$delegate_name = new ${delegate_name}($m.name[0]);
-#silent $cons_args.append('m_' + $delegate_name)
+      allocDelegates();
 #end if
-#silent $cons_args.append('m_' + $getDelegateName($m))
-#end for
-#end if
+## XXX: This does not handle the case when the parent class has delegates.
+#silent $cons_args += $delegate_args
 #set $arg_list = ', '.join($cons_args)
       mRawObject   = ${cons_name}($arg_list);
       mWeOwnMemory = true;
