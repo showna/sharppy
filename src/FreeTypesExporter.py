@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FreeTypesExporter.py,v 1.3 2004-02-19 16:46:07 patrick Exp $
+# $Id: FreeTypesExporter.py,v 1.4 2004-02-19 16:51:06 patrick Exp $
 
 import Exporter
 import os
@@ -33,7 +33,7 @@ class FreeTypesExporter(Exporter.Exporter):
 
    def Export(self, exportedNames):
       # Set up the Cheetah template file names.
-      base_fname = self.Name()
+      base_fname = '%s_%s' % (self.module, self.Name())
       self.c_wrapper_output_file = base_fname + '.cpp'
       self.csharp_output_file = base_fname + '.cs'
 
