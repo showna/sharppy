@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.58 2004-01-12 16:22:39 patrick Exp $
-// Generated from \$Revision: 1.58 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.59 2004-01-12 16:34:47 patrick Exp $
+// Generated from \$Revision: 1.59 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -198,6 +198,11 @@ class $class_visitor.getRawName(False)
 #silent $delegate_args.append('m_' + $delegate_type)
 #end for
    }
+## Add the inherited delegates to $delegate_args.
+#for $m in $classObj.inherited_virtual_methods
+#set $delegate_name = TemplateHelpers.getDelegateName($m)
+#silent $delegate_args.append('m_' + $delegate_name)
+#end for
 
 #end if
    // Constructors.
