@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.76 2004-05-21 21:42:37 patrick Exp $
-// Generated from \$Revision: 1.76 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.77 2004-05-25 21:33:52 patrick Exp $
+// Generated from \$Revision: 1.77 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -309,6 +309,26 @@ class $class_visitor.getRawName(False)
 #if $returns
       return result;
 #end if
+   }
+
+#end for
+#for $o in $classObj.added_operators
+#set $existing_op = $o['existing']
+#silent $existing_op.accept($operator_visitor)
+#silent $existing_op.result.accept($result_visitor)
+#set $method_name = 'operator' + $o['name']
+#set $method_param_list = [$class_visitor.getUsage() + ' lhs']
+#if len($existing_op.parameters) > 0
+#silent $existing_op.parameters[0][0].accept($param_visitor)
+#silent $method_param_list.append('%s rhs' % $param_visitor.getUsage())
+#end if
+#set $method_params = ', '.join($method_param_list)
+## Fill in the method body.
+   $existing_op.visibility #if $existing_op.override then 'new ' else ''#static $result_visitor.getUsage() ${method_name}($method_params)
+   {
+#for $line in $o['body']
+      $line
+#end for
    }
 
 #end for

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.73 2004-05-19 18:42:55 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.74 2004-05-25 21:33:52 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -52,6 +52,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.converter_operators = []
       self.member_operators    = []
       self.global_operators    = []
+      self.added_operators     = []
 
       self.protected_virtual_methods     = []
       self.protected_static_methods      = []
@@ -706,6 +707,61 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
             if not is_str:
                self.global_operators.append(operator)
+
+      # The remainder of this method handles "problem" operators that require
+      # symmetry in the generated C# code.  These problem operators are those
+      # that have a paired operator that may or may not return the opposite
+      # result.
+      problem_operators   = ['<', '>', '<=', '>=']
+      symmetric_operators = [('<', '>'), ('<=', '>=')]
+
+      # O(len(all_operators) ^ 2).  D'oh.
+      for operator in all_operators:
+         if operator.name[0] in problem_operators:
+            existing_op = operator.name[0]
+            search_op   = None
+
+            for op_pair in symmetric_operators:
+               if existing_op == op_pair[0]:
+                  search_op = op_pair[1]
+                  break
+               elif existing_op == op_pair[1]:
+                  search_op = op_pair[0]
+                  break
+
+            # Sanity check.
+            assert(search_op is not None)
+ 
+            # Search all_operators for the pair to existing_op.
+            have_search_op = False
+            for op in all_operators:
+               if op.name[0] == search_op:
+                  have_search_op = True
+                  break
+
+            # If we found the pair to existing_op, then there is nothing extra
+            # that needs to be done.
+            if have_search_op:
+               continue
+            # Otherwise, we have to cobble together a mate for existing_op.
+            else:
+               added_op = { 'name' : search_op, 'existing' : operator }
+
+               # Define the missing operator in terms of the existing operator
+               # just to be extra paranoid.
+               # XXX: It may not be the best thing in the world to assume at
+               # this level that we know the names of the parameters that will
+               # appear in the generated code.
+               if search_op == '<' or search_op == '>':
+                  added_op['body'] = ['return (! (lhs %s rhs) && ! (lhs == rhs));' % existing_op]
+               elif search_op == '<=' or search_op == '>=':
+                  added_op['body'] = ['return (! (lhs %s rhs) || (lhs == rhs));' % existing_op]
+               # Use a brute-force approach to handling unexpected operator
+               # names.
+               else:
+                  assert(False)
+
+               self.added_operators.append(added_op)
 
    def ExportNestedClasses(self, exported_names):
       nested_classes = [x for x in self.public_members if isinstance(x, declarations.NestedClass)]
