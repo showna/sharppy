@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.33 2004-01-27 20:10:52 patrick Exp $
+# $Id: visitors.py,v 1.34 2004-02-04 06:09:00 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -229,7 +229,8 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
             self.usage += '*'
 
          if self.__must_marshal:
-            self.__call_marshal = self.__result_var + ' = new ' + self.getRawName() + '(%s)'
+            return_type = re.sub(r'\*', '', self.usage)
+            self.__call_marshal = self.__result_var + ' = new ' + return_type + '(%s)'
             self.__pre_marshal = []
             self.__post_marshal = []
       # If we have a type that is being returned by reference but that does not
