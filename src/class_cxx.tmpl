@@ -44,14 +44,28 @@ public:
 extern "C"
 {
 #for $c in $classObj.constructors
+#if $c.IsCopy()
+   // Copy constructor wrapper.
+   $classObj.getCPlusPlusName()* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
+#else
 #set $param_list = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
 #set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
 #silent $param_list.append($q)
 #end for
 #set $p = ', '.join($param_list)
+   // Constructor wrapper.
    $classObj.getCPlusPlusName()* new_${classObj.bridge_name}($p)
+#end if
    {
+#if $c.IsCopy()
+      $classObj.bridge_name* obj = new ${classObj.bridge_name}(*p);
+#set $count = 0
+#for $m in $classObj.virtual_methods
+      obj->${m.name[0]}_callback = p->${m.name[0]}_callback;
+#set $count = $count + 1
+#end for
+#else
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
       $classObj.bridge_name* obj = new ${classObj.bridge_name}($arg_list);
 #set $count = 0
@@ -59,6 +73,7 @@ extern "C"
       obj->${m.name[0]}_callback = cb$count;
 #set $count = $count + 1
 #end for
+#end if
       return ($classObj.getCPlusPlusName()*) obj;
    }
 
