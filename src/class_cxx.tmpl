@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.51 2004-01-08 23:07:16 patrick Exp $
-// Generated from \$Revision: 1.51 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.52 2004-01-12 19:44:04 patrick Exp $
+// Generated from \$Revision: 1.52 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -204,9 +204,12 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 ## of that is handled by fillMethodWrapperBody().
 #set $method_visitor = visitors.CPlusPlusVisitor()
 #for $m in $classObj.virtual_methods
-## For abstract methods, the wrapper needs to act more like a non-virtual.
+## For abstract methods and protected virtual methods, the C wrapper needs to
+## act more like a non-virtual.
 #if $m.abstract
 #set $method_call = 'self_->%s' + $m.name[0]
+#elif $m in $classObj.protected_virtual_methods
+#set $method_call = 'self_->%s' + $m.name[0] + '_wrapper'
 #else
 #silent $m.accept($method_visitor)
 #set $method_call = 'self_->%s' + $method_visitor.getRawName()

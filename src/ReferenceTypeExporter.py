@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.57 2004-01-09 21:19:40 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.58 2004-01-12 19:44:04 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -51,6 +51,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.member_operators    = []
       self.global_operators    = []
 
+      self.protected_virtual_methods     = []
       self.protected_static_methods      = []
       self.protected_non_virtual_methods = []
 
@@ -382,6 +383,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          if member.virtual:
             self.virtual_methods.append(member)
+            if member.visibility == declarations.Scope.protected:
+               self.protected_virtual_methods.append(member)
          elif member.static:
             self.static_methods.append(member)
             if member.visibility == declarations.Scope.protected:
