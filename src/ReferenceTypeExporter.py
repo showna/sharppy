@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.52 2003-12-31 01:15:29 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.53 2003-12-31 01:25:23 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -37,6 +37,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.cxx_adapter_template = Template(file = self.cxx_adapter_template_file)
       self.c_wrapper_template = Template(file = self.c_wrapper_template_file)
       self.csharp_template = Template(file = self.csharp_template_file)
+
+      self.export_methods_run = False
 
       # Abstract data information for the reference type to be exported.
       self.no_init             = False
@@ -136,6 +138,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
       num_bases = len(self.ClassBases())
       return num_bases, self.class_.FullName()
 
+   def __printDot(self):
+      print "\b.",
+      sys.__stdout__.flush()
+
    def Export(self, exported_names):
       self.InheritMethods(exported_names)
       self.MakeNonVirtual()
@@ -178,42 +184,36 @@ class ReferenceTypeExporter(Exporter.Exporter):
             self.includes.append(self.cxx_adapter_output_file)
 
             try:
-               print "\t[C++ Adapter]",
+               print "\t[C++ Adapter] ",
                sys.__stdout__.flush()
                cxx_file = open(cxx_adapter_out, 'w')
-               print ".",
-               sys.__stdout__.flush()
+               self.__printDot()
                cxx_file.write(str(self.cxx_adapter_template))
-               print ".",
-               sys.__stdout__.flush()
+               self.__printDot()
                cxx_file.close()
                print "Done"
             except IOError, (errno, strerror):
                print "I/O error (%s) [%s]: %s" % (errno, cxx_adapter_out, strerror)
 
          try:
-            print "\t[C Wrappers]",
+            print "\t[C Wrappers] ",
             sys.__stdout__.flush()
             cxx_file = open(c_wrapper_out, 'w')
-            print ".",
-            sys.__stdout__.flush()
+            self.__printDot()
             cxx_file.write(str(self.c_wrapper_template))
-            print ".",
-            sys.__stdout__.flush()
+            self.__printDot()
             cxx_file.close()
             print "Done"
          except IOError, (errno, strerror):
             print "I/O error (%s) [%s]: %s" % (errno, c_wrapper_out, strerror)
 
          try:
-            print "\t[C#]",
+            print "\t[C#] ",
             sys.__stdout__.flush()
             csharp_file = open(csharp_out, 'w')
-            print ".",
-            sys.__stdout__.flush()
+            self.__printDot()
             csharp_file.write(str(self.csharp_template))
-            print ".",
-            sys.__stdout__.flush()
+            self.__printDot()
             csharp_file.close()
             print "Done"
          except IOError, (errno, strerror):
@@ -320,17 +320,41 @@ class ReferenceTypeExporter(Exporter.Exporter):
       Export all the non-virtual methods of this class, plus any function
       that is to be exported as a method.
       '''
-      def canExport(m):
+      def canExport(m, hasVirtuals):
          'Returns true if the given method is exportable by this routine'
          ignore = (declarations.Constructor, declarations.ClassOperator,
                    declarations.Destructor)
          method_info = self.info[m.name[0]]
+
+         # A member can be exported as a method if all of the following are
+         # true:
+         #
+         #    * It is not excluded
+         #    * It is a function
+         #    * It is not an ignored function type (see above)
+         #    * It is not private
+         # 
+         # and if any one of the following is true:
+         #
+         #    * It is a virtual method
+         #    * This class has virtual methods
          return not method_info.exclude and \
                 isinstance(m, declarations.Function) and \
                 not isinstance(m, ignore) and \
-                m.visibility != declarations.Scope.private
+                m.visibility != declarations.Scope.private and \
+                (m.virtual or hasVirtuals or \
+                 m.visibility == declarations.Scope.public)
 
-      methods = [x for x in self.class_ if canExport(x)]
+      # Determine if this class has non-private virtual methods.
+      has_virtuals = False
+      for m in self.class_:
+         if isinstance(m, declarations.Function) and m.virtual \
+            and m.visibility != declarations.Scope.private:
+            has_virtuals = True
+            break
+
+      # Collect all the exportable methods.
+      methods = [x for x in self.class_ if canExport(x, has_virtuals)]
       methods.extend(self.GetAddedMethods())
 
       for member in methods:
@@ -365,6 +389,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
             self.non_virtual_methods.append(member)
             if member.visibility == declarations.Scope.protected:
                self.protected_non_virtual_methods.append(member)
+
+      self.export_methods_run = True
 
    def MakeNonVirtual(self):
       '''
@@ -402,6 +428,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       return result
 
    def hasVirtualMethods(self):
+      assert(self.export_methods_run == True,
+             "hasVirtualMethods() called too early")
+
       # Check to see if this class has any virtual methods.
       for member in self.class_:
          if type(member) == declarations.Method and member.virtual:
@@ -410,6 +439,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       return False
 
    def hasNonVirtualMethods(self):
+      assert(self.export_methods_run == True,
+             "hasNonVirtualMethods() called too early")
+
       # Check to see if this class has any non-virtual, non-static methods.
       for member in self.class_:
          if type(member) == declarations.Method and not member.virtual and \
@@ -419,6 +451,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       return False
 
    def hasStaticMethods(self):
+      assert(self.export_methods_run == True,
+             "hasStaticMethods() called too early")
+
       # Check to see if this class has any static methods.
       for member in self.class_:
          if type(member) == declarations.Method and member.static:
