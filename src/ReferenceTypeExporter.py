@@ -44,8 +44,13 @@ class ReferenceTypeExporter(Exporter):
         self.virtual_methods     = []
         self.callback_typedefs   = []
 
+        # Nested types.
         self.nested_classes = []
         self.nested_enums   = []
+
+        # Data members.
+        self.static_members     = []
+        self.non_static_members = []
 
     def getClassName(self):
         return makeid(self.class_.FullName())
@@ -115,6 +120,7 @@ class ReferenceTypeExporter(Exporter):
             self.ExportNestedEnums(exported_names)
             self.ExportSmartPointer()
             self.ExportOpaquePointerPolicies()
+            self.exportDataMembers()
 
             exported_names[self.Name()] = 1
 
@@ -375,7 +381,6 @@ class ReferenceTypeExporter(Exporter):
                 result.append(decl)
         return result
 
-                
     def ExportMethods(self):
         '''Export all the non-virtual methods of this class, plus any function
         that is to be exported as a method'''
@@ -393,7 +398,6 @@ class ReferenceTypeExporter(Exporter):
             if code not in declared:
                 declared[code] = True
                 self.Add('declaration', code)
-
 
         def Pointer(m):
             'returns the correct pointer declaration for the method m'
@@ -491,7 +495,7 @@ class ReferenceTypeExporter(Exporter):
 #        re.compile(r'(const)?\s*char\s*\*?$') : '__str__',
 #        re.compile(r'(const)?.*::basic_string<.*>\s*(\*|\&)?$') : '__str__',
 #    }
-        
+
     def ExportOperators(self):
         'Export all member operators and free operators related to this class'
         
@@ -577,3 +581,17 @@ class ReferenceTypeExporter(Exporter):
                 macro = exporterutils.EspecializeTypeID(method.result.name) 
                 if macro:
                     self.Add('declaration-outside', macro)
+
+    def exportDataMembers(self):
+        def IsExportable(m):
+            'Returns true if the given member is exportable by this routine'
+            return isinstance(m, ClassVariable)
+
+        data_members = [x for x in self.public_members if IsExportable(x)]
+        for m in data_members:
+            if self.info[m.name[0]].exclude:
+                continue
+            if m.static:
+                self.static_members.append(m)
+            else:
+                self.non_static_members.append(m)

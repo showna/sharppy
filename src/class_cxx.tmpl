@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.17 2003-11-03 22:00:22 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.18 2003-11-04 23:12:16 patrick Exp $
 
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
@@ -167,6 +167,44 @@ extern "C"
       ${method_visitor.getRawName()}($arg_list);
 #end if
    }
+
+#end for
+
+#set $data_visitor = CPlusPlusVisitor()
+#set $data_type_visitor = CPlusPlusVisitor()
+#for $m in $classObj.static_members
+#silent $m.accept($data_visitor)
+#silent $m.type.accept($data_type_visitor)
+#set $set_name = $data_visitor.getGenericName() + '_set'
+#set $get_name = $data_visitor.getGenericName() + '_get'
+#if $m.type.must_marshal
+#set $native_type = '%s*' % $data_type_visitor.getRawName()
+#else
+#set $native_type = $data_type_visitor.getRawName()
+#end if
+   // Wrapper for reading static data member $data_visitor.getRawName()
+   SHARPPY_API $native_type ${get_name}()
+   {
+#if $m.type.must_marshal
+## XXX: This probably isn't even close to correct ...
+      return &$class_visitor.getRawName()::$m.name[0];
+#else
+      return $class_visitor.getRawName()::$m.name[0];
+#end if
+   }
+
+#if not $m.type.const
+   // Wrapper for modifying static data member $data_visitor.getRawName()
+   SHARPPY_API void ${set_name}($native_type v)
+   {
+#if $m.type.must_marshal
+## XXX: This probably isn't even close to correct ...
+      $class_visitor.getRawName()::$m.name[0] = *v;
+#else
+      $class_visitor.getRawName()::$m.name[0] = v;
+#end if
+   }
+#end if
 
 #end for
 } // extern "C" for $class_visitor.getRawName()

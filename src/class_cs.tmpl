@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.13 2003-11-04 20:14:03 patrick Exp $
+## $Id: class_cs.tmpl,v 1.14 2003-11-04 23:12:16 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -56,10 +56,10 @@ public class $class_visitor.getRawName(False) : $b
 
 #end for
    // Internal constructor needed for marshaling purposes.
-   internal ${class_visitor.getRawName(False)}(IntPtr instPtr)
+   internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)
    {
       mRawObject   = instPtr;
-      mWeOwnMemory = true;
+      mWeOwnMemory = ownMemory;
    }
 
    // Destructor.
@@ -108,7 +108,7 @@ public class $class_visitor.getRawName(False) : $b
    public $result_visitor.getUsage() ${m.name[0]}($p)
    {
 #if $m.result.must_marshal
-      return new ${result_visitor.getUsage()}(${name}($arg_list));
+      return new ${result_visitor.getUsage()}(${name}($arg_list), true);
 #else
       #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${name}($arg_list);
 #end if
@@ -139,7 +139,7 @@ public class $class_visitor.getRawName(False) : $b
    public static $result_visitor.getUsage() ${m.name[0]}($p)
    {
 #if $m.result.must_marshal
-      return new ${result_visitor.getUsage()}(${name}($arg_list));
+      return new ${result_visitor.getUsage()}(${name}($arg_list), true);
 #else
       #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${name}($arg_list);
 #end if
@@ -148,6 +148,46 @@ public class $class_visitor.getRawName(False) : $b
 #end for
 
    // Static data.
+#set $data_visitor = CSharpVisitor()
+#set $data_type_visitor = CSharpVisitor()
+#for $m in $classObj.static_members
+#silent $m.accept($data_visitor)
+#silent $m.type.accept($data_type_visitor)
+#set $set_name = $data_visitor.getGenericName() + '_set'
+#set $get_name = $data_visitor.getGenericName() + '_get'
+#if $m.type.must_marshal
+#set $native_type = 'IntPtr'
+#else
+#set $native_type = $data_type_visitor.getUsage()
+#end if
+   // Getter function for $data_visitor.getRawName()
+   [DllImport("$module", CharSet = CharSet.Ansi)]
+   private extern static $native_type ${get_name}();
+
+#if not $m.type.const
+   // Setter function for $data_visitor.getRawName()
+   [DllImport("$module", CharSet = CharSet.Ansi)]
+   private extern static void ${set_name}($native_type v);
+#end if
+
+   // Property for $data_visitor.getRawName()
+   public static $data_type_visitor.getUsage() $m.name[0]
+   {
+#if $m.type.must_marshal
+## XXX: Allocating a new object for every get() call seems wasteful.
+      get { return new ${data_type_visitor.getUsage()}(${get_name}(), false); }
+#if not $m.type.const
+      set { ${set_name}(value.mRawObject); }
+#end if
+#else
+      get { return ${get_name}(); }
+#if not $m.type.const
+      set { ${set_name}(value); }
+#end if
+#end if
+   }
+
+#end for
 
 #set $nested_visitor = CSharpVisitor()
 #for $ne in $classObj.nested_enums
