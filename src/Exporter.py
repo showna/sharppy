@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.15 2004-02-03 21:21:02 patrick Exp $
+# $Id: Exporter.py,v 1.16 2004-02-04 06:08:28 patrick Exp $
 
 import os
 
@@ -18,7 +18,7 @@ class Exporter(object):
       self.parser_tail = parser_tail
       self.interface_file = None
       self.declarations = []
-      if info.extra_headers:
+      if info.extra_headers != None:
          self.includes = info.extra_headers
       else:
          self.includes = []
