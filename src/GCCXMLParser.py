@@ -126,7 +126,7 @@ class GCCXMLParser(object):
             if restricted:
                 res.restricted = restricted
         else:
-            res = Type(decl.FullName(), const)
+            res = Type(decl.getFullNameAbstract(), const)
             res.volatile = volatile
             res.restricted = restricted
         return res            
@@ -145,7 +145,7 @@ class GCCXMLParser(object):
         
     def ParseUnknown(self, id, element):
         name = '__Unknown_Element_%s' % id
-        decl = Unknown(name)
+        decl = Unknown([name])
         self.Update(id, decl)
         
         
@@ -177,7 +177,7 @@ class GCCXMLParser(object):
             decl.static = True
         else:
             namespace = context
-            name = element.get('name')                    
+            name = element.get('name').split('::')
             type_ = self.GetType(element.get('type'))
             location = self.GetLocation(element.get('location'))
             variable = Variable(type_, name, namespace)
@@ -210,7 +210,7 @@ class GCCXMLParser(object):
     def ParseFunction(self, id, element, functionType=Function):
         '''functionType is used because a Operator is identical to a normal 
         function, only the type of the function changes.'''
-        name = element.get('name')
+        name = element.get('name').split('::')
         returns = self.GetType(element.get('returns'))
         namespace = self.GetDecl(element.get('context'))
         location = self.GetLocation(element.get('location'))
@@ -283,7 +283,7 @@ class GCCXMLParser(object):
 
 
     def ParseClass(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         abstract = bool(int(element.get('abstract', '0')))
         location = self.GetLocation(element.get('location'))
         context = self.GetDecl(element.get('context'))
@@ -317,7 +317,7 @@ class GCCXMLParser(object):
 
 
     def ParseFundamentalType(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         type_ = FundamentalType(name)
         self.Update(id, type_)
 
@@ -360,7 +360,7 @@ class GCCXMLParser(object):
 
         
     def ParseField(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         visib = element.get('access', Scope.public)
         classname = self.GetDecl(element.get('context')).FullName()
         type_ = self.GetType(element.get('type'))
@@ -372,7 +372,7 @@ class GCCXMLParser(object):
 
 
     def ParseMethod(self, id, element, methodType=Method):
-        name = element.get('name')
+        name = element.get('name').split('::')
         result = self.GetType(element.get('returns'))
         classname = self.GetDecl(element.get('context')).FullName()
         visib = element.get('access', Scope.public)
@@ -394,7 +394,7 @@ class GCCXMLParser(object):
 
         
     def ParseConstructor(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         visib = element.get('access', Scope.public)
         classname = self.GetDecl(element.get('context')).FullName()
         location = self.GetLocation(element.get('location'))
@@ -405,7 +405,7 @@ class GCCXMLParser(object):
 
 
     def ParseDestructor(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         visib = element.get('access', Scope.public)
         classname = self.GetDecl(element.get('context')).FullName()
         virtual = bool(int(element.get('virtual', '0')))
@@ -420,7 +420,7 @@ class GCCXMLParser(object):
 
 
     def ParseTypedef(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         type = self.GetType(element.get('type'))        
         context = self.GetDecl(element.get('context'))
         if isinstance(context, Class):
@@ -431,7 +431,7 @@ class GCCXMLParser(object):
 
 
     def ParseEnumeration(self, id, element):
-        name = element.get('name')
+        name = element.get('name').split('::')
         location = self.GetLocation(element.get('location'))
         context = self.GetDecl(element.get('context'))
         incomplete = bool(int(element.get('incomplete', 0))) 
