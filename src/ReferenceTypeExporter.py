@@ -548,16 +548,14 @@ class ReferenceTypeExporter(Exporter):
     def ExportNestedEnums(self, exported_names):
         nested_enums = [x for x in self.public_members if isinstance(x, ClassEnumeration)]
         for enum in nested_enums:
-            enum_info = self.info[enum.name]
-            if not nested_info.exclude:
+            enum_info = self.info[enum.name[0]]
+            if not enum_info.exclude:
                 enum_info.include = self.info.include
                 enum_info.name = enum.FullName()
                 exporter = EnumExporter(enum_info)
                 exporter.setModule(self.module)
                 exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
                 exporter.SetDeclarations(self.declarations)
-                # XXX: This can't possibly be done yet...
-                assert(False)
                 exporter.Export(exported_names)
 
 
