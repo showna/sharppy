@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.46 2003-12-22 23:12:52 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.47 2003-12-22 23:26:25 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -452,9 +452,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
          method_info = self.info[m.name[0]]
          return not method_info.exclude and \
                 isinstance(m, declarations.Function) and \
-                not isinstance(m, ignore)
+                not isinstance(m, ignore) and \
+                m.visibility != declarations.Scope.private
 
-      methods = [x for x in self.public_members if canExport(x)]
+      methods = [x for x in self.class_ if canExport(x)]
       methods.extend(self.GetAddedMethods())
 
       for member in methods:
@@ -479,12 +480,21 @@ class ReferenceTypeExporter(Exporter.Exporter):
             if found:
                break
 
-         if member.static:
-            self.static_methods.append(member)
-         elif member.virtual:
+         # For virtual methods, we want to include those that are public or
+         # protected.
+         if member.virtual:
             self.virtual_methods.append(member)
-         else:
-            self.non_virtual_methods.append(member)
+         # For non-virtual instance methods and static methods, we only want
+         # those that are public.
+         # XXX: What if a C# subclass needs to call a protected member of its
+         # C++ base class that is not public?  We may need the C++ adapter
+         # class to include wrapper methods for non-virtual functions that
+         # have public visibility.
+         elif member.visibility == declarations.Scope.public:
+            if member.static:
+               self.static_methods.append(member)
+            else:
+               self.non_virtual_methods.append(member)
 
    def MakeNonVirtual(self):
       '''
