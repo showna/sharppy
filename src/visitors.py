@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.3 2003-11-01 23:24:42 patrick Exp $
+# $Id: visitors.py,v 1.4 2003-11-03 22:39:04 patrick Exp $
 
 class DeclarationVisitor:
    def __init__(self):
@@ -57,6 +57,7 @@ class CPlusPlusVisitor(DeclarationVisitor):
 
             # XXX: How do we deal with by-reference parameters?
             self.usage = const + 'char*' # + decl.suffix
+            decl.must_marshal = False
             break
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
@@ -68,8 +69,8 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
 
    def visit(self, decl):
       CPlusPlusVisitor.visit(self, decl)
-#      if self.name != 'void':
-#         self.usage = 'return ' + self.usage
+      if decl.must_marshal:
+         self.usage = self.usage + '*'
 
 class CSharpVisitor(DeclarationVisitor):
    '''
@@ -89,4 +90,16 @@ class CSharpVisitor(DeclarationVisitor):
       for s in full_name:
          if s.find('basic_string') != -1:
             self.usage = 'String'
+            decl.must_marshal = False
             break
+
+class CSharpReturnVisitor(CSharpVisitor):
+   '''
+   C# visitor for return type declarations.  This will handle the details
+   associated with return types when marshaling is in effect.
+   '''
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl)
