@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.27 2004-01-12 22:31:34 patrick Exp $
+# $Id: visitors.py,v 1.28 2004-01-16 21:26:56 patrick Exp $
 
 import re
 
@@ -200,15 +200,25 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
       self.__initialize()
       CPlusPlusVisitor.visit(self, decl)
 
+      # Marshaling a return type means returning a pointer.
       if decl.must_marshal:
-         self.__must_marshal = True
-         if decl.suffix == '&':
+         # If we are already returning a pointer, we do not actually need to
+         # take any further steps to marshal the data.
+         if decl.suffix == '*':
+            self.__must_marshal = False
+         # If we are returning a reference, we must instead return a pointer.
+         elif decl.suffix == '&':
+            self.__must_marshal = True
             self.usage = re.sub(r"&", "*", self.name)
+         # For all other cases, we must return a pointer.
          else:
+            self.__must_marshal = True
             self.usage += '*'
-         self.__call_marshal = self.__result_var + ' = new ' + self.getRawName() + '(%s)'
-         self.__pre_marshal = []
-         self.__post_marshal = []
+
+         if self.__must_marshal:
+            self.__call_marshal = self.__result_var + ' = new ' + self.getRawName() + '(%s)'
+            self.__pre_marshal = []
+            self.__post_marshal = []
       # If we have a type that is being returned by reference but that does not
       # require marshaling, we'll just copy it.  Since the data has to cross
       # the language boundary, there is no point in trying to retain a

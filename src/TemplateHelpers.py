@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.12 2004-01-12 22:31:34 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.13 2004-01-16 21:26:56 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -10,7 +10,7 @@ def getDeclUsage(decl, visitor):
 
 def makeCPlusPlusTypedef(func):
    def getResultType(resultDecl):
-      if resultDecl.must_marshal:
+      if resultDecl.must_marshal and resultDecl.suffix != '*':
          marshal_ptr = '*'
       else:
          marshal_ptr = ''

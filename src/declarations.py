@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.29 2004-01-13 16:47:22 patrick Exp $
+# $Id: declarations.py,v 1.30 2004-01-16 21:26:56 patrick Exp $
 
 import copy
 import re
@@ -563,6 +563,11 @@ class ClassOperator(Method):
 class ConverterOperator(ClassOperator):
     'An operator in the form "operator OtherClass()".'
 
+    def getID(self):
+        name = self.getFullAbstractName()
+        param_types = [x[0].getID() for x in self.parameters]
+        return '%s__%s' % ('_'.join(name), '_'.join(param_types))
+
     def _getAbstractName(self):
         return self.class_.split('::') + self.result._getAbstractName()
 
@@ -646,6 +651,8 @@ class ReferenceType(Type):
         Type.__init__(self, cxxName = cxxName, const = const, default = default,
                       mustMarshal = False)
         self.type_decl = cxxTypeDecl
+        self.must_marshal = cxxTypeDecl.must_marshal
+        self.type_str = 'reference'
         if expandRef:
             self.suffix = suffix + '&'
 
@@ -682,6 +689,8 @@ class PointerType(Type):
         Type.__init__(self, cxxName = cxxName, const = const, default = default,
                       mustMarshal = False)
         self.type_decl = cxxTypeDecl
+        self.must_marshal = cxxTypeDecl.must_marshal
+        self.type_str = 'pointer'
         if expandPointer:
             self.suffix = suffix + '*'
 
