@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.7 2003-12-22 23:49:35 patrick Exp $
-// Generated from \$Revision: 1.7 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.8 2003-12-23 18:29:54 patrick Exp $
+// Generated from \$Revision: 1.8 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #from TemplateHelpers import getAdapterName
 #import visitors
 
@@ -25,13 +25,13 @@ public:
    virtual ~${class_name}()
    {;}
 
+#set $base_name = $class_visitor.getRawName()
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_method_callbacks
 #set $callback_name = getCallbackName($m)
    $makeCPlusPlusTypedef($m);
    ${callback_name}_t $callback_name;
 
-#set $base_name = $class_visitor.getRawName()
 #silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -41,7 +41,7 @@ public:
 #set $returns = $return_visitor.getRawName() != 'void'
 #set $call = '%s(%s)' % ($getCallbackName($m), $arg_list)
 #if $return_visitor.mustMarshal()
-#set $call = '*(%s);' % $call
+#set $call = '*(%s)' % $call
 #end if
       #if $returns then 'return ' else ''#$call;
    }
@@ -57,9 +57,6 @@ public:
    {
 #set $returns = $return_visitor.getRawName() != 'void'
 #set $call = '%s::%s(%s)' % ($base_name, $m.name[0], $arg_list)
-#if $return_visitor.mustMarshal()
-#set $call = '*(%s);' % $call
-#end if
       #if $returns then 'return ' else ''#$call;
    }
 
@@ -73,9 +70,6 @@ public:
    {
 #set $returns = $return_visitor.getRawName() != 'void'
 #set $call = '%s::%s(%s)' % ($base_name, $m.name[0], $arg_list)
-#if $return_visitor.mustMarshal()
-#set $call = '*(%s);' % $call
-#end if
       #if $returns then 'return ' else ''#$call;
    }
 
