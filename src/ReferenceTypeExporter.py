@@ -24,15 +24,15 @@ from Cheetah.Template import Template
 class ReferenceTypeExporter(Exporter):
     'Generates C# P/Invoke bridging code to export a class declaration.'
     
-    cxx_template_file    = 'test.tmpl'
-    csharp_template_file = 'test-cs.tmpl'
+    cxx_template_file    = 'class_cxx.tmpl'
+    csharp_template_file = 'class_cs.tmpl'
  
     def __init__(self, info, parser_tail=None):
         Exporter.__init__(self, info, parser_tail)
         self.cxx_template = Template(file = self.cxx_template_file)
         self.cxx_template.exp_class = self
-#        self.csharp_template = Template(file = self.csharp_template_file)
-#        self.csharp_template.exp_class = self
+        self.csharp_template = Template(file = self.csharp_template_file)
+        self.csharp_template.exp_class = self
 
         self.exportable_methods = {}
 
@@ -117,7 +117,7 @@ class ReferenceTypeExporter(Exporter):
             self.ExportSmartPointer()
             self.ExportOpaquePointerPolicies()
             print self.cxx_template
-#            print self.csharp_template
+            print self.csharp_template
             exported_names[self.Name()] = 1
 
 
@@ -515,8 +515,6 @@ class ReferenceTypeExporter(Exporter):
             nested_info.name = nested_class.FullName()
             exporter = ReferenceTypeExporter(nested_info)
             exporter.SetDeclarations(self.declarations)
-            # XXX: This can't be done yet...
-            assert(False)
             exporter.Export(exported_names)
 
     def ExportNestedEnums(self, exported_names):
@@ -527,7 +525,7 @@ class ReferenceTypeExporter(Exporter):
             enum_info.name = enum.FullName()
             exporter = EnumExporter(enum_info)
             exporter.SetDeclarations(self.declarations)
-            # XXX: This can't be done yet...
+            # XXX: This can't possibly be done yet...
             assert(False)
             exporter.Export(exported_names)
 
