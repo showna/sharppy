@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.42 2003-12-08 17:25:24 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.43 2003-12-08 18:09:33 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -546,7 +546,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       def canExport(methodDecl):
          return type(methodDecl) == declarations.Method and \
                 methodDecl.virtual and \
-                methodDecl.visibility == declarations.Scope.public
+                methodDecl.visibility != declarations.Scope.private
 
       holder = self.info.holder
       self.virtual_methods = []
