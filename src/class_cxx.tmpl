@@ -1,27 +1,30 @@
+## $Id: class_cxx.tmpl,v 1.12 2003-11-01 23:18:29 patrick Exp $
+
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
 
 #def exportClass($classObj)
-#set $cxx_visitor = CPlusPlusVisitor()
-#silent $classObj.class_.accept($cxx_visitor)
-#set $class_name = $cxx_visitor.getRawName()
+#set $class_visitor = CPlusPlusVisitor()
+#set $generic_visitor = CPlusPlusVisitor()
+#silent $classObj.class_.accept($class_visitor)
+#set $class_name = $class_visitor.getRawName()
 #for $i in $classObj.includes
 \#include <$i>
 #end for
 
 #if $classObj.hasVirtualMethods()
-#set $base_list = ['public %s' % getDeclName(x, $cxx_visitor) for x in $classObj.bases]
+#set $base_list = ['public %s' % getDeclName(x, $generic_visitor) for x in $classObj.bases]
 #set $bases = ', '.join($base_list)
 class SHARPPY_API $classObj.bridge_name : $bases
 {
 public:
 #for $c in $classObj.constructors
 
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $c.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-#silent $classObj.bases[0].accept($cxx_visitor)
-#set $base_cons = $cxx_visitor.getRawName()
+#silent $classObj.bases[0].accept($generic_visitor)
+#set $base_cons = $generic_visitor.getRawName()
    ${classObj.bridge_name}($p)
       : ${base_cons}($arg_list)
    {;}
@@ -35,15 +38,15 @@ public:
    $makeCPlusPlusTypedef($m.callback);
    $getCallbackTypedefName($m.callback) ${m.name[0]}_callback;
 
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   virtual $getDeclName($m.result, $cxx_visitor) ${m.name[0]}($p)
+   virtual $getDeclName($m.result, $generic_visitor) ${m.name[0]}($p)
    {
-#set $result_type = getDeclName($m.result, $cxx_visitor)
+#set $result_type = getDeclName($m.result, $generic_visitor)
       #if $result_type != 'void' then 'return' else ''# ${m.name[0]}_callback($arg_list);
    }
 #end for
-};
+}; // class $classObj.bridge_name
 #end if
 
 extern "C"
@@ -53,7 +56,7 @@ extern "C"
    // Copy constructor wrapper.
    SHARPPY_API $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
 #else
-#set $param_list = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $c.parameters]
+#set $param_list = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
 #set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
 #silent $param_list.append($q)
@@ -93,31 +96,31 @@ extern "C"
 #end if
 
 #for $m in $classObj.non_virtual_methods
-#set $params = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #set $return_visitor = CPlusPlusReturnVisitor()
 #silent $m.result.accept($return_visitor)
-#silent $m.accept($cxx_visitor)
+#silent $m.accept($generic_visitor)
    ## XXX: Need to handle marshaling the return type here.
-   SHARPPY_API $return_visitor.getUsage() ${cxx_visitor.getGenericName()}($p)
+   SHARPPY_API $return_visitor.getUsage() ${generic_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
 #if $return_visitor.getRawName() != 'void'
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${return_visitor.getRawName()}(self_->${cxx_visitor.getGenericName()}($arg_list));
+      new ${return_visitor.getRawName()}(self_->${generic_visitor.getGenericName()}($arg_list));
 #else
-      self_->${cxx_visitor.getGenericName()}($arg_list);
+      self_->${generic_visitor.getGenericName()}($arg_list);
 #end if
    }
 
 #end for
 
 #for $m in $classObj.virtual_methods
-#set $params = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -143,7 +146,7 @@ extern "C"
 
 #*
 #for $m in $classObj.static_methods
-#set $params = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
@@ -167,11 +170,12 @@ extern "C"
 
 #end for
 *#
-}
+} // extern "C" for $class_visitor.getRawName()
 
+#set $nested_visitor = CPlusPlusVisitor()
 #for $nc in $classObj.nested_classes
-#silent $nc.class_.accept($cxx_visitor)
-// Nested class $cxx_visitor.getRawName().
+#silent $nc.class_.accept($nested_visitor)
+// Nested class $nested_visitor.getRawName().
 $exportClass($nc)
 #end for
 #end def

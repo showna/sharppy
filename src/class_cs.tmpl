@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.10 2003-11-01 23:10:34 patrick Exp $
+## $Id: class_cs.tmpl,v 1.11 2003-11-01 23:18:28 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -117,7 +117,7 @@ public class $class_visitor.getRawName(False) : $b
    // Nested class $nested_visitor.getRawName().
 $generateClass($nc)
 #end for
-}
+} // class $class_visitor.getRawName()
 #end def
 
 #for $n in $exp_class.class_.namespace
@@ -128,5 +128,5 @@ namespace $n
 ## Begin the recursive process of exporting $exp_class.
 $generateClass($exp_class)
 #for $n in $exp_class.class_.namespace
-}
+} // namespace $n
 #end for
