@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.63 2004-01-15 21:45:03 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.64 2004-01-16 20:50:54 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -603,7 +603,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       operators = [x for x in all_operators if not self.info['operator'][x.getFullCPlusPlusName()].exclude]
 
       for operator in all_operators:
-         info = self.info['operator'][converter.result.getFullCPlusPlusName()]
+         info = self.info['operator'][operator.result.getFullCPlusPlusName()]
          if info.exclude:
             continue
 
