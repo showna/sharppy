@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.42 2003-11-23 16:43:34 patrick Exp $
-// Generated from \$Revision: 1.42 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.43 2003-11-24 18:04:00 patrick Exp $
+// Generated from \$Revision: 1.43 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -164,6 +164,7 @@ public #slurp
 #if classObj.class_.abstract
 abstract #slurp
 #end if
+#set $has_virtuals = $classObj.hasVirtualMethods()
 class $class_visitor.getRawName(False) : $b
 {
 ## If we have a base class, it will hold mRawObject.
@@ -182,7 +183,6 @@ class $class_visitor.getRawName(False) : $b
 ## as smart pointer.
 #if not $classObj.info.only_smart_ptr
 #set $delegate_args = []
-#set $has_virtuals = $classObj.hasVirtualMethods()
 #if $has_virtuals
    private void allocDelegates()
    {
