@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.12 2003-12-03 21:13:30 patrick Exp $
+# $Id: sharppy.py,v 1.13 2003-12-03 21:18:07 patrick Exp $
 
 """
 Sharppy version %s
@@ -56,7 +56,7 @@ def RecursiveIncludes(include):
    return dirs
 
 
-def GetDefaultIncludes():
+def GetDefaultIncludeDirs():
    if 'INCLUDE' in os.environ:
       include = os.environ['INCLUDE']
       return include.split(os.pathsep)
@@ -64,13 +64,12 @@ def GetDefaultIncludes():
       return []
 
 
-def ProcessIncludes(includes):
+def ProcessIncludeDirs(includeDirs):
    if sys.platform == 'win32':
       index = 0
-      for include in includes:
-         includes[index] = include.replace('\\', '/')
+      for dir in includeDirs:
+         includeDirs[index] = dir.replace('\\', '/')
          index += 1
-
 
 def ParseArguments():
    def Usage():
@@ -87,7 +86,7 @@ def ParseArguments():
       print 'ERROR:', e
       Usage()
 
-   includes = GetDefaultIncludes()
+   include_dirs = GetDefaultIncludeDirs()
    defines = []
    out_cxx = None
    out_csharp = None
@@ -96,11 +95,11 @@ def ParseArguments():
 
    for opt, value in options:
       if opt == '-I':
-         includes.append(value)
+         include_dirs.append(value)
       elif opt == '-D':
          defines.append(value)
       elif opt == '-R':
-         includes.extend(RecursiveIncludes(value))
+         include_dirs.extend(RecursiveIncludes(value))
       elif opt == '--out-cxx':
          out_cxx = value
       elif opt == '--out-csharp':
@@ -135,8 +134,8 @@ def ParseArguments():
       Usage()
       sys.exit(3)
 
-   ProcessIncludes(includes)
-   return includes, defines, out_cxx, out_csharp, files, cache_dir, create_cache
+   ProcessIncludeDirs(include_dirs)
+   return include_dirs, defines, out_cxx, out_csharp, files, cache_dir, create_cache
 
 def CreateContext():
    'create the context where a interface file will be executed'
@@ -180,12 +179,12 @@ def CreateContext():
 
 def Begin():
    # parse arguments
-   includes, defines, out_cxx, out_csharp, interfaces, cache_dir, create_cache = ParseArguments()
+   include_dirs, defines, out_cxx, out_csharp, interfaces, cache_dir, create_cache = ParseArguments()
    # run sharppy scripts
    for interface in interfaces:
       ExecuteInterface(interface)
    # create the parser
-   parser = CppParser.CppParser(includes, defines, cache_dir,
+   parser = CppParser.CppParser(include_dirs, defines, cache_dir,
                                 declarations.version)
    try:
       if not create_cache:
