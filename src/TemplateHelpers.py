@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.3 2003-10-31 23:41:23 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.4 2003-11-04 23:37:39 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -20,7 +20,7 @@ def makeCPlusPlusTypedef(funcHolder):
 
    func = funcHolder.func
    param_types = ', '.join([p[0].FullName() for p in func.parameters])
-   typedef = 'typedef %s (%s*)(%s)' % \
+   typedef = 'typedef %s (*%s)(%s)' % \
              (getCPlusPlusName(func.result), getCallbackTypedefName(funcHolder),
               param_types)
    return typedef

@@ -36,7 +36,8 @@ class Exporter(object):
         self.SetDeclarations(declarations)
 
     def SetParsedHeader(self, parsed_header):
-        self.parser_header = parsed_header 
+        if parsed_header not in self.includes:
+            self.includes.append(parsed_header)
 
     def setModule(self, module):
         print "Setting module to", module
