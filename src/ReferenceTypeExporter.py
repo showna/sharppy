@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.65 2004-01-17 16:45:54 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.66 2004-01-17 18:40:50 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -158,7 +158,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
          self.ExportConstructors()
          self.ExportMethods()
          self.ExportVirtualMethods()
-         self.exportCallbacks(exported_names)
+
+         if not self.info.sealed:
+            self.exportCallbacks(exported_names)
+
          self.ExportOperators()
          self.ExportNestedClasses(exported_names)
          self.ExportNestedEnums(exported_names)
