@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.9 2003-11-24 20:20:04 patrick Exp $
+# $Id: Exporter.py,v 1.10 2003-11-24 21:56:43 patrick Exp $
 
 import os
 
@@ -20,13 +20,11 @@ class Exporter(object):
       self.declarations = []
       self.includes = []
       self.module = info.module
-      if self.module == '' or self.module == None:
-         # XXX: Come up with a better name for this...
-         self.module = 'my_bridge'
-      else:
-         self.module += '_bridge'
-      self.cxx_dir = self.module + '_cpp'
-      self.csharp_dir = self.module + '_cs'
+      if self.module == None:
+         self.module = ''
+
+      self.cxx_dir = self.module + '_bridge_cpp'
+      self.csharp_dir = self.module + '_bridge_cs'
       self._createOutputDirs()
 
    def Name(self):
