@@ -1,6 +1,6 @@
-## $Id: class_cxx.tmpl,v 1.22 2003-11-10 22:36:50 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.23 2003-11-10 23:04:14 patrick Exp $
 
-#from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
+#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
 
 #def exportClass($classObj)
@@ -34,17 +34,18 @@ public:
 
 #set $return_visitor = CPlusPlusVisitor()
 #for $m in $classObj.virtual_methods
-
-   $makeCPlusPlusTypedef($m.callback);
-   $getCallbackTypedefName($m.callback) ${m.name[0]}_callback;
+#set $callback_name = getCallbackName($m)
+   $makeCPlusPlusTypedef($m);
+   ${callback_name}_t $callback_name;
 
 #silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    virtual $return_visitor.getRawName() ${m.name[0]}($p)
    {
-      #if $return_visitor.getRawName() != 'void' then 'return' else ''# ${m.name[0]}_callback($arg_list);
+      #if $return_visitor.getRawName() != 'void' then 'return' else ''# ${getCallbackName($m)}($arg_list);
    }
+
 #end for
 }; // class $classObj.bridge_name
 #else
@@ -64,7 +65,7 @@ extern "C"
 #else
 #set $param_list = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
-#set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
+#set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$i]), $i)
 #silent $param_list.append($q)
 #end for
 #set $p = ', '.join($param_list)
@@ -76,7 +77,8 @@ extern "C"
       $class_name* obj = new ${class_name}(*p);
 #set $count = 0
 #for $m in $classObj.virtual_methods
-      obj->${m.name[0]}_callback = p->${m.name[0]}_callback;
+#set $callback_name = getCallbackName($m)
+      obj->$callback_name = p->$callback_name;
 #set $count = $count + 1
 #end for
 #else
@@ -84,7 +86,8 @@ extern "C"
       $class_name* obj = new ${class_name}($arg_list);
 #set $count = 0
 #for $m in $classObj.virtual_methods
-      obj->${m.name[0]}_callback = cb$count;
+#set $callback_name = getCallbackName($m)
+      obj->$callback_name = cb$count;
 #set $count = $count + 1
 #end for
 #end if

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.13 2003-11-10 20:38:24 patrick Exp $
+# $Id: declarations.py,v 1.14 2003-11-10 23:04:14 patrick Exp $
 
 from utils import makeid
 import copy
@@ -340,12 +340,6 @@ class Method(Function):
         self.const = const
         self.override = False
 
-        if virtual and not isinstance(self, Destructor):
-            self.callback = Callback(self)
-        else:
-            self.callback = None
-            self.delegate = None
-
     def _getFullName(self):
         name = []
         name[0:0] = Function._getFullName(self)
@@ -371,15 +365,6 @@ class Method(Function):
                 const = 'const'            
             return '(%s (%s::*)(%s) %s%s)&%s' %\
                 (result, self.class_, params, const, self.Exceptions(), self.FullName())  
-
-class Callback:
-    def __init__(self, func):
-        # XXX: This is wrong.  It should not be necessary to copy func.
-        self.func = copy.deepcopy(func)
-        self.class_ = func.class_
-        self.type = func.name[0] + '_callback_t'
-        self.scoped_type = [self.type]
-        self.scoped_type[0:0] = self.class_
 
 #==============================================================================
 # Constructor
