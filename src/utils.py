@@ -45,6 +45,7 @@ def generateUniqueName(declList):
 # operatorToString
 #==============================================================================
 def operatorToString(op, unary=True):
+    print 'converting', op
     if op == '+':
         return 'add'
     elif op == '-':
@@ -88,6 +89,18 @@ def operatorToString(op, unary=True):
         return 'less_than_or_equal'
     elif op == '==':
         return 'equal'
+    elif op == '=':
+        return 'assign'
+    elif op == '()':
+        return 'call'
+    elif op == '+=':
+        return 'add_assign'
+    elif op == '-=':
+        return 'subtract_assign'
+    elif op == '*=':
+        return 'multiply_assign'
+    elif op == '/=':
+        return 'divide_assign'
 
 #==============================================================================
 # remove_duplicated_lines
