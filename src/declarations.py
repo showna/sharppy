@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.22 2003-12-23 20:39:14 patrick Exp $
+# $Id: declarations.py,v 1.23 2003-12-31 02:03:07 patrick Exp $
 
 import copy
 import re
@@ -29,6 +29,19 @@ class Declaration(object):
     template_search = re.compile(r'^([\w:]+)<')
     template_match  = re.compile(r'^([^<]+)<\s*(.+)\s*>\s*[\*&]?\s*$')
 
+    def _toAbstractName(self, origName):
+        match_obj = self.template_match.search(origName)
+        if None != match_obj:
+            name_part, template_part = match_obj.groups()
+            abstract_name = name_part.split('::')
+            cleaner = re.compile(r"[<:>,\s\*]")
+            clean_template_part = cleaner.sub("_", template_part)
+            abstract_name[len(abstract_name) - 1] += "_" + clean_template_part
+        else:
+            abstract_name = origName.split('::')
+
+        return abstract_name
+
     def __init__(self, cxxName, namespace, mustMarshal = False):
         '''
         @type name: string
@@ -41,15 +54,7 @@ class Declaration(object):
         # self.name is the language-agnostic name.  Subclasses should set this
         # themselves if special handling is required for different syntactic
         # issues.
-        match_obj = self.template_match.search(cxxName)
-        if None != match_obj:
-            name_part, template_part = match_obj.groups()
-            self.name = name_part.split('::')
-            cleaner = re.compile(r"[<:>,\s\*]")
-            clean_template_part = cleaner.sub("_", template_part)
-            self.name[len(self.name) - 1] += "_" + clean_template_part
-        else:
-            self.name = cxxName.split('::')
+        self.name = self._toAbstractName(cxxName)
 
         if namespace is None:
            self.namespace = []
@@ -240,17 +245,13 @@ class NestedClass(Class):
 
     def __init__(self, cxxName, class_, visib, members, abstract):
         Class.__init__(self, cxxName, None, members, abstract)
-        assert(type(class_) == list)
         self.class_ = class_
         self.visibility = visib
-        self.cxx_name = '%s::%s' % ('::'.join(class_), cxxName)
+        self.cxx_name = '%s::%s' % (class_, cxxName)
+        self.namespace = self._toAbstractName(class_)
 
-    def _getFullName(self):
-        name = []
-        name[0:0] = self.name
-        name[0:0] = self.class_
-        return name
-
+    def FullName(self):
+        return self.cxx_name
 
 #==============================================================================
 # Scope    

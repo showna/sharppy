@@ -294,8 +294,7 @@ class GCCXMLParser(object):
         else:
             # a nested class
             visib = element.get('access', declarations.Scope.public)
-            class_ = declarations.NestedClass(cxx_name,
-                                              context.getFullNameAbstract(),
+            class_ = declarations.NestedClass(cxx_name, context.FullName(),
                                               visib, [], abstract)
  
         class_.incomplete = incomplete
