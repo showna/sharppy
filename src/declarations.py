@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.21 2003-12-23 18:15:06 patrick Exp $
+# $Id: declarations.py,v 1.22 2003-12-23 20:39:14 patrick Exp $
 
 import copy
 import re
@@ -295,7 +295,7 @@ class Function(Declaration):
     @ivar _throws: exception specifiers or None 
     '''
 
-    def __init__(self, name, namespace, result, params, throws=None): 
+    def __init__(self, name, namespace, result, params, throws=None):
         Declaration.__init__(self, name, namespace)
         # the result type: instance of Type, or None (constructors)            
         self.result = result
@@ -320,7 +320,6 @@ class Function(Declaration):
             return ""
         else:
             return " throw(%s)" % ', '.join (self.throws) 
-
 
     def PointerDeclaration(self, force=False):
         '''Returns a declaration of a pointer to this function.
@@ -359,6 +358,10 @@ class Operator(Function):
     operator name in C++, ie, the name of the declaration "operator+(..)"
     is "+".
     '''
+
+    def __init__(self, name, namespace, result, params, throws=None):
+        Function.__init__(self, name, namespace, result, params, throws)
+        self.unary = len(params) == 1
 
     def FullName(self):
         namespace = '::'.join(self.namespace) or ''
@@ -476,11 +479,15 @@ class Destructor(Method):
 #==============================================================================
 class ClassOperator(Method):
     'A custom operator in a class.'
+    def __init__(self, name, class_, result, params, visib, virtual, abstract,
+                 static, const, throws = None):
+        Method.__init__(self, name, class_, result, params, visib, virtual,
+                        abstract, static, const, throws)
+        self.unary = len(params) == 0
 
     def getCleanName(self):
         name = self.getFullNameAbstract()
-        unary = len(self.parameters) is 0
-        name[len(name) - 1] = utils.operatorToString(self.name[0], unary)
+        name[len(name) - 1] = utils.operatorToString(self.name[0], self.unary)
         cleaner = re.compile(r"[<:>,\s]")
         for i in xrange(len(name)):
 #            assert(name[i].find('<') == -1)
