@@ -71,33 +71,34 @@ extern "C"
 
 #end if
 
-#*
 #for $m in $exp_class.non_virtual_methods
-   $m.result.marshal_type ${exp_class.getGenericName()}_${m.getGenericName()}($exp_class.type* self_,
-      ', '.join($m.parameters))
+#set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
+#silent $params[0:0] = ["${exp_class.getCPlusPlusName()}* self_"]
+#set $p = ', '.join($params)
+#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+   ## XXX: Need to handle marshaling the return type here.
+   $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
-#if $m.result.type != 'void'
-#set $p = ', '.join(['::'.join(x[0].name) for x in $c.parameters])
-##set $p = ', '.join([x[1] for x in $m.parameters])
-#if $m.result.mustMarshal()
-      return new ${m.result}(self_->${m.getGenericName()}($p));
+#if $getCPlusPlusName($m.result) != 'void'
+#if $m.result.must_marshal
+      return new ${getCPlusPlusName(m.result)}(self_->${m.getGenericName()}($arg_list));
 #else
-      return self_->${m.getGenericName()}(', '.join($p));
+      return self_->${m.getGenericName()}($arg_list);
 #end if
 #else
-      self_->${m.getGenericName()}(', '.join($p));
+      self_->${m.getGenericName()}($arg_list);
 #end if
    }
 
 #end for
 
+#*
 #for $m in $exp_class.virtual_methods
    $m.result.marshal_type ${exp_class.bridge_name}_${m.getGenericName()}($exp_class.type* self_,
       ', '.join($m.parameters))
    {
 #if $m.result != 'void'
-#set $p = ', '.join(['::'.join(x[0].name) for x in $c.parameters])
-##set $p = ', '.join([x[1] for x in $m.parameters])
+#set $p = ', '.join(['::'.join(x[0].name) for x in $m.parameters])
 #if $m.result.mustMarshal()
       return new ${m.result}(self_->$exp_class.type::${m.getGenericName()}($p));
 #else
@@ -114,8 +115,7 @@ extern "C"
    $m.result.marshal_type ${exp_class.getGenericName()}_${m.getGenericName()}(', '.join($m.parameters))
    {
 #if $m.result != 'void'
-#set $p = ', '.join(['::'.join(x[0].name) for x in $c.parameters])
-##set $p = ', '.join([x[1] for x in $m.parameters])
+#set $p = ', '.join(['::'.join(x[0].name) for x in $m.parameters])
 #if $m.result.must_marshal
       return new ${m.result}($exp_class.type::${m.getGenericName()}($p));
 #else

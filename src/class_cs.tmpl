@@ -30,19 +30,20 @@ public class $exp_class.getCSharpName(False) : $b
 ## If we have a base class, it will hold mRawObject.
 #if not $has_base
    protected internal IntPtr mRawObject;
-   protected bool mWeOwnMemory;
+   protected bool mWeOwnMemory = false;
 #end if
 
    // Constructors.
 #for $c in $exp_class.constructors
+#set $pi_p = ',\n\t'.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $c.parameters])
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private static extern IntPtr new_$exp_class.getClassName();
+   private static extern IntPtr new_${exp_class.bridge_name}($pi_p);
 
-#set $p = ', '.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $c.parameters])
+#set $p = $pi_p
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
    public ${exp_class.getCSharpName(False)}($p)
    {
-      mRawObject   = new_${exp_class.getClassName()}($arg_list);
+      mRawObject   = new_${exp_class.bridge_name}($arg_list);
       mWeOwnMemory = true;
    }
 
@@ -55,13 +56,13 @@ public class $exp_class.getCSharpName(False) : $b
    }
 
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static void delete_${exp_class.getClassName()}(IntPtr obj);
+   private extern static void delete_${exp_class.bridge_name}(IntPtr obj);
 
    protected void delete()
    {
       if ( mWeOwnMemory && IntPtr.Zero != mRawObject )
       {
-         delete_${exp_class.getClassName()}(mRawObject);
+         delete_${exp_class.bridge_name}(mRawObject);
          mWeOwnMemory = false;
          mRawObject   = IntPtr.Zero;
       }
@@ -70,6 +71,28 @@ public class $exp_class.getCSharpName(False) : $b
    // Overloads.
 
    // Non-virtual methods.
+#for $m in $exp_class.non_virtual_methods
+#set $name = $m.getGenericName()
+#set $pi_params = ['%s %s' % (getCSharpName(x[0]), x[1]) for x in $m.parameters]
+#silent $pi_params[0:0] = ['IntPtr obj']
+#set $pi_p = ',\n\t'.join($pi_params)
+   [DllImport("$module", CharSet = CharSet.Ansi)]
+   private extern static $getCSharpName($m.result) ${name}($pi_p);
+
+#set $p = ', '.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $m.parameters])
+#set $args = [x[1] for x in $m.parameters]
+#silent $args[0:0] = ['mRawObj']
+#set $arg_list = ', '.join($args)
+   public $getCSharpName($m.result) ${m.name[0]}($p)
+   {
+#if $getCSharpName($m.result) != 'void'
+      return ${name}($arg_list);
+#else
+      ${name}($arg_list);
+#end if
+   }
+
+#end for
 
    // Virtual methods.
 
