@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.45 2003-11-24 21:34:33 patrick Exp $
-// Generated from \$Revision: 1.45 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.46 2003-11-24 21:56:03 patrick Exp $
+// Generated from \$Revision: 1.46 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -156,16 +156,16 @@ using System.Reflection;
 #set $has_base_class = True
 #end if
 #end for
-#if not $has_base_class
-#silent bases.append('IDisposable')
-#end if
 #set $b = ', '.join($bases)
 public #slurp
 #if classObj.class_.abstract
 abstract #slurp
 #end if
 #set $has_virtuals = $classObj.hasVirtualMethods()
-class $class_visitor.getRawName(False) : $b
+class $class_visitor.getRawName(False)
+#if $b
+   : $b
+#end if
 {
 ## If we have a base class, it will hold mRawObject.
 #if not $has_base_class
@@ -264,14 +264,6 @@ class $class_visitor.getRawName(False) : $b
       mWeOwnMemory = ownMemory;
    }
 
-## If we have a base class, we let it worry about this stuff.
-#if not $has_base_class
-   // Destructor.
-   public void Dispose()
-   {
-      delete();
-   }
-
 #if $has_virtuals
 #set $bridge_name = getBridgeName($class_visitor)
 #else
@@ -280,7 +272,8 @@ class $class_visitor.getRawName(False) : $b
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static void delete_${bridge_name}(IntPtr obj);
 
-   protected void delete()
+   // Destructor.
+   ~${class_visitor.getRawName(False)}()
    {
       if ( mWeOwnMemory && IntPtr.Zero != mRawObject )
       {
@@ -290,7 +283,6 @@ class $class_visitor.getRawName(False) : $b
       }
    }
 
-#end if
    // Overloads.
 
 #set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
