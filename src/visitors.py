@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.11 2003-11-12 20:58:18 patrick Exp $
+# $Id: visitors.py,v 1.12 2003-11-12 23:46:01 patrick Exp $
 
 import re
 from declarations import Function
@@ -191,6 +191,10 @@ class CSharpVisitor(DeclarationVisitor):
    '''
    Basic, general-purpose C# visitor.
    '''
+   
+   fundamental_types = ['bool', 'byte', 'sbyte', 'char', 'short', 'ushort',
+                        'int', 'uint', 'long', 'ulong', 'float', 'double']
+
    def __init__(self):
       DeclarationVisitor.__init__(self)
 
@@ -198,8 +202,7 @@ class CSharpVisitor(DeclarationVisitor):
       self.decl         = decl
       self.problem_type = False
 
-      full_name = decl.getFullNameAbstract()
-      self.name = '.'.join(full_name)
+      self.name = '.'.join(decl.getFullNameAbstract())
 
       if isinstance(decl, Function):
          self.generic_name = self._makeGenericFuncName()
@@ -238,6 +241,9 @@ class CSharpVisitor(DeclarationVisitor):
             else:
                self.usage = 'int'
             break
+         elif s.find('short') != -1:
+            if s.find('unsigned') != -1:
+               self.usage = 'ushort'
          # Translate char, which is 1 byte in C/C++, into byte.
          elif s.find('char') != -1:
             if s.find('unsigned') != -1:
@@ -246,6 +252,36 @@ class CSharpVisitor(DeclarationVisitor):
                self.usage = 'sbyte'
             break
 
+   def _isFundamentalType(self, decl):
+      return self.usage in self.fundamental_types
+
+class CSharpPInvokeParamVisitor(CSharpVisitor):
+   '''
+   C# visitor for function/method parameters used in P/Invoke declarations.
+   This will handle the details associated with parameter types when marshaling
+   is in effect.
+   '''
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+      self.__needs_unsafe = False
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl)
+
+      if decl.suffix == '&' or decl.suffix == '*':
+         if not self.problem_type:
+            if self._isFundamentalType(decl):
+               self.__needs_unsafe = True
+               if self.usage.find("&") != -1:
+                  self.usage = re.sub(r"&", "*", self.usage)
+               else:
+                  self.usage += '*'
+            else:
+               self.usage = 'IntPtr'
+
+   def needsUnsafe(self):
+      return self.__needs_unsafe
+
 class CSharpParamVisitor(CSharpVisitor):
    '''
    C# visitor for function/method parameters.  This will handle the details
@@ -253,9 +289,57 @@ class CSharpParamVisitor(CSharpVisitor):
    '''
    def __init__(self):
       CSharpVisitor.__init__(self)
+      self.__initialize()
+      self.__param_name      = ''
+      self.__orig_param_name = ''
+
+   def __initialize(self):
+      self.__pre_marshal  = ''
+      self.__post_marshal = ''
+      self.__must_marshal = False
+      self.__needs_unsafe = False
 
    def visit(self, decl):
+      self.__initialize()
       CSharpVisitor.visit(self, decl)
+
+      if decl.suffix == '&' or decl.suffix == '*':
+         if not self.problem_type:
+            if self._isFundamentalType(decl):
+               self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
+               self.__must_marshal = True
+               self.__needs_unsafe = True
+               self.__param_name   = '&' + self.__orig_param_name
+            else:
+               self.__must_marshal = True
+               self.__param_name = self.__orig_param_name + '.mRawObject'
+
+   def mustMarshal(self):
+      return self.__must_marshal
+
+   def needsUnsafe(self):
+      return self.__needs_unsafe
+
+   def getMarshalParamName(self):
+      assert(self.mustMarshal())
+      return self.__param_name
+
+   # XXX: This parameter name stuff sucks.
+   def setParamName(self, paramName):
+      self.__orig_param_name = paramName
+      self.__param_name = 'marshal_' + paramName
+
+   def getPreCallMarshal(self):
+      assert(self.mustMarshal())
+      return self.__pre_marshal
+
+   def getPostCallMarshal(self):
+      assert(self.mustMarshal())
+      return self.__post_marshal
+
+   def _processProblemType(self, typeName):
+      # Perform default problem type processing first.
+      CSharpVisitor._processProblemType(self, typeName)
 
 class CSharpReturnVisitor(CSharpVisitor):
    '''
