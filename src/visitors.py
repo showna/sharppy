@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.10 2003-11-12 19:17:50 patrick Exp $
+# $Id: visitors.py,v 1.11 2003-11-12 20:58:18 patrick Exp $
 
 import re
 from declarations import Function
@@ -176,7 +176,16 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    def visit(self, decl):
       CPlusPlusVisitor.visit(self, decl)
       if decl.must_marshal:
-         self.usage += '*'
+         if decl.suffix == '&':
+            self.usage = re.sub(r"&", "*", self.name)
+         else:
+            self.usage += '*'
+      # If we have a type that is being returned by reference but that does not
+      # require marshaling, we'll just copy it.  Since the data has to cross
+      # the language boundary, there is no point in trying to retain a
+      # reference.
+      elif decl.suffix == '&':
+         self.usage = re.sub(r"(const|&)", "", self.name)
 
 class CSharpVisitor(DeclarationVisitor):
    '''
