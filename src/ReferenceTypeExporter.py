@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.50 2003-12-23 21:33:02 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.51 2003-12-23 21:49:50 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -591,7 +591,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
                      (param1_name.find(ostream) != -1 or \
                       param2_name.find(ostream) != -1)
 
-            self.global_operators.append(operator)
+            if not is_str:
+               self.global_operators.append(operator)
 
    def ExportNestedClasses(self, exported_names):
       nested_classes = [x for x in self.public_members if isinstance(x, declarations.NestedClass)]
