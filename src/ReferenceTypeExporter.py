@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.43 2003-12-08 18:09:33 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.44 2003-12-22 21:03:39 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -396,35 +396,6 @@ class ReferenceTypeExporter(Exporter.Exporter):
       'Expose the bases of this class.'
       self.bases = self.getImmediateClassBases(exportedNames)
 
-      # self.bridge_bases contains the declarations of the base bridge classes.
-      self.bridge_bases = []
-      exported = False
-
-      # If this reference type has virtual methods, then the inheritance
-      # hierarchy is going to be different.  We need a bridge class that
-      # derives from self.class_ and any bridge classes that exist for the
-      # base classes of self.class_.
-      # XXX: This may not be the right place to do this.  This really only
-      # matters for C++.
-      if self.hasVirtualMethods():
-         self.bridge_bases = []
-
-         for level in self.class_.hierarchy:
-            for b in level:
-               if b.visibility == declarations.Scope.public and b.FullName() in exportedNames:
-                  base_decl = self.GetDeclaration(b.FullName())
-
-                  # We only care about b as a base class if it has virtual
-                  # methods.  In that case, we need to inherit from its bridge
-                  # class.
-                  for member in base_decl.getMembers():
-                     if type(member) == declarations.Method and member.virtual:
-                        self.bridge_bases.append(b)
-                        exported = True
-                        break
-            if exported:
-               break
-
    def ExportConstructors(self):
       '''
       Exports all the public contructors of the class, plus indicates if the 
@@ -600,16 +571,6 @@ class ReferenceTypeExporter(Exporter.Exporter):
                member_info = self.info[member.name[0]]
                if not member_info.exclude and isInheritedVirtual(member, method_names):
                   self.inherited_virtual_methods.append(member)
-
-                  # Collect virtual methods that are newly introduced by this
-                  # class by being inherited from an unexported base class.
-                  if base.FullName() not in exportedNames:
-                     self.virtual_method_callbacks.append(member)
-
-               # If the current member is defined in an unexported base class
-               # but overridden in this class, we need a callback.
-               if member.name[0] in method_names and \
-                  base.FullName() not in exportedNames:
                   self.virtual_method_callbacks.append(member)
 
             if base.FullName() in exportedNames:
@@ -622,8 +583,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       # directly.  Inherited virtual methods will already have been handled at
       # this point, so we can safely ignore methods that are overrides.
       for method in self.virtual_methods:
-         if not method.override:
-            self.virtual_method_callbacks.append(method)
+         self.virtual_method_callbacks.append(method)
 
    # Operators natively supported by C#.  This list comes from page 46 of
    # /C# Essentials/, Second Edition.

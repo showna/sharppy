@@ -1,5 +1,5 @@
-## $Id: class_cxx_bridge.tmpl,v 1.4 2003-11-23 16:43:34 patrick Exp $
-// Generated from \$Revision: 1.4 $ of \$RCSfile: class_cxx_bridge.tmpl,v $
+## $Id: class_cxx_bridge.tmpl,v 1.5 2003-12-22 21:03:39 patrick Exp $
+// Generated from \$Revision: 1.5 $ of \$RCSfile: class_cxx_bridge.tmpl,v $
 #from TemplateHelpers import getBridgeName
 #import visitors
 
@@ -11,10 +11,10 @@
 #set $generic_visitor = visitors.CPlusPlusVisitor()
 ## Get the list of base classes (there will be at least one) for the bridge.
 #set $base_list = ['public ' + $class_visitor.getRawName()]
-#for $x in $classObj.bridge_bases
-#silent $x.accept($generic_visitor)
-#silent $base_list.append('public %s' % getBridgeName($generic_visitor))
-#end for
+##for $x in $classObj.bridge_bases
+##silent $x.accept($generic_visitor)
+##silent $base_list.append('public %s' % getBridgeName($generic_visitor))
+##end for
 class SHARPPY_API $class_name : #echo ', '.join($base_list)
 {
 public:
@@ -71,10 +71,6 @@ $exportClass($nc)
 \#include "sharppy.h"
 #for $i in $includes
 \#include <$i>
-#end for
-#for $x in $exp_class.bridge_bases
-#silent $x.accept($class_visitor)
-\#include <${getBridgeName($class_visitor)}.h>
 #end for
 #del $class_visitor
 
