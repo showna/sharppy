@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.61 2004-01-13 21:13:57 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.62 2004-01-13 21:23:46 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -611,6 +611,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
       for operator in all_operators:
          if operator.name[0] not in self.CSHARP_SUPPORTED_OPERATORS:
+            continue
+
+         # Do not allow the unary version of operator* to be exposed to C#.
+         if operator.unary and operator.name[0] == '*':
             continue
 
          # Gather information about the operator, for use later.
