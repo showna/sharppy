@@ -1,11 +1,16 @@
-## $Id: free_types_cs.tmpl,v 1.6 2004-02-23 16:16:46 patrick Exp $
-// Generated from \$Revision: 1.6 $ of \$RCSfile: free_types_cs.tmpl,v $
+## $Id: free_types_cs.tmpl,v 1.7 2004-05-25 20:41:15 patrick Exp $
+// Generated from \$Revision: 1.7 $ of \$RCSfile: free_types_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 #import visitors
 #def generateClass($className, $wrapperObj)
-public sealed abstract class $className
+public sealed class $className
 {
+   // Prevent instantiation.
+   private ${className}()
+   {
+   }
+
 #set $const_visitor = visitors.CSharpVariableVisitor()
 #for $c in $wrapperObj.constants
 #silent $c.accept($const_visitor)
