@@ -47,7 +47,7 @@ class ValueTypeExporter(Exporter):
 
 
     def ScopeName(self):
-        return makeid(self.class_.FullName()) + '_scope'
+        return makeid(self.class_.getFullCPlusPlusName()) + '_scope'
 
 
     def Name(self):
@@ -94,7 +94,7 @@ class ValueTypeExporter(Exporter):
         '''
         valid_members = (Method, ClassVariable, NestedClass, ClassEnumeration)
             # these don't work INVESTIGATE!: (ClassOperator, ConverterOperator)
-        fullnames = [x.FullName() for x in self.class_]
+        fullnames = [x.getFullCPlusPlusName() for x in self.class_]
         pointers = [x.PointerDeclaration(True) for x in self.class_ if isinstance(x, Method)]
         fullnames = dict([(x, None) for x in fullnames])
         pointers = dict([(x, None) for x in pointers])
@@ -102,17 +102,17 @@ class ValueTypeExporter(Exporter):
             level_exported = False
             for base in level:
                 base = self.GetDeclaration(base.name)
-                if base.FullName() not in exported_names:
+                if base.getFullCPlusPlusName() not in exported_names:
                     for member in base:
                         if type(member) in valid_members:
                             member_copy = copy.deepcopy(member)   
-                            member_copy.class_ = self.class_.FullName()
+                            member_copy.class_ = self.class_.getFullCPlusPlusName()
                             if isinstance(member_copy, Method):
                                 pointer = member_copy.PointerDeclaration(True)
                                 if pointer not in pointers:
                                     self.class_.AddMember(member)
                                     pointers[pointer] = None
-                            elif member_copy.FullName() not in fullnames:
+                            elif member_copy.getFullCPlusPlusName() not in fullnames:
                                 self.class_.AddMember(member)        
                 else:
                     level_exported = True
@@ -128,7 +128,7 @@ class ValueTypeExporter(Exporter):
         pyste_ns = namespaces.pyste
         code = ''
         # export the template section
-        code += indent + 'public struct %s' % self.class_.FullName()
+        code += indent + 'public struct %s' % self.class_.getFullCPlusPlusName()
         # export the constructor section
         constructor_params = ', '.join(self.sections['constructor'])
         code += '(%s)\n' % constructor_params
@@ -177,7 +177,7 @@ class ValueTypeExporter(Exporter):
         
     def ExportBasics(self):
         '''Export the name of the class and its class_ statement.'''
-        class_name = self.class_.FullName()
+        class_name = self.class_.getFullCPlusPlusName()
         self.Add('template', class_name)
         name = self.info.rename or self.class_.name
         self.Add('constructor', '"%s"' % name)
@@ -192,7 +192,7 @@ class ValueTypeExporter(Exporter):
         
         def init_code(cons):
             'return the init<>() code for the given contructor'
-            param_list = [p.FullName() for p in cons.parameters]
+            param_list = [p.getFullCPlusPlusName() for p in cons.parameters]
             min_params_list = param_list[:cons.minArgs]
             max_params_list = param_list[cons.minArgs:]
             min_params = ', '.join(min_params_list)
@@ -229,7 +229,7 @@ class ValueTypeExporter(Exporter):
             if self.info[var.name].exclude: 
                 continue
             name = self.info[var.name].rename or var.name
-            fullname = var.FullName() 
+            fullname = var.getFullCPlusPlusName() 
             if var.type.const:
                 def_ = '.def_readonly'
             else:
@@ -240,7 +240,7 @@ class ValueTypeExporter(Exporter):
     
     def OverloadName(self, method):
         'Returns the name of the overloads struct for the given method'
-        name = makeid(method.FullName())
+        name = makeid(method.getFullCPlusPlusName())
         overloads = '_overloads_%i_%i' % (method.minArgs, method.maxArgs)    
         return name + overloads
 
@@ -264,7 +264,7 @@ class ValueTypeExporter(Exporter):
         def DeclareOverloads(m):
             'Declares the macro for the generation of the overloads'
             if (isinstance(m, Method) and m.static) or type(m) == Function:
-                func = m.FullName()
+                func = m.getFullCPlusPlusName()
                 macro = 'BOOST_PYTHON_FUNCTION_OVERLOADS'
             else:
                 func = m.name
@@ -280,7 +280,7 @@ class ValueTypeExporter(Exporter):
             # check if this method has a wrapper set for him
             wrapper = self.info[m.name].wrapper
             if wrapper:
-                return '&' + wrapper.FullName()
+                return '&' + wrapper.getFullCPlusPlusName()
             else:
                 return m.PointerDeclaration() 
 
@@ -376,14 +376,14 @@ class ValueTypeExporter(Exporter):
                 if isinstance(decl, Operator):
                     # check if one of the params is this class
                     for param in decl.parameters:
-                        if param.name == self.class_.FullName():
+                        if param.name == self.class_.getFullCPlusPlusName():
                             operators.append(decl)
                             break
             return operators
 
         def GetOperand(param):
             'Returns the operand of this parameter (either "self", or "other<type>")'
-            if param.name == self.class_.FullName():
+            if param.name == self.class_.getFullCPlusPlusName():
                 return namespaces.python + 'self'
             else:
                 return namespaces.python + ('other< %s >()' % param.name)
@@ -418,7 +418,7 @@ class ValueTypeExporter(Exporter):
             # gatter information about the operator, for use later
             wrapper = self.info['operator'][operator.name].wrapper
             if wrapper:
-                pointer = '&' + wrapper.FullName()
+                pointer = '&' + wrapper.getFullCPlusPlusName()
                 if wrapper.code:
                     self.Add('declaration', wrapper.code)
             else:
@@ -473,7 +473,7 @@ class ValueTypeExporter(Exporter):
         converters = [x for x in self.public_members if type(x) == ConverterOperator]
                 
         def ConverterMethodName(converter):
-            result_fullname = converter.result.FullName()
+            result_fullname = converter.result.getFullCPlusPlusName()
             result_name = converter.result.name
             for regex, method_name in self.SPECIAL_CONVERTERS.items():
                 if regex.match(result_fullname):
@@ -484,7 +484,7 @@ class ValueTypeExporter(Exporter):
                 return 'to_' + result_name
             
         for converter in converters:
-            info = self.info['operator'][converter.result.FullName()]
+            info = self.info['operator'][converter.result.getFullCPlusPlusName()]
             # check if this operator should be excluded
             if info.exclude:
                 continue
@@ -509,7 +509,7 @@ class ValueTypeExporter(Exporter):
         for nested_class in nested_classes:
             nested_info = self.info[nested_class.name]
             nested_info.include = self.info.include
-            nested_info.name = nested_class.FullName()
+            nested_info.name = nested_class.getFullCPlusPlusName()
             exporter = ValueTypeExporter(nested_info)
             exporter.SetDeclarations(self.declarations)
             codeunit = SingleCodeUnit(None, None)
@@ -522,7 +522,7 @@ class ValueTypeExporter(Exporter):
         for enum in nested_enums:
             enum_info = self.info[enum.name]
             enum_info.include = self.info.include
-            enum_info.name = enum.FullName()
+            enum_info.name = enum.getFullCPlusPlusName()
             exporter = EnumExporter(enum_info)
             exporter.SetDeclarations(self.declarations)
             codeunit = SingleCodeUnit(None, None)
@@ -533,7 +533,7 @@ class ValueTypeExporter(Exporter):
     def ExportSmartPointer(self):
         smart_ptr = self.info.smart_ptr
         if smart_ptr:
-            class_name = self.class_.FullName()
+            class_name = self.class_.getFullCPlusPlusName()
             smart_ptr = smart_ptr % class_name
             self.Add('scope', '%sregister_ptr_to_python< %s >();' % (namespaces.python, smart_ptr))
             
@@ -557,7 +557,7 @@ def _ParamsInfo(m, count=None):
     if count is None:
         count = len(m.parameters)
     param_names = ['p%i' % i for i in range(count)]
-    param_types = [x.FullName() for x in m.parameters[:count]]
+    param_types = [x.getFullCPlusPlusName() for x in m.parameters[:count]]
     params = ['%s %s' % (t, n) for t, n in zip(param_types, param_names)]
     #for i, p in enumerate(m.parameters[:count]):
     #    if p.default is not None:

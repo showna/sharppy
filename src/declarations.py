@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.26 2004-01-09 23:15:25 patrick Exp $
+# $Id: declarations.py,v 1.27 2004-01-12 22:31:34 patrick Exp $
 
 import copy
 import re
@@ -31,13 +31,14 @@ class Declaration(object):
     ws_match        = re.compile(r'\s+')
     template_munge  = re.compile(r'>>')
 
+    cleaner = re.compile(r"[<:>,\s\*]")
+
     def _toAbstractName(self, origName):
         match_obj = self.template_match.search(origName)
         if None != match_obj:
             name_part, template_part = match_obj.groups()
             abstract_name = name_part.split('::')
-            cleaner = re.compile(r"[<:>,\s\*]")
-            clean_template_part = cleaner.sub("_", template_part)
+            clean_template_part = self.cleaner.sub("_", template_part)
             abstract_name[len(abstract_name) - 1] += "_" + clean_template_part
         else:
             abstract_name = origName.split('::')
@@ -78,9 +79,23 @@ class Declaration(object):
         # XXX: must_marshal is pretty much a failure.  It should be removed.
         self.must_marshal = mustMarshal
 
-    def FullName(self):
+    def getNamespace(self):
         '''
-        Returns the full qualified name: "boost::inner::Test"
+        Returns the namespace of this declaration.
+        @rtype: list
+        '''
+        return self.namespace
+
+    def getCPlusPlusName(self):
+        '''
+        Returns the C++ name of this declaration without the namespace.
+        @rtype: string
+        '''
+        return self.cxx_name
+
+    def getFullCPlusPlusName(self):
+        '''
+        Returns the fully qualified name: "boost::inner::Test"
         @rtype: string
         @return: The full name of the declaration.
         '''
@@ -92,44 +107,53 @@ class Declaration(object):
             ns = ''
         return '%s%s' % (ns, self.cxx_name)
 
-    def getCPlusPlusName(self):
-        return self.cxx_name
-
-    def _getFullName(self):
+    def _getAbstractName(self):
+        '''
+        Returns the language-agnostic name of this declaration, including the
+        namespace.  This method is a template method that can be overridden by
+        subclasses to customize the construction of the language-agnostic name.
+        @rtype: list
+        '''
         return self.name
 
-    def getFullNameAbstract(self):
+    def getAbstractName(self):
+        '''
+        Returns the language-agnostic name of this declaration, including the
+        namespace.
+        @rtype: list
+        '''
+        return self.name
+
+    def getFullAbstractName(self):
         name = []
-        name[0:0] = self._getFullName()
+        name[0:0] = self._getAbstractName()
         if self.namespace and self.namespace[0] != '':
             name[0:0] = self.namespace
         return name
 
-    def getCleanName(self):
-        name = self.getFullNameAbstract()
-        cleaner = re.compile(r"[<:>,\s]")
+    def getID(self):
+        '''
+        Returns a string version of this declaration's suitable for use as an
+        identifier in programming languages.  The ID string will contain only
+        alphanumeric characters.
+        '''
+        name = self.getFullAbstractName()
         for i in xrange(len(name)):
 #            assert(name[i].find('<') == -1)
-            name[i] = cleaner.sub("_", name[i])
+            name[i] = self.cleaner.sub("_", name[i])
         return '_'.join(name)
 
-    def getNamespace(self):
-        return self.namespace
-
-    def getName(self):
-        return self.name
-
-    def getGenericName(self):
-        return self.getCleanName()
-
     def accept(self, visitor):
+        '''
+        Method required for the Visitor pattern.
+        '''
         visitor.visit(self)
 
     def __repr__(self):        
-        return '<Declaration %s at %s>' % (self.FullName(), id(self))
+        return '<Declaration %s at %s>' % (self.getFullCPlusPlusName(), id(self))
 
     def __str__(self):
-        return 'Declaration of %s' % self.FullName()
+        return 'Declaration of %s' % self.getFullCPlusPlusName()
     
     
 #==============================================================================
@@ -222,17 +246,17 @@ class Class(Declaration):
         return self.__members
 
     def AddMember(self, member):
-        if member.FullName() in self.__member_names:
+        if member.getFullCPlusPlusName() in self.__member_names:
             member.is_unique = False
             for m in self:
-                if m.FullName() == member.FullName():
+                if m.getFullCPlusPlusName() == member.getFullCPlusPlusName():
                     m.is_unique = False
         else:
             member.is_unique = True
-        self.__member_names[member.FullName()] = 1
+        self.__member_names[member.getFullCPlusPlusName()] = 1
         self.__members.append(member)
         if isinstance(member, ClassOperator):
-            self.operator[member.FullName()] = member
+            self.operator[member.getFullCPlusPlusName()] = member
 
     def ValidMemberTypes():
         return (NestedClass, Method, Constructor, Destructor, ClassVariable, 
@@ -260,7 +284,7 @@ class NestedClass(Class):
         self.cxx_name = '%s::%s' % (class_, cxxName)
         self.namespace = self._toAbstractName(class_)
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         return self.cxx_name
 
 #==============================================================================
@@ -321,10 +345,10 @@ class Function(Declaration):
         # the exception specification
         self.throws = throws
 
-    def getGenericName(self):
-      base_name = Declaration.getGenericName(self)
-      param_types = [x[0].getCleanName() for x in self.parameters]
-      return base_name + '__' +'_'.join(param_types)
+    def getID(self):
+        base_name = Declaration.getID(self)
+        param_types = [x[0].getID() for x in self.parameters]
+        return base_name + '__' +'_'.join(param_types)
 
     def Exceptions(self):
         if self.throws is None:
@@ -338,11 +362,11 @@ class Function(Declaration):
         if this function is unique or not.
         '''
         if self.is_unique and not force:
-            return '&%s' % self.FullName()
+            return '&%s' % self.getFullCPlusPlusName()
         else:
-            result = self.result.FullName()
-            params = ', '.join([x.FullName() for x in self.parameters]) 
-            return '(%s (*)(%s))&%s' % (result, params, self.FullName())
+            result = self.result.getFullCPlusPlusName()
+            params = ', '.join([x.getFullCPlusPlusName() for x in self.parameters]) 
+            return '(%s (*)(%s))&%s' % (result, params, self.getFullCPlusPlusName())
 
     
     def MinArgs(self):
@@ -374,7 +398,7 @@ class Operator(Function):
         Function.__init__(self, name, namespace, result, params, throws)
         self.unary = len(params) == 1
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         namespace = '::'.join(self.namespace) or ''
         if not namespace.endswith('::'):
             namespace += '::'
@@ -406,11 +430,11 @@ class Method(Function):
         self.const = const
         self.override = False
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         return '%s::%s' % (self.class_, self.cxx_name)
 
-    def _getFullName(self):
-        return self.class_.split('::') + Function._getFullName(self)
+    def _getAbstractName(self):
+        return self.class_.split('::') + Function._getAbstractName(self)
 
     def PointerDeclaration(self, force=False):
         '''Returns a declaration of a pointer to this member function.
@@ -421,15 +445,15 @@ class Method(Function):
             # static methods are like normal functions
             return Function.PointerDeclaration(self, force)
         if self.is_unique and not force:
-            return '&%s' % self.FullName()
+            return '&%s' % self.getFullCPlusPlusName()
         else:
-            result = self.result.FullName()
-            params = ', '.join([x[0].FullName() for x in self.parameters]) 
+            result = self.result.getFullCPlusPlusName()
+            params = ', '.join([x[0].getFullCPlusPlusName() for x in self.parameters]) 
             const = ''
             if self.const:
                 const = 'const'            
             return '(%s (%s::*)(%s) %s%s)&%s' %\
-                (result, self.class_, params, const, self.Exceptions(), self.FullName())  
+                (result, self.class_, params, const, self.Exceptions(), self.getFullCPlusPlusName())  
 
 
 #==============================================================================
@@ -478,7 +502,7 @@ class Destructor(Method):
     def __init__(self, name, class_, visib, virtual):
         Method.__init__(self, name, class_, None, [], visib, virtual, False, False, False)
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         return '::'.join(self.class_) + '::~' + self.name[0]
 
     def PointerDeclaration(self, force=False):
@@ -496,21 +520,18 @@ class ClassOperator(Method):
                         abstract, static, const, throws)
         self.unary = len(params) == 0
 
-    def getCleanName(self):
-        name = self.getFullNameAbstract()
+    def getID(self):
+        name = self.getFullAbstractName()
         name[len(name) - 1] = utils.operatorToString(self.name[0], self.unary)
-        cleaner = re.compile(r"[<:>,\s]")
-        for i in xrange(len(name)):
-#            assert(name[i].find('<') == -1)
-            name[i] = cleaner.sub("_", name[i])
-        return '_'.join(name)
+        param_types = [x[0].getID() for x in self.parameters]
+        return '%s__%s' % ('_'.join(name), '_'.join(param_types))
 
-    def _getFullName(self):
+    def _getAbstractName(self):
         name = self.class_.split('::')
         name.append('operator' + self.name[0])
         return name
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         return self.class_ + '::operator ' + self.name[0]
 
 
@@ -520,11 +541,11 @@ class ClassOperator(Method):
 class ConverterOperator(ClassOperator):
     'An operator in the form "operator OtherClass()".'
 
-    def _getFullName(self):
-        return self.class_.split('::') + self.result._getFullName()
+    def _getAbstractName(self):
+        return self.class_.split('::') + self.result._getAbstractName()
 
-    def FullName(self):
-        return self.class_ + '::operator ' + self.result.FullName()
+    def getFullCPlusPlusName(self):
+        return self.class_ + '::operator ' + self.result.getFullCPlusPlusName()
 
 
 #==============================================================================
@@ -559,7 +580,7 @@ class Type(Declaration):
         if None != match_obj:
             self.const    = 1
             self.cxx_name = match_obj.groups()[0]
-            self.name     = self.cxx_name.split('::')
+            self.name     = self._toAbstractName(self.cxx_name)
 
     def __repr__(self):
         if self.const:
@@ -568,12 +589,12 @@ class Type(Declaration):
             const = ''
         return '<Type ' + const + '::'.join(self.name) + '>'
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         if self.const:
             const = 'const '
         else:
             const = ''
-        return const + Declaration.FullName(self) + self.suffix
+        return const + Declaration.getFullCPlusPlusName(self) + self.suffix
 
 
 #==============================================================================
@@ -692,9 +713,9 @@ class FunctionType(Type):
         self.result = result
         self.parameters = parameters
 
-    def FullName(self):
-        full = '%s (*)' % self.result.FullName()
-        params = [x.FullName() for x in self.parameters]
+    def getFullCPlusPlusName(self):
+        full = '%s (*)' % self.result.getFullCPlusPlusName()
+        params = [x.getFullCPlusPlusName() for x in self.parameters]
         full += '(%s)' % ', '.join(params)        
         return full
 
@@ -712,9 +733,9 @@ class MethodType(FunctionType):
         FunctionType.__init__(self, result, parameters)
 
 
-    def FullName(self):
-        full = '%s (%s::*)' % (self.result.FullName(), self.class_)
-        params = [x.FullName() for x in self.parameters]
+    def getFullCPlusPlusName(self):
+        full = '%s (%s::*)' % (self.result.getFullCPlusPlusName(), self.class_)
+        params = [x.getFullCPlusPlusName() for x in self.parameters]
         full += '(%s)' % ', '.join(params)
         return full
     
@@ -755,14 +776,14 @@ class ClassVariable(Variable):
         self.static = static
         self.class_ = class_
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         return '%s::%s' % (self.class_, self.cxx_name)
 
-    def _getFullName(self):
-        return self.class_.split('::') + Variable._getFullName(self)
+    def _getAbstractName(self):
+        return self.class_.split('::') + Variable._getAbstractName(self)
 
-#    def FullName(self):
-#        return self.class_ + '::' + Variable.FullName(self)
+#    def getFullCPlusPlusName(self):
+#        return self.class_ + '::' + Variable.getFullCPlusPlusName(self)
 
 
 #==============================================================================
@@ -806,13 +827,13 @@ class ClassEnumeration(Enumeration):
         self.class_ = class_
         self.visibility = visib
 
-    def FullName(self):
+    def getFullCPlusPlusName(self):
         return '%s::%s' % (self.class_, self.cxx_name)
 
-    def _getFullName(self):
-       return self.class_.split('::') + Enumeration._getFullName(self)
+    def _getAbstractName(self):
+       return self.class_.split('::') + Enumeration._getAbstractName(self)
 
-#    def FullName(self):
+#    def getFullCPlusPlusName(self):
 #        return '%s::%s' % (self.class_, self.name)
 
 

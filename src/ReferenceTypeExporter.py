@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.58 2004-01-12 19:44:04 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.59 2004-01-12 22:31:34 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -67,7 +67,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.non_static_members = []
 
    def getClassName(self):
-      return utils.makeid(self.class_.FullName())
+      return utils.makeid(self.class_.getFullCPlusPlusName())
 
    def isInterface(self):
       '''
@@ -85,7 +85,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       if self.declarations:
          decl = self.GetDeclaration(self.info.name)
          if isinstance(decl, declarations.Typedef):
-            self.class_ = self.GetDeclaration(decl.type.FullName())
+            self.class_ = self.GetDeclaration(decl.type.getFullCPlusPlusName())
             if not self.info.rename:
                self.info.rename = decl.name
          else:
@@ -94,7 +94,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          self.all_bases = self.getAllClassBases()
 
          # Set up the Cheetah template file names.
-         base_fname = self.class_.getCleanName()
+         base_fname = self.class_.getID()
          self.cxx_adapter_output_file = base_fname + '_Adapter.h'
          self.c_wrapper_output_file = base_fname + '.cpp'
          self.csharp_output_file = base_fname + '.cs'
@@ -123,7 +123,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       exported = False
       for level in self.class_.hierarchy:
          for b in level:
-            if b.visibility == declarations.Scope.public and b.FullName() in exportedNames:
+            if b.visibility == declarations.Scope.public and b.getFullCPlusPlusName() in exportedNames:
                bases.append(b)
                exported = True
          if exported:
@@ -137,7 +137,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       before the derived classes in the module definition.  
       '''
       num_bases = len(self.ClassBases())
-      return num_bases, self.class_.FullName()
+      return num_bases, self.class_.getFullCPlusPlusName()
 
    def __printDot(self):
       print "\b.",
@@ -231,7 +231,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       valid_members = (declarations.Method, declarations.ClassVariable,
                        declarations.NestedClass, declarations.ClassEnumeration)
          # these don't work INVESTIGATE!: (declarations.ClassOperator, declarations.ConverterOperator)
-      fullnames = [x.FullName() for x in self.class_]
+      fullnames = [x.getFullCPlusPlusName() for x in self.class_]
 
       # Convert fullnames into a dictionary for easier lookup.
       fullnames = dict([(x, None) for x in fullnames])
@@ -239,18 +239,18 @@ class ReferenceTypeExporter(Exporter.Exporter):
       for level in self.class_.hierarchy:
          level_exported = False
          for base in level:
-            base = self.GetDeclaration(base.FullName())
+            base = self.GetDeclaration(base.getFullCPlusPlusName())
 
             # If base is not named in exported_names, it has not been exported.
-            if base.FullName() not in exported_names:
+            if base.getFullCPlusPlusName() not in exported_names:
                for member in base:
                   if type(member) in valid_members:
                      member_copy = copy.deepcopy(member)   
-                     member_copy.class_ = self.class_.getFullNameAbstract()
+                     member_copy.class_ = self.class_.getFullAbstractName()
                      member_info = self.info[member_copy.name[0]]
                      if not member_info.exclude:
                         if not isinstance(member_copy, declarations.Method) and \
-                           member_copy.FullName() not in fullnames:
+                           member_copy.getFullCPlusPlusName() not in fullnames:
                            self.class_.AddMember(member)        
             # This base class has been exported.
             else:
@@ -301,7 +301,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
    def OverloadName(self, method):
       'Returns the name of the overloads struct for the given method'
-      name = utils.makeid(method.FullName())
+      name = utils.makeid(method.getFullCPlusPlusName())
       overloads = '_overloads_%i_%i' % (method.minArgs, method.maxArgs)    
       return name + overloads
 
@@ -373,7 +373,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
                # XXX: This does not take method signatures into account.
 #                  member.parameters == base_mem.parameters and \
                if member.name == base_mem.name and \
-                  member.FullName() != base_mem.FullName():
+                  member.getFullCPlusPlusName() != base_mem.getFullCPlusPlusName():
                   member.override = True
                   found = True
                   break
@@ -403,7 +403,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       '''
       for member in self.class_:
          if type(member) == declarations.Method and member.virtual:
-            member.virtual = not self.info[member.FullName()].no_override 
+            member.virtual = not self.info[member.getFullCPlusPlusName()].no_override 
 
    def needsAdapter(self):
       exports_protected_methods = False
@@ -485,7 +485,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       holder = self.info.holder
       if holder:
          assert(False)
-#         self.Add('template', holder(self.class_.FullName()))
+#         self.Add('template', holder(self.class_.getFullCPlusPlusName()))
 
    def exportCallbacks(self, exportedNames):
 
@@ -501,7 +501,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       for level in self.class_.hierarchy:
          level_exported = False
          for base in level:
-            base = self.GetDeclaration(base.FullName())
+            base = self.GetDeclaration(base.getFullCPlusPlusName())
 
             for member in base:
                member_info = self.info[member.name[0]]
@@ -513,7 +513,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
                   # of methods overridden in multiple base classes.
                   method_names.append(member.name[0])
 
-            if base.FullName() in exportedNames:
+            if base.getFullCPlusPlusName() in exportedNames:
                level_exported = True
 
          if level_exported:
@@ -556,7 +556,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       'Export all member operators and free operators related to this class'
 
       def ConverterMethodName(converter):
-         result_fullname = converter.result.FullName()
+         result_fullname = converter.result.getFullCPlusPlusName()
          result_name = converter.result.name
          for regex, method_name in self.SPECIAL_CONVERTERS.items():
             if regex.match(result_fullname):
@@ -573,7 +573,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
             if isinstance(decl, declarations.Operator):
                # check if one of the params is this class
                for param in decl.parameters:
-                  if param[0].getCPlusPlusName() == self.class_.FullName():
+                  if param[0].getCPlusPlusName() == self.class_.getFullCPlusPlusName():
                      operators.append(decl)
                      break
          return operators
@@ -582,7 +582,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
 #      converters = [x for x in self.public_members if type(x) == declarations.ConverterOperator]
 #
 #      for converter in converters:
-#         info = self.info['operator'][converter.result.FullName()]
+#         info = self.info['operator'][converter.result.getFullCPlusPlusName()]
 #         # check if this operator should be excluded
 #         if info.exclude:
 #            continue
@@ -604,7 +604,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       frees = GetFreeOperators()
       members = [x for x in self.public_members if type(x) == declarations.ClassOperator]
       all_operators = frees + members
-      operators = [x for x in all_operators if not self.info['operator'][x.FullName()].exclude]
+      operators = [x for x in all_operators if not self.info['operator'][x.getFullCPlusPlusName()].exclude]
 
       for operator in all_operators:
          if operator.name[0] not in self.CSHARP_SUPPORTED_OPERATORS:
@@ -612,7 +612,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          # Gather information about the operator, for use later.
 #         wrapper = self.info['operator'][operator.name].wrapper
-#         rename = self.info['operator'][operator.FullName()].rename
+#         rename = self.info['operator'][operator.getFullCPlusPlusName()].rename
 
          # Check if this operator will be exported as a method.
          if isinstance(operator, declarations.ClassOperator):
@@ -650,11 +650,11 @@ class ReferenceTypeExporter(Exporter.Exporter):
    def ExportNestedClasses(self, exported_names):
       nested_classes = [x for x in self.public_members if isinstance(x, declarations.NestedClass)]
       for nested_class in nested_classes:
-         nested_info = self.info[nested_class.FullName()]
+         nested_info = self.info[nested_class.getFullCPlusPlusName()]
 #         print nested_info.exclude
          if not nested_info.exclude:
             nested_info.include = self.info.include
-            nested_info.name = nested_class.FullName()
+            nested_info.name = nested_class.getFullCPlusPlusName()
             nested_info.module = self.module
             exporter = ReferenceTypeExporter(nested_info)
             exporter.SetDeclarations(self.declarations)
@@ -667,7 +667,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          enum_info = self.info[enum.name[0]]
          if not enum_info.exclude:
             enum_info.include = self.info.include
-            enum_info.name = enum.FullName()
+            enum_info.name = enum.getFullCPlusPlusName()
             enum_info.module = self.module
             exporter = EnumExporter.EnumExporter(enum_info)
             exporter.SetDeclarations(self.declarations)
@@ -682,7 +682,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       methods = [x for x in self.public_members if isinstance(x, declarations.Method)]
       for method in methods:
          return_opaque_policy = policies.return_value_policy(policies.return_opaque_pointer)
-         if self.info[method.FullName()].policy == return_opaque_policy:
+         if self.info[method.getFullCPlusPlusName()].policy == return_opaque_policy:
             macro = exporterutils.EspecializeTypeID(method.result.name) 
             if macro:
                self.Add('declaration-outside', macro)

@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.26 2004-01-09 20:27:56 patrick Exp $
+# $Id: visitors.py,v 1.27 2004-01-12 22:31:34 patrick Exp $
 
 import re
 
@@ -83,10 +83,10 @@ class CPlusPlusVisitor(DeclarationVisitor):
    def visit(self, decl):
       self.decl         = decl
       self.problem_type = False
-      self.name         = decl.FullName()
-      self.generic_name = decl.getGenericName()
-      self.no_ns_name = '::'.join(decl.name)
-      self.usage = self.name
+      self.name         = decl.getFullCPlusPlusName()
+      self.generic_name = decl.getID()
+      self.no_ns_name   = '::'.join(decl.name)
+      self.usage        = self.name
 
       # Deal with types that need special handling.
       self._checkForProblemType()
@@ -270,15 +270,25 @@ class CSharpVisitor(DeclarationVisitor):
    def __init__(self):
       DeclarationVisitor.__init__(self)
 
+   template_match = re.compile(r'<[^>]+>')
+
    def visit(self, decl):
       self.decl         = decl
       self.problem_type = False
 
-      self.name = '.'.join(decl.getFullNameAbstract())
-      self.generic_name = decl.getGenericName()
+      self.name = '.'.join(decl.getFullAbstractName())
+      self.generic_name = decl.getID()
 
       self.no_ns_name = '.'.join(decl.name)
-      self.usage = self.name
+
+      # If self.name contains template parameters, then we cannot use it as
+      # the usage name.  We must use self.generic_name instead.
+      # XXX: This seems pretty clunky.
+      if self.template_match.search(self.name) != None:
+         self.usage = '.'.join(decl.name)
+      else:
+         self.usage = self.name
+
       # Deal with types that need special handling.
       self._checkForProblemType()
 
@@ -382,6 +392,7 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
       Returns a usage string for this P/Invoke parameter that includes custom
       marshaling information.
       '''
+      assert(usage.find('<') == -1)
       return '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
              (usage, usage)
 

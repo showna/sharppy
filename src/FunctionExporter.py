@@ -35,7 +35,7 @@ class FunctionExporter(Exporter):
         defs = namespaces.python + 'def("%s", ' % name
         wrapper = self.info.wrapper
         if wrapper:
-            pointer = '&' + wrapper.FullName()
+            pointer = '&' + wrapper.getFullCPlusPlusName()
         else:
             pointer = decl.PointerDeclaration()
         defs += pointer            
@@ -64,7 +64,8 @@ class FunctionExporter(Exporter):
             overload = self.OverloadName(decl)
             if overload and overload not in codes:
                 code = 'BOOST_PYTHON_FUNCTION_OVERLOADS(%s, %s, %i, %i)' %\
-                    (overload, decl.FullName(), decl.minArgs, decl_.maxArgs)
+                    (overload, decl.getFullCPlusPlusName(), decl.minArgs,
+                     decl_.maxArgs)
                 codeunit.Write('declaration', code + '\n')
                 codes[overload] = None
         

@@ -59,7 +59,7 @@ class HeaderExporter(Exporter):
         # only export complete declarations
         if not decl.incomplete:
             info = self.info[decl.name]
-            info.name = decl.FullName()
+            info.name = decl.getFullCPlusPlusName()
             info.include = self.info.include
             exporter = exporter_type(info)
             exporter.SetDeclarations(self.declarations)

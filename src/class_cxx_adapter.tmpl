@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.12 2004-01-12 19:44:04 patrick Exp $
-// Generated from \$Revision: 1.12 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.13 2004-01-12 22:31:34 patrick Exp $
+// Generated from \$Revision: 1.13 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -35,7 +35,7 @@ public:
 #silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   /// Override for virtual function $m.FullName().
+   /// Override for virtual function $m.getFullCPlusPlusName().
    virtual $return_visitor.getRawName() ${m.name[0]}($p)
    {
 #set $returns = $return_visitor.getRawName() != 'void'
@@ -52,7 +52,7 @@ public:
 #silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   /// Public wrapper for protected virtual function $m.FullName().
+   /// Public wrapper for protected virtual function $m.getFullCPlusPlusName().
    $return_visitor.getRawName() ${m.name[0]}_wrapper($p)
    {
 #set $returns = $return_visitor.getRawName() != 'void'
@@ -65,7 +65,7 @@ public:
 #silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   /// Public wrapper for protected non-virtual function $m.FullName().
+   /// Public wrapper for protected non-virtual function $m.getFullCPlusPlusName().
    $return_visitor.getRawName() ${m.name[0]}($p)
    {
 #set $returns = $return_visitor.getRawName() != 'void'
@@ -78,7 +78,7 @@ public:
 #silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   /// Public wrapper for protected static function $m.FullName().
+   /// Public wrapper for protected static function $m.getFullCPlusPlusName().
    static $return_visitor.getRawName() ${m.name[0]}($p)
    {
 #set $returns = $return_visitor.getRawName() != 'void'

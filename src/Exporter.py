@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.13 2003-12-08 20:41:30 patrick Exp $
+# $Id: Exporter.py,v 1.14 2004-01-12 22:31:34 patrick Exp $
 
 import os
 
@@ -82,7 +82,7 @@ class Exporter(object):
    def GetDeclarations(self, fullname):
       decls = []
       for decl in self.declarations:
-         if decl.FullName() == fullname:
+         if decl.getFullCPlusPlusName() == fullname:
             decls.append(decl)
       if not decls:
          raise RuntimeError, 'no %s declaration found!' % fullname

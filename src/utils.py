@@ -39,7 +39,7 @@ def makeid(name):
 # generateUniqueName
 #==============================================================================
 def generateUniqueName(declList):
-    return [makeid(x.FullName()) for x in declList]
+    return [makeid(x.getFullCPlusPlusName()) for x in declList]
 
 #==============================================================================
 # operatorToString

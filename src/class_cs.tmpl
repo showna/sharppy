@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.59 2004-01-12 16:34:47 patrick Exp $
-// Generated from \$Revision: 1.59 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.60 2004-01-12 22:31:34 patrick Exp $
+// Generated from \$Revision: 1.60 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -41,7 +41,7 @@ using System.Reflection;
 #for $param in $methodDecl.parameters
 #silent $param[0].accept($dlg_param_visitor)
 #if $dlg_param_visitor.mustMarshal()
-#set $marshaler_name = $dlg_param_visitor.getRawName(False) + 'Marshaler'
+#set $marshaler_name = $dlg_param_visitor.getUsage() + 'Marshaler'
 #set $param_decl = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%s))] %s %s' % ($marshaler_name, $dlg_param_visitor.getUsage(), $param[1])
 #else
 #set $param_decl = '%s %s' % ($dlg_param_visitor.getUsage(), $param[1])
@@ -472,6 +472,7 @@ $generateMethod($m, $has_base_class)
    {
       $body
    };
+
 #end for
 
 #for $nc in $classObj.nested_classes
