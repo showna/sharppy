@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.19 2003-11-04 23:37:39 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.20 2003-11-06 16:37:10 patrick Exp $
 
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
@@ -52,10 +52,13 @@ public:
 
 extern "C"
 {
+#set $i = 0
 #for $c in $classObj.constructors
+#set $cons_name = "new_" + $classObj.bridge_name + "_" + str($i)
+#set $i = $i + 1
 #if $c.IsCopy()
    // Copy constructor wrapper.
-   SHARPPY_API $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
+   SHARPPY_API $class_name* ${cons_name}(const ${classObj.bridge_name}* p)
 #else
 #set $param_list = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
@@ -64,7 +67,7 @@ extern "C"
 #end for
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
-   SHARPPY_API $class_name* new_${classObj.bridge_name}($p)
+   SHARPPY_API $class_name* ${cons_name}($p)
 #end if
    {
 #if $c.IsCopy()

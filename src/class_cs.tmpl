@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.14 2003-11-04 23:12:16 patrick Exp $
+## $Id: class_cs.tmpl,v 1.15 2003-11-06 16:37:10 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -41,16 +41,19 @@ public class $class_visitor.getRawName(False) : $b
 
    // Constructors.
 #set $cons_visitor = CSharpVisitor()
+#set $i = 0
 #for $c in $classObj.constructors
+#set $cons_name = "new_" + $classObj.bridge_name + "_" + str($i)
+#set $i = $i + 1
 #set $pi_p = ',\n\t'.join(['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters])
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private static extern IntPtr new_${classObj.bridge_name}($pi_p);
+   private static extern IntPtr ${cons_name}($pi_p);
 
 #set $p = $pi_p
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
    public ${class_visitor.getRawName(False)}($p)
    {
-      mRawObject   = new_${classObj.bridge_name}($arg_list);
+      mRawObject   = ${cons_name}($arg_list);
       mWeOwnMemory = true;
    }
 
