@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.30 2004-01-16 21:26:56 patrick Exp $
+# $Id: declarations.py,v 1.31 2004-02-05 17:12:34 patrick Exp $
 
 import copy
 import re
@@ -102,7 +102,7 @@ class Declaration(object):
 
     def setCPlusPlusName(self, name):
         # XXX: Brute-force hack to deal with namespace issues.  I don't
-        # understand how self.namespace gets set.  :(
+        # understand how self.namespace gets set...
         if len(self.namespace) > 0:
             namespace = '::'.join(self.namespace)
             namespace_re = re.compile(namespace)
@@ -138,13 +138,18 @@ class Declaration(object):
 
     def getAbstractName(self):
         '''
-        Returns the language-agnostic name of this declaration, including the
+        Returns the language-agnostic name of this declaration, without the
         namespace.
         @rtype: list
         '''
         return self.name
 
     def getFullAbstractName(self):
+        '''
+        Returns the language-agnostic name of this declaration, including the
+        namespace.
+        @rtype: list
+        '''
         name = []
         name[0:0] = self._getAbstractName()
         if self.namespace and self.namespace[0] != '':
@@ -826,12 +831,11 @@ class Enumeration(Declaration):
     @type _values: dict of str => int
     @ivar _values: holds the values for this enum.
     '''
-    
+
     def __init__(self, name, namespace):
         Declaration.__init__(self, name, namespace)
         self.type_str = 'enumeration'
         self.values = {} # dict of str => int
-
 
     def ValueFullName(self, name):
         '''Returns the full name for a value in the enum.
