@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.30 2004-01-26 22:16:56 patrick Exp $
+# $Id: visitors.py,v 1.31 2004-01-27 18:07:04 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -118,8 +118,9 @@ class CPlusPlusVisitor(DeclarationVisitor):
 
 class CPlusPlusParamVisitor(CPlusPlusVisitor):
    '''
-   C++ visitor for function/method parameters.  This will handle the details
-   associated with parameter types when marshaling is in effect.
+   C++ visitor for function/method parameters being passed from C# into native
+   code.  In other words, this class is designed to handle marshaling types
+   friendly to C# into what the native function call actually expects.
    '''
    def __init__(self):
       CPlusPlusVisitor.__init__(self)
@@ -133,11 +134,6 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
       self.__pre_marshal  = ''
       self.__post_marshal = ''
       self.__must_marshal = False
-
-      # Data members needed for parameter holder objects.
-      self.__needs_param_holder = False
-      self.__param_holder_type  = ''
-      self.__param_holder_decl  = ''
 
    def visit(self, decl):
       self.__initialize()
@@ -164,28 +160,16 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
          self.usage += '*'
 
       if typeID == STD_STRING:
+         # If the C++ code is expecting a non-const reference to a std::string,
+         # we will receive a char** from the CLI.  We need to transform the
+         # char** into a std::string and pass it to the C++ code.  The result
+         # will be stored in the memory pointed to by the char**.
          if self.decl.suffix == '&' and not self.decl.const:
             self.__must_marshal = True
             self.__pre_marshal  = 'std::string %s = *%s' % \
                                   (self.__param_name, self.__orig_param_name)
             self.__post_marshal = '*%s = strdup(%s.c_str())' % \
                                   (self.__orig_param_name, self.__param_name)
-      elif typeID == SHARED_PTR:
-         self.__needs_param_holder = True
-         self.__param_holder_type  = 'holder_%s_%s' % \
-                                        (self.__orig_param_name,
-                                         self.__func_name)
-         self.__param_holder_decl  = 'struct %s { %s mPtr; };' % \
-                                        (self.__param_holder_type,
-                                         self.decl.getCPlusPlusName())
-
-         self.__must_marshal = True
-         self.__pre_marshal  = '%s* h = new %s; h->mPtr = %s' % \
-                                  (self.__param_holder_type,
-                                   self.__param_holder_type,
-                                   self.__orig_param_name)
-         self.__post_marshal = ''
-         self.__param_name   = 'h'
 
    def mustMarshal(self):
       return self.__must_marshal
@@ -208,17 +192,6 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
    def getPostCallMarshal(self):
       assert(self.mustMarshal())
       return self.__post_marshal
-
-   def needsParamHolder(self):
-      return self.__needs_param_holder
-
-   def getParamHolderDecl(self):
-      assert(self.needsParamHolder())
-      return self.__param_holder_decl
-
-   def getParamHolderType(self):
-      assert(self.needsParamHolder())
-      return self.__param_holder_type
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''
@@ -309,7 +282,121 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
          self.__pre_marshal  = ['%s %s;' % (self.getRawName(), self.__temp_result_var)]
          self.__post_marshal = ['%s = strdup(%s.c_str());' % (self.__result_var, self.__temp_result_var)]
 
+class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
+   '''
+   C++ visitor for adapter class method parameters.  These parameters are
+   passed from native code into the CIL universe.  Unfortunately, this
+   duplicates some data members of CPlusPlusParamVisitor, but it does not
+   duplicate any of that class' (important) functionality.
+   '''
+   def __init__(self):
+      CPlusPlusVisitor.__init__(self)
+      self.__initialize()
+      self.__func_name       = ''
+      self.__param_name      = ''
+      self.__orig_param_name = ''
+
+   def __initialize(self):
+      # Basic data members needed for parameter marshaling.
+      self.__pre_marshal  = ''
+      self.__post_marshal = ''
+      self.__must_marshal = False
+
+      # Data members needed for parameter holder objects.
+      self.__needs_param_holder = False
+      self.__param_holder_type  = ''
+      self.__param_holder_decl  = ''
+
+   def visit(self, decl):
+      self.__initialize()
+      CPlusPlusVisitor.visit(self, decl)
+
+      # If the parameter is passed by reference, we need to translate that into
+      # being passed as a pointer instead.
+      if decl.suffix == '&':
+         if not self.problem_type and not self._isFundamentalType():
+            self.usage = re.sub(r"&", "*", self.name)
+
+            self.__must_marshal = True
+            self.__param_name   = '&' + self.__param_name
+
+   def _processProblemType(self, typeID):
+      # Perform default problem type processing first.
+      CPlusPlusVisitor._processProblemType(self, typeID)
+
+      if self.decl.suffix == '&' and not self.decl.const:
+         self.usage += '*'
+
+      if typeID == STD_STRING:
+         self.__must_marshal = True
+         marshal_param = 'marshal_%s' % self.__param_name
+
+         if self.decl.suffix == '*':
+            self.__pre_marshal  = 'char* %s = strdup(%s->c_str())' % \
+                                     (marshal_param, self.__orig_param_name)
+         else:
+            self.__pre_marshal  = 'char* %s = strdup(%s.c_str())' % \
+                                     (marshal_param, self.__orig_param_name)
+
+         self.__post_marshal = 'free(%s)' % marshal_param
+      elif typeID == SHARED_PTR:
+         self.__needs_param_holder = True
+         self.__param_holder_type  = 'holder_%s_%s' % \
+                                        (self.__orig_param_name,
+                                         self.__func_name)
+         self.__param_holder_decl  = 'struct %s { %s mPtr; };' % \
+                                        (self.__param_holder_type,
+                                         self.decl.getCPlusPlusName())
+
+         self.__must_marshal = True
+         self.__param_name   = 'h_%s' % self.__orig_param_name
+         self.__pre_marshal  = '%s* %s = new %s; %s->mPtr = %s' % \
+                                  (self.__param_holder_type, self.__param_name,
+                                   self.__param_holder_type, self.__param_name,
+                                   self.__orig_param_name)
+         # Let the code in the CIL universe handle deletion in this case.
+         self.__post_marshal = ''
+
+   def mustMarshal(self):
+      return self.__must_marshal
+
+   def getMarshalParamName(self):
+      assert(self.mustMarshal())
+      return self.__param_name
+
+   def setFunctionName(self, funcName):
+      self.__func_name = funcName
+
+   def setParamName(self, paramName):
+      self.__param_name = 'marshal_' + paramName
+      self.__orig_param_name = paramName
+
+   def getPreCallMarshal(self):
+      assert(self.mustMarshal())
+      return self.__pre_marshal
+
+   def getPostCallMarshal(self):
+      assert(self.mustMarshal())
+      return self.__post_marshal
+
+   def needsParamHolder(self):
+      return self.__needs_param_holder
+
+   def getParamHolderDecl(self):
+      assert(self.needsParamHolder())
+      return self.__param_holder_decl
+
+   def getParamHolderType(self):
+      assert(self.needsParamHolder())
+      return self.__param_holder_type
+
 class CPlusPlusMethodVisitor(CPlusPlusVisitor):
+   '''
+   Visitor for methods that appear in C++ adapter classes for those classes
+   being exposed to C# that have virtual methods.  This visitor can handle
+   different method types (virtual, non-virtual, and static), but its
+   functionality is solely for the methods defined in C++ adapter classes.
+   '''
    def __init__(self):
       CPlusPlusVisitor.__init__(self)
       self.__initialize()
@@ -332,12 +419,16 @@ class CPlusPlusMethodVisitor(CPlusPlusVisitor):
       self.__orig_method_call = methodCall
 
    def __getCallbackResultType(self):
+      "Returns the return type for a virtual method's callback typedef."
       result_decl = self.decl.result
+      marshal_str = result_decl.getFullCPlusPlusName()
       if result_decl.must_marshal and result_decl.suffix != '*':
-         marshal_ptr = '*'
-      else:
-         marshal_ptr = ''
-      return result_decl.getFullCPlusPlusName() + marshal_ptr
+         marshal_str += '*'
+
+      if marshal_str.find('basic_string') != -1:
+         marshal_str = 'char*'
+
+      return marshal_str
 
    def visit(self, decl):
       self.__initialize()
@@ -351,14 +442,14 @@ class CPlusPlusMethodVisitor(CPlusPlusVisitor):
       self.__returns = self.__return_type != 'void'
 
       callback_param_types = []
-      param_visitor = CPlusPlusParamVisitor()
+      param_visitor = CPlusPlusMethodParamVisitor()
       for p in self.decl.parameters:
          param_visitor.setFunctionName(self.getGenericName())
          param_visitor.setParamName(p[1])
          p[0].accept(param_visitor)
 
-         param_type = param_visitor.getUsage()
-         callback_param_type = param_type
+         param_type = param_visitor.getRawName()
+         callback_param_type = param_visitor.getUsage()
 
          # If this parameter needs a holder, we must declare the holder type.
          # The type of this parameter used in the callback will be a pointer to
@@ -377,23 +468,35 @@ class CPlusPlusMethodVisitor(CPlusPlusVisitor):
          self.__param_type_list.append(param_type + ' ' + p[1])
          callback_param_types.append(callback_param_type)
 
+      arg_list = ', '.join(self.__param_list)
+
+      # Start method_call out by making it a call to the base class
+      # method that we are overriding.  In other words, we begin with a
+      # pass-through method, and we alter it to behave differently below if
+      # necessary.
+      method_call = self.__orig_method_call % (self.decl.getFullCPlusPlusName(),
+                                               arg_list)
+
       # Only work out the callback information if we're actually going to have
       # a callback.
       if self.needsCallback():
+         callback_return_type = self.__getCallbackResultType()
          self.__callback_name = th.getCallbackName(self.decl)
          self.__callback_typedef = 'typedef %s (*%s_t)(%s);' % \
-                                      (self.__getCallbackResultType(),
+                                      (callback_return_type,
                                        self.__callback_name,
                                        ', '.join(callback_param_types))
 
-      arg_list = ', '.join(self.__param_list)
-      method_call = self.__orig_method_call % (self.__callback_name, arg_list)
-      if result_visitor.mustMarshal():
-         method_call = '*(%s)' % method_call
+         method_call = self.__orig_method_call % (self.__callback_name, arg_list)
+   
+         # Since we have a callback in place, we may need to marshal the return
+         # type from the callback.
+         if result_visitor.mustMarshal() and callback_return_type != 'char*':
+            method_call = '*(%s)' % method_call
 
       if self.returns():
-         method_call = result_visitor.getMethodCall(method_call, '      ')
-         self.__return_statement = 'return ' + result_visitor.getResultVarName()
+         method_call = '%s result = %s' % (self.__return_type, method_call)
+         self.__return_statement = 'return result'
 
       self.__method_call = method_call
 
