@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.28 2004-01-16 21:26:56 patrick Exp $
+# $Id: visitors.py,v 1.29 2004-01-17 22:43:14 patrick Exp $
 
 import re
 
@@ -504,6 +504,8 @@ class CSharpDelegateParamVisitor(CSharpVisitor):
                self.__must_marshal = False
             else:
                self.__must_marshal = True
+      else:
+         self.__must_marshal = decl.must_marshal
 
    def mustMarshal(self):
       return self.__must_marshal
