@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.53 2004-01-13 19:44:39 patrick Exp $
-// Generated from \$Revision: 1.53 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.54 2004-01-13 21:14:58 patrick Exp $
+// Generated from \$Revision: 1.54 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -9,7 +9,11 @@
 #if not $methodDecl.static
 #silent $params[0:0] = ["%s* self_" % $className]
 #if $classObj.info.smart_ptr
+#if $classObj.info[$methodDecl.name[0]].direct_call
+#set $methodCall = $methodCall % 'mPtr.'
+#else
 #set $methodCall = $methodCall % 'mPtr->'
+#end if
 #else
 #set $methodCall = $methodCall % ''
 #end if
@@ -78,7 +82,11 @@ $return_visitor.getMethodCall($method_call, '      ')
 #if $classObj.smart_ptr
 struct $TemplateHelpers.getHolderName($class_visitor)
 {
+#if $classObj.info.smart_ptr_decl
 #set $smart_ptr_decl = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
+#else
+#set $smart_ptr_decl = $class_visitor.getRawName()
+#end if
    $smart_ptr_decl mPtr;
 };
 
@@ -161,8 +169,12 @@ extern "C"
 ## Smart pointer object construction.
 #if $classObj.info.smart_ptr
       $class_name* obj = new ${class_name};
+#if $classObj.info.ref_counted
 #set $cons_call = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
       obj->mPtr = ${cons_call}(new ${class_visitor.getRawName()}($arg_list));
+#else
+      obj->mPtr = ${class_visitor.getRawName()}($arg_list);
+#end if
 ## Normal object construction.
 #else
       $class_name* obj = new ${class_name}($arg_list);
