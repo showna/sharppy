@@ -89,11 +89,12 @@ class ReferenceTypeInfo(DeclarationInfo):
 #==============================================================================
 class ValueTypeInfo(DeclarationInfo):
 
-    def __init__(self, name, include, tail=None, otherInfo=None):
+    def __init__(self, module, name, include, tail=None, otherInfo=None):
         DeclarationInfo.__init__(self, otherInfo)
         self._Attribute('name', name)
         self._Attribute('include', include)
         self._Attribute('exclude', False)
+        self._Attribute('module', module)
         # create a ValueTypeExporter
         exporter = ValueTypeExporter.ValueTypeExporter(InfoWrapper(self), tail)
         if exporter not in exporters.exporters: 
@@ -109,14 +110,14 @@ def GenerateName(name, type_list):
     names = [name] + type_list
     return utils.makeid('_'.join(names))
 
-    
-class ClassTemplateInfo(DeclarationInfo):
 
-    def __init__(self, name, include):
+class ReferenceTypeTemplateInfo(DeclarationInfo):
+
+    def __init__(self, module, name, include):
         DeclarationInfo.__init__(self)
         self._Attribute('name', name)
         self._Attribute('include', include)
-
+        self._Attribute('module', module)
 
     def Instantiate(self, type_list, rename=None):
         if not rename:
@@ -126,8 +127,8 @@ class ClassTemplateInfo(DeclarationInfo):
         tail = 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
         tail += 'void __instantiate_%s()\n' % rename
         tail += '{ sizeof(%s); }\n\n' % rename
-        # create a ClassInfo
-        class_ = ClassInfo(rename, self._Attribute('include'), tail, self)
+        # create a ReferenceTypeInfo.
+        class_ = ReferenceTypeInfo(rename, self._Attribute('module'), self._Attribute('include'), tail, self)
         return class_
 
 
@@ -135,7 +136,33 @@ class ClassTemplateInfo(DeclarationInfo):
         if isinstance(types, str):
             types = types.split() 
         return self.Instantiate(types, rename)
-        
+
+class ValueTypeTemplateInfo(DeclarationInfo):
+
+    def __init__(self, module, name, include):
+        DeclarationInfo.__init__(self)
+        self._Attribute('name', name)
+        self._Attribute('include', include)
+        self._Attribute('module', module)
+
+    def Instantiate(self, type_list, rename=None):
+        if not rename:
+            rename = GenerateName(self._Attribute('name'), type_list)
+        # generate code to instantiate the template
+        types = ', '.join(type_list)
+        tail = 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
+        tail += 'void __instantiate_%s()\n' % rename
+        tail += '{ sizeof(%s); }\n\n' % rename
+        # create a ReferenceTypeInfo.
+        class_ = ValueTypeInfo(rename, self._Attribute('module'), self._Attribute('include'), tail, self)
+        return class_
+
+
+    def __call__(self, types, rename=None):
+        if isinstance(types, str):
+            types = types.split() 
+        return self.Instantiate(types, rename)
+
 #==============================================================================
 # EnumInfo
 #==============================================================================

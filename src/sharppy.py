@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.11 2003-11-24 20:20:04 patrick Exp $
+# $Id: sharppy.py,v 1.12 2003-12-03 21:13:30 patrick Exp $
 
 """
 Sharppy version %s
@@ -147,7 +147,8 @@ def CreateContext():
    context['ValueType'] = infos.ValueTypeInfo
    context['ReferenceType'] = infos.ReferenceTypeInfo
    context['Include'] = lambda header: infos.CodeInfo('#include <%s>\n' % header, 'include')
-   context['Template'] = infos.ClassTemplateInfo
+   context['ReferenceTemplate'] = infos.ReferenceTypeTemplateInfo
+   context['ValueTemplate'] = infos.ValueTypeTemplateInfo
    context['Enum'] = infos.EnumInfo
    context['AllFromHeader'] = infos.HeaderInfo
    context['Var'] = infos.VarInfo
