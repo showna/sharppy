@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.54 2003-12-31 02:03:59 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.55 2004-01-08 22:20:37 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -18,7 +18,8 @@ import os
 import sys
 import re
 
-from Cheetah.Template import Template
+import Cheetah.Template
+ct = Cheetah.Template
 
 
 #==============================================================================
@@ -34,9 +35,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
    def __init__(self, info, parser_tail=None):
       Exporter.Exporter.__init__(self, info, parser_tail)
 
-      self.cxx_adapter_template = Template(file = self.cxx_adapter_template_file)
-      self.c_wrapper_template = Template(file = self.c_wrapper_template_file)
-      self.csharp_template = Template(file = self.csharp_template_file)
+      self.cxx_adapter_template = ct.Template(file = self.cxx_adapter_template_file)
+      self.c_wrapper_template = ct.Template(file = self.c_wrapper_template_file)
+      self.csharp_template = ct.Template(file = self.csharp_template_file)
 
       self.export_methods_run = False
 

@@ -1,21 +1,21 @@
 # This is derived from the Pyste version of EnumExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: EnumExporter.py,v 1.3 2003-11-03 23:36:09 patrick Exp $
+# $Id: EnumExporter.py,v 1.4 2004-01-08 22:20:37 patrick Exp $
 
-from Exporter import Exporter
+import Exporter
 
 #==============================================================================
 # EnumExporter
 #==============================================================================
-class EnumExporter(Exporter):
+class EnumExporter(Exporter.Exporter):
    'Exports enumerators'
 
    def __init__(self, info):
-      Exporter.__init__(self, info)
+      Exporter.Exporter.__init__(self, info)
 
    def SetDeclarations(self, declarations):
-      Exporter.SetDeclarations(self, declarations)
+      Exporter.Exporter.SetDeclarations(self, declarations)
       if self.declarations:
          self.enum = self.GetDeclaration(self.info.name)
       else:

@@ -1,15 +1,15 @@
 # This is derived from the Pyste version of CodeExporter.py.
 # See http://www.boost.org/ for more information.
 
-from Exporter import Exporter
+import Exporter
 
 #==============================================================================
 # CodeExporter
 #==============================================================================
-class CodeExporter(Exporter):
+class CodeExporter(Exporter.Exporter):
 
     def __init__(self, info):
-        Exporter.__init__(self, info)
+        Exporter.Exporter.__init__(self, info)
 
 
     def Name(self):

@@ -5,9 +5,9 @@
 Various helpers for interface files.
 '''
 
-from settings import *
-from policies import *
-from declarations import *
+import settings
+import policies
+import declarations
 
 #==============================================================================
 # FunctionWrapper

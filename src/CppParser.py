@@ -10,7 +10,7 @@ import os.path
 import settings
 import shutil
 import shelve
-from cPickle import dump, load
+import cPickle
 
 #==============================================================================
 # exceptions
@@ -172,10 +172,10 @@ class CppParser:
         if os.path.isfile(cache_file):
             f = file(cache_file, 'rb')
             try:
-                version = load(f)
+                version = cPickle.load(f)
                 if version != self.version:
                     return None
-                cache = load(f)
+                cache = cPickle.load(f)
                 if cache.has_key(key):
                     self.cache_files.append(cache_file)
                     return cache[key]
@@ -202,8 +202,8 @@ class CppParser:
         if os.path.isfile(cache_file):
             f = file(cache_file, 'rb')
             try:
-                version = load(f)
-                cache = load(f)
+                version = cPickle.load(f)
+                cache = cPickle.load(f)
             finally:
                 f.close()
         else:
@@ -212,8 +212,8 @@ class CppParser:
         self.cache_files.append(cache_file)
         f = file(cache_file, 'wb')
         try:
-            dump(self.version, f, 1)
-            dump(cache, f, 1)
+            cPickle.dump(self.version, f, 1)
+            cPickle.dump(cache, f, 1)
         finally:
             f.close()
         return cache_file 

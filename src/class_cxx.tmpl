@@ -1,11 +1,11 @@
-## $Id: class_cxx.tmpl,v 1.49 2003-12-23 20:43:24 patrick Exp $
-// Generated from \$Revision: 1.49 $ of \$RCSfile: class_cxx.tmpl,v $
-#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getAdapterName, getHolderName
+## $Id: class_cxx.tmpl,v 1.50 2004-01-08 22:20:37 patrick Exp $
+// Generated from \$Revision: 1.50 $ of \$RCSfile: class_cxx.tmpl,v $
+#import TemplateHelpers
 #import visitors
 
 #def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $className = None)
 #set $param_visitor  = visitors.CPlusPlusParamVisitor()
-#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
+#set $params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
 #if not $methodDecl.static
 #silent $params[0:0] = ["%s* self_" % $className]
 #if $classObj.info.smart_ptr
@@ -75,7 +75,7 @@ $return_visitor.getMethodCall($method_call, '      ')
 #set $class_name = $class_visitor.getRawName()
 #end if
 #if $classObj.smart_ptr
-struct $getHolderName($class_visitor)
+struct $TemplateHelpers.getHolderName($class_visitor)
 {
 #set $smart_ptr_decl = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
    $smart_ptr_decl mPtr;
@@ -88,7 +88,7 @@ extern "C"
 ## We have a class that only appears as a smart pointer.  We have at least one
 ## constructor that copies the existing object.
 #if $classObj.info.smart_ptr
-#set $holder_name = $getHolderName($class_visitor)
+#set $holder_name = $TemplateHelpers.getHolderName($class_visitor)
    SHARPPY_API $holder_name* new_${holder_name}($smart_ptr_decl ptr)
    {
       $holder_name* h = new $holder_name;
@@ -115,7 +115,7 @@ extern "C"
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
 #else
 ## For non-copy constructors, build up the parameter list.
-#set $param_list = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters]
+#set $param_list = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters]
 #for $j in range(len($classObj.virtual_methods))
 #set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$j]), $j)
 #silent $param_list.append($q)
@@ -268,7 +268,7 @@ $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #set $func_visitor   = visitors.CPlusPlusVisitor()
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $o in $classObj.global_operators
-#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $o.parameters]
+#set $params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $o.parameters]
 #set $p = ', '.join($params)
 #silent $o.result.accept($return_visitor)
 #silent $o.accept($func_visitor)
