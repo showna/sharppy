@@ -66,11 +66,16 @@ class Exporter(object):
 
     def GenerateCode(self, exported_names):
         self.Export(exported_names)        
+        self.Write()        
 
     def Export(self, exported_names):
-        'subclasses must override this to do the real work'
+        'Subclasses must override this to do the real work.'
         pass
     
+    def Write(self):
+        'Subclasses must override this to do the real work.'
+        pass
+
     def GetDeclarations(self, fullname):
         decls = []
         for decl in self.declarations:

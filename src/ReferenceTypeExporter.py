@@ -121,6 +121,10 @@ class ReferenceTypeExporter(Exporter):
             self.ExportSmartPointer()
             self.ExportOpaquePointerPolicies()
 
+            exported_names[self.Name()] = 1
+
+    def Write(self):
+        if not self.info.exclude:
             # Set up the mapping information for the templates.
             self.cxx_template.exp_class     = self
             self.cxx_template.module        = self.module
@@ -143,10 +147,8 @@ class ReferenceTypeExporter(Exporter):
                 csharp_file = open(csharp_out, 'w')
                 csharp_file.write(str(self.csharp_template))
                 csharp_file.close()
-            except IOError:
+            except IOError, (errno, strerror):
                 print "I/O error (%s) [%s]: %s" % (errno, csharp_out, strerror)
-
-            exported_names[self.Name()] = 1
 
 
     def InheritMethods(self, exported_names):
@@ -541,7 +543,9 @@ class ReferenceTypeExporter(Exporter):
             nested_info = self.info[nested_class.FullName()]
             nested_info.include = self.info.include
             nested_info.name = nested_class.FullName()
-            exporter = ReferenceTypeExporter(nested_info, module = self.module)
+            exporter = ReferenceTypeExporter(nested_info)
+            exporter.setModule(self.module)
+            exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
             exporter.SetDeclarations(self.declarations)
             exporter.Export(exported_names)
 
@@ -551,7 +555,9 @@ class ReferenceTypeExporter(Exporter):
             enum_info = self.info[enum.name]
             enum_info.include = self.info.include
             enum_info.name = enum.FullName()
-            exporter = EnumExporter(enum_info, module = self.module)
+            exporter = EnumExporter(enum_info)
+            exporter.setModule(self.module)
+            exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
             exporter.SetDeclarations(self.declarations)
             # XXX: This can't possibly be done yet...
             assert(False)
