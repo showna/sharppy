@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.44 2004-02-24 18:15:44 patrick Exp $
+# $Id: visitors.py,v 1.45 2004-02-25 17:55:54 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -146,10 +146,10 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
             self.usage = re.sub(r"&", "*", self.name)
 
             self.__must_marshal = True
-            self.__pre_marshal  = '%s %s = *%s' % \
+            self.__pre_marshal  = '%s %s = *%s;' % \
                                   (self.getRawName(), self.__param_name,
                                    self.__orig_param_name)
-#            self.__post_marshal = '*%s = %s' % \
+#            self.__post_marshal = '*%s = %s;' % \
 #                                  (self.__orig_param_name, self.__param_name)
          # If we have a fundamental type being passed by const reference,
          # change that to pass-by-value semantics.  The .NET code expects
@@ -173,9 +173,9 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
          # will be stored in the memory pointed to by the char**.
          if self.decl.suffix == '&' and not self.decl.const:
             self.__must_marshal = True
-            self.__pre_marshal  = 'std::string %s = *%s' % \
+            self.__pre_marshal  = 'std::string %s = *%s;' % \
                                   (self.__param_name, self.__orig_param_name)
-            self.__post_marshal = '*%s = strdup(%s.c_str())' % \
+            self.__post_marshal = '*%s = strdup(%s.c_str());' % \
                                   (self.__orig_param_name, self.__param_name)
 
    def mustMarshal(self):
@@ -237,7 +237,7 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
 
          if self.__must_marshal:
             return_type = re.sub(r'\*', '', self.usage)
-            self.__call_marshal = self.__result_var + ' = new ' + return_type + '(%s)'
+            self.__call_marshal = self.__result_var + ' = new ' + return_type + '(%s);'
             self.__pre_marshal = []
             self.__post_marshal = []
       # If we have a type that is being returned by reference but that does not
@@ -274,8 +274,8 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
 #            self.usage = 'const ' + self.usage
          self.__must_marshal = True
          self.__call_marshal = ''
-         self.__pre_marshal  = ['%s %s' % (self.getRawName(), self.__temp_result_var)]
-         self.__post_marshal = ['%s = strdup(%s.c_str())' % (self.__result_var, self.__temp_result_var)]
+         self.__pre_marshal  = ['%s %s;' % (self.getRawName(), self.__temp_result_var)]
+         self.__post_marshal = ['%s = strdup(%s.c_str());' % (self.__result_var, self.__temp_result_var)]
 
 class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
    '''
@@ -331,9 +331,9 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
          # returns, then we need to assign the result to the original
          # std::string reference.
          if self.decl.suffix == '&' and not self.decl.const:
-            self.__pre_marshal  = 'char* %s = (char*) malloc(sizeof(char) * 256)' % marshal_param
+            self.__pre_marshal  = 'char* %s = (char*) malloc(sizeof(char) * 256);' % marshal_param
             self.__param_name   = '&' + self.__param_name
-            self.__post_marshal = '%s = %s; free(%s)' % \
+            self.__post_marshal = '%s = %s; free(%s);' % \
                                      (self.__orig_param_name, marshal_param,
                                       marshal_param)
 
@@ -344,10 +344,10 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
                deref_op = '->'
             else:
                deref_op = '.'
-            self.__pre_marshal  = 'char* %s = strdup(%s%sc_str())' % \
+            self.__pre_marshal  = 'char* %s = strdup(%s%sc_str());' % \
                                      (marshal_param, self.__orig_param_name,
                                       deref_op)
-            self.__post_marshal = 'free(%s)' % marshal_param
+            self.__post_marshal = 'free(%s);' % marshal_param
 
       elif typeID == SHARED_PTR:
          self.__needs_param_holder = True
@@ -360,7 +360,7 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
 
          self.__must_marshal = True
          self.__param_name   = 'h_%s' % self.__orig_param_name
-         self.__pre_marshal  = '%s* %s = new %s; %s->mPtr = %s' % \
+         self.__pre_marshal  = '%s* %s = new %s; %s->mPtr = %s;' % \
                                   (self.__param_holder_type, self.__param_name,
                                    self.__param_holder_type, self.__param_name,
                                    self.__orig_param_name)
@@ -498,6 +498,8 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
 
          self.__param_type_list.append(param_type + ' ' + p[1])
 
+      assert(decl.info is not None)
+
       # If this method returns an array, we have to change the behavior of the
       # C wrapper function significantly.  Instead of returning a pointer
       # (array), the C wrapper returns nothing.  A new parameter is added to
@@ -510,13 +512,14 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
          # Strip out constness from the array type.
          temp_type = re.sub('const ', '', result_visitor.getRawName())
          self.__param_type_list.append(temp_type + ' arrayHolder')
-         self.__param_list.append('arrayHolder')
 
-         declare_temp = '%s temp_array' % temp_type
+         declare_temp = '%s temp_array;' % temp_type
          self.__pre_call_marshal.append(declare_temp)
          loop_decl = 'for ( int i = 0; i < %s; ++i )' % decl.info.return_array
          self.__post_call_marshal.append(loop_decl)
-         self.__post_call_marshal.append('   arrayHolder[i] = temp_array[i]')
+         self.__post_call_marshal.append('{')
+         self.__post_call_marshal.append('   arrayHolder[i] = temp_array[i];')
+         self.__post_call_marshal.append('}')
 
       arg_list = ', '.join(self.__param_list)
 
@@ -536,13 +539,12 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
             if result_visitor.getMarshaledCall():
                method_call[1] = result_visitor.getMarshaledCall() % method_call[1]
             else:
-               method_call[1] = '%s = %s' % (result_visitor.getMarshalResultVarName(),
+               method_call[1] = '%s = %s;' % (result_visitor.getMarshalResultVarName(),
                                              method_call[1])
          else:
-            method_call[1] = 'result = %s' % method_call[1]
+            method_call[1] = 'result = %s;' % method_call[1]
 
-         method_call[1] += ';'
-         self.__return_statement = 'return result'
+         self.__return_statement = 'return result;'
       elif decl.info.return_array:
          method_call[0] = 'temp_array = ' + method_call[0] + ';'
       else:
@@ -1156,6 +1158,8 @@ class CSharpMethodVisitor(CSharpVisitor):
          unsafe_str = 'unsafe '
       else:
          unsafe_str = ''
+
+      assert(decl.info is not None)
 
       # If this method returns an array, we have to change the signature of the
       # P/Invoke function.  Instead of returning a pointer, the call returns
