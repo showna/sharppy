@@ -1,18 +1,17 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.34 2003-11-19 20:04:09 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.35 2003-11-19 21:41:09 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
 
 import exporters
-from Exporter import Exporter
-from declarations import *
-from settings import *
-from policies import *
-from EnumExporter import EnumExporter
-from utils import makeid, operatorToString
+import Exporter
+import declarations
+import policies
+import EnumExporter
+import utils
 import copy
 import exporterutils
 import os
@@ -24,14 +23,14 @@ from Cheetah.Template import Template
 #==============================================================================
 # ReferenceTypeExporter
 #==============================================================================
-class ReferenceTypeExporter(Exporter):
+class ReferenceTypeExporter(Exporter.Exporter):
    'Generates C# P/Invoke bridging code to export a class declaration.'
 
    cxx_template_file    = os.path.dirname(__file__) + '/class_cxx.tmpl'
    csharp_template_file = os.path.dirname(__file__) + '/class_cs.tmpl'
  
    def __init__(self, info, parser_tail=None, module = 'Unknown'):
-      Exporter.__init__(self, info, parser_tail, module)
+      Exporter.Exporter.__init__(self, info, parser_tail, module)
 
       self.cxx_template = Template(file = self.cxx_template_file)
       self.csharp_template = Template(file = self.csharp_template_file)
@@ -55,7 +54,7 @@ class ReferenceTypeExporter(Exporter):
       self.non_static_members = []
 
    def getClassName(self):
-      return makeid(self.class_.FullName())
+      return utils.makeid(self.class_.FullName())
 
    def isInterface(self):
       '''
@@ -64,7 +63,7 @@ class ReferenceTypeExporter(Exporter):
       (pure virtual) method declarations in the class body.
       '''
       for member in self.class_:
-         if type(member) == Method:
+         if type(member) == declarations.Method:
             if member.virtual and not member.abstract:
                return False
          else:
@@ -75,11 +74,11 @@ class ReferenceTypeExporter(Exporter):
    def Name(self):
       return self.info.name
 
-   def SetDeclarations(self, declarations):
-      Exporter.SetDeclarations(self, declarations)
+   def SetDeclarations(self, declList):
+      Exporter.Exporter.SetDeclarations(self, declList)
       if self.declarations:
          decl = self.GetDeclaration(self.info.name)
-         if isinstance(decl, Typedef):
+         if isinstance(decl, declarations.Typedef):
             self.class_ = self.GetDeclaration(decl.type.name)
             if not self.info.rename:
                self.info.rename = decl.name
@@ -117,7 +116,7 @@ class ReferenceTypeExporter(Exporter):
       exported = False
       for level in self.class_.hierarchy:
          for b in level:
-            if b.visibility == Scope.public and b.FullName() in exportedNames:
+            if b.visibility == declarations.Scope.public and b.FullName() in exportedNames:
                bases.append(b)
                exported = True
          if exported:
@@ -199,10 +198,11 @@ class ReferenceTypeExporter(Exporter):
       just export one type and automatically get all the members from the
       base classes.
       '''
-      valid_members = (Method, ClassVariable, NestedClass, ClassEnumeration)
-         # these don't work INVESTIGATE!: (ClassOperator, ConverterOperator)
+      valid_members = (declarations.Method, declarations.ClassVariable,
+                       declarations.NestedClass, declarations.ClassEnumeration)
+         # these don't work INVESTIGATE!: (declarations.ClassOperator, declarations.ConverterOperator)
       fullnames = [x.FullName() for x in self.class_]
-      pointers = [x.PointerDeclaration(True) for x in self.class_ if isinstance(x, Method)]
+      pointers = [x.PointerDeclaration(True) for x in self.class_ if isinstance(x, declarations.Method)]
       fullnames = dict([(x, None) for x in fullnames])
       pointers = dict([(x, None) for x in pointers])
       for level in self.class_.hierarchy:
@@ -216,7 +216,7 @@ class ReferenceTypeExporter(Exporter):
                      member_copy.class_ = self.class_.getFullNameAbstract()
                      member_info = self.info[member_copy.name[0]]
                      if not member_info.exclude:
-                        if isinstance(member_copy, Method):
+                        if isinstance(member_copy, declarations.Method):
                            pointer = member_copy.PointerDeclaration(True)
                            if pointer not in pointers:
                               self.class_.AddMember(member)
@@ -227,8 +227,11 @@ class ReferenceTypeExporter(Exporter):
                level_exported = True
          if level_exported:
             break
+
       def IsValid(member):
-         return isinstance(member, valid_members) and member.visibility == Scope.public
+         return isinstance(member, valid_members) and \
+                member.visibility == declarations.Scope.public
+
       self.public_members = [x for x in self.class_ if IsValid(x)] 
 
    def WriteOperatorsCPlusPlus(self, indent, wrapperClassName, wrapperClassType):
@@ -330,7 +333,8 @@ class ReferenceTypeExporter(Exporter):
                        isinstance(op, ClassOperator) and len(op.parameters) == 0
 
             c_wrapper_name = "%s_%s" % \
-                             (wrapperClassName, operatorToString(operator.name, is_unary))
+                             (wrapperClassName,
+                              utils.operatorToString(operator.name, is_unary))
             return_type = 'bool'
             param_list  = ''
             op_call     = ''
@@ -385,14 +389,14 @@ class ReferenceTypeExporter(Exporter):
 
          for level in self.class_.hierarchy:
             for b in level:
-               if b.visibility == Scope.public and b.FullName() in exportedNames:
+               if b.visibility == declarations.Scope.public and b.FullName() in exportedNames:
                   base_decl = self.GetDeclaration(b.FullName())
 
                   # We only care about b as a base class if it has virtual
                   # methods.  In that case, we need to inherit from its bridge
                   # class.
                   for member in base_decl.getMembers():
-                     if type(member) == Method and member.virtual:
+                     if type(member) == declarations.Method and member.virtual:
                         # Create a new base declaration using the bridge name
                         # for b.
                         self.bridge_bases.append(b)
@@ -403,7 +407,7 @@ class ReferenceTypeExporter(Exporter):
       else:
          for level in self.class_.hierarchy:
             for b in level:
-               if b.visibility == Scope.public and b.FullName() in exportedNames:
+               if b.visibility == declarations.Scope.public and b.FullName() in exportedNames:
                   self.bridge_bases.exported.append(b)
                   exported = True
             if exported:
@@ -414,7 +418,7 @@ class ReferenceTypeExporter(Exporter):
       Exports all the public contructors of the class, plus indicates if the 
       class is noncopyable.
       '''
-      constructors = [x for x in self.public_members if isinstance(x, Constructor)]
+      constructors = [x for x in self.public_members if isinstance(x, declarations.Constructor)]
 
       # don't export the copy constructor if the class is 
       if self.class_.abstract:
@@ -437,7 +441,7 @@ class ReferenceTypeExporter(Exporter):
 
    def OverloadName(self, method):
       'Returns the name of the overloads struct for the given method'
-      name = makeid(method.FullName())
+      name = utils.makeid(method.FullName())
       overloads = '_overloads_%i_%i' % (method.minArgs, method.maxArgs)    
       return name + overloads
 
@@ -460,9 +464,11 @@ class ReferenceTypeExporter(Exporter):
 
       def IsExportable(m):
          'Returns true if the given method is exportable by this routine'
-         ignore = (Constructor, ClassOperator, Destructor)
+         ignore = (declarations.Constructor, declarations.ClassOperator,
+                   declarations.Destructor)
          method_info = self.info[m.name[0]]
-         return not method_info.exclude and isinstance(m, Function) and \
+         return not method_info.exclude and \
+                isinstance(m, declarations.Function) and \
                 not isinstance(m, ignore) and not m.virtual        
 
       methods = [x for x in self.public_members if IsExportable(x)]
@@ -480,13 +486,13 @@ class ReferenceTypeExporter(Exporter):
       virtual, delegating their export to the ExportMethods routine.
       '''
       for member in self.class_:
-         if type(member) == Method and member.virtual:
+         if type(member) == declarations.Method and member.virtual:
             member.virtual = not self.info[member.FullName()].no_override 
 
    def hasVirtualMethods(self):
       # Check to see if this class has any virtual methods.
       for member in self.class_:
-         if type(member) == Method and member.virtual:
+         if type(member) == declarations.Method and member.virtual:
             return True
 
       return False
@@ -494,7 +500,8 @@ class ReferenceTypeExporter(Exporter):
    def hasNonVirtualMethods(self):
       # Check to see if this class has any non-virtual, non-static methods.
       for member in self.class_:
-         if type(member) == Method and not member.virtual and not member.static:
+         if type(member) == declarations.Method and not member.virtual and \
+            not member.static:
             return True
 
       return False
@@ -502,7 +509,7 @@ class ReferenceTypeExporter(Exporter):
    def hasStaticMethods(self):
       # Check to see if this class has any static methods.
       for member in self.class_:
-         if type(member) == Method and member.static:
+         if type(member) == declarations.Method and member.static:
             return True
 
       return False
@@ -510,7 +517,7 @@ class ReferenceTypeExporter(Exporter):
    def hasStaticData(self):
       # Check to see if this class has any static data members.
       for member in self.class_:
-         if type(member) == ClassVariable and member.static:
+         if type(member) == declarations.ClassVariable and member.static:
             return True
 
       return False
@@ -518,15 +525,16 @@ class ReferenceTypeExporter(Exporter):
    def hasDestructor(self):
       # Check to see if this class has a public destructor.
       for member in self.class_:
-         if type(member) == Destructor and member.visibility == 'public':
+         if type(member) == declarations.Destructor and member.visibility == declarations.Scope.public:
             return True
 
       return False
 
    def ExportVirtualMethods(self):
       def canExport(methodDecl):
-         return type(methodDecl) == Method and methodDecl.virtual and \
-                methodDecl.visibility == 'public'
+         return type(methodDecl) == declarations.Method and \
+                methodDecl.virtual and \
+                methodDecl.visibility == declarations.Scope.public
 
       holder = self.info.holder
       self.virtual_methods = []
@@ -584,7 +592,7 @@ class ReferenceTypeExporter(Exporter):
       # export the converters.
       # export them as simple functions with a pre-determined name
 
-      converters = [x for x in self.public_members if type(x) == ConverterOperator]
+      converters = [x for x in self.public_members if type(x) == declarations.ConverterOperator]
                 
       def ConverterMethodName(converter):
          result_fullname = converter.result.FullName()
@@ -594,7 +602,7 @@ class ReferenceTypeExporter(Exporter):
                return method_name
          else:
             # extract the last name from the full name
-            result_name = makeid(result_name)
+            result_name = utils.makeid(result_name)
             return 'to_' + result_name
             
       for converter in converters:
@@ -617,7 +625,7 @@ class ReferenceTypeExporter(Exporter):
             self.Add('inside', special_code)
 
    def ExportNestedClasses(self, exported_names):
-      nested_classes = [x for x in self.public_members if isinstance(x, NestedClass)]
+      nested_classes = [x for x in self.public_members if isinstance(x, declarations.NestedClass)]
       for nested_class in nested_classes:
          nested_info = self.info[nested_class.FullName()]
 #         print nested_info.exclude
@@ -632,13 +640,13 @@ class ReferenceTypeExporter(Exporter):
             self.nested_classes.append(exporter)
 
    def ExportNestedEnums(self, exported_names):
-      nested_enums = [x for x in self.public_members if isinstance(x, ClassEnumeration)]
+      nested_enums = [x for x in self.public_members if isinstance(x, declarations.ClassEnumeration)]
       for enum in nested_enums:
          enum_info = self.info[enum.name[0]]
          if not enum_info.exclude:
             enum_info.include = self.info.include
             enum_info.name = enum.FullName()
-            exporter = EnumExporter(enum_info)
+            exporter = EnumExporter.EnumExporter(enum_info)
             exporter.setModule(self.module)
             exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
             exporter.SetDeclarations(self.declarations)
@@ -650,9 +658,9 @@ class ReferenceTypeExporter(Exporter):
 
    def ExportOpaquePointerPolicies(self):
       # check all methods for 'return_opaque_pointer' policies
-      methods = [x for x in self.public_members if isinstance(x, Method)]
+      methods = [x for x in self.public_members if isinstance(x, declarations.Method)]
       for method in methods:
-         return_opaque_policy = return_value_policy(return_opaque_pointer)
+         return_opaque_policy = policies.return_value_policy(policies.return_opaque_pointer)
          if self.info[method.FullName()].policy == return_opaque_policy:
             macro = exporterutils.EspecializeTypeID(method.result.name) 
             if macro:
@@ -661,7 +669,7 @@ class ReferenceTypeExporter(Exporter):
    def exportDataMembers(self):
       def IsExportable(m):
          'Returns true if the given member is exportable by this routine'
-         return isinstance(m, ClassVariable)
+         return isinstance(m, declarations.ClassVariable)
 
       data_members = [x for x in self.public_members if IsExportable(x)]
       for m in data_members:
