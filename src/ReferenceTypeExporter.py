@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.71 2004-02-25 17:21:36 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.72 2004-02-26 18:13:44 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -161,6 +161,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          if not self.info.sealed:
             self.exportCallbacks(exported_names)
+
+         self.removeConstMethodVariants()
 
          self.ExportOperators()
          self.ExportNestedClasses(exported_names)
@@ -544,6 +546,41 @@ class ReferenceTypeExporter(Exporter.Exporter):
       # this point, so we can safely ignore methods that are overrides.
       for method in self.virtual_methods:
          self.virtual_method_callbacks.append(method)
+
+   def removeConstMethodVariants(self):
+      '''
+      Strips out const variants of methods since C# does not have the concept
+      of conts methods.  When a method is marked as const in C++, GCC-XML
+      generates two declarations with the only variation being that one is
+      const.  We remove the const variant here.
+      '''
+      def mustRemove(member, methodList):
+         for m in methodList:
+            # If m is a non-const variant of member, then we can remove
+            # member.
+            if m.name[0] == member.name[0] and m is not member and \
+               not m.const and m.parameters == member.parameters:
+               return True
+
+         return False
+
+      all_methods = self.non_virtual_methods + self.virtual_methods + self.sealed_methods
+
+      # XXX: Can this process be optimized?
+      for m in all_methods:
+         if m.const and mustRemove(m, all_methods):
+            if m in self.non_virtual_methods:
+               print "Removing %s from self.non_virtual_methods" % m.name[0]
+               self.non_virtual_methods.remove(m)
+            elif m in self.virtual_methods:
+               print "Removing %s from self.virtual_methods" % m.name[0]
+               self.virtual_methods.remove(m)
+               if m in self.virtual_method_callbacks:
+                  print "Removing %s from self.virtual_method_callbacks" % m.name[0]
+                  self.virtual_method_callbacks.remove(m)
+            else:
+               print "Removing %s from self.sealed_methods" % m.name[0]
+               self.sealed_methods.remove(m)
 
    # Operators natively supported by C#.  This list comes from page 46 of
    # /C# Essentials/, Second Edition.
