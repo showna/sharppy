@@ -108,25 +108,29 @@ extern "C"
 
 #end for
 
-#*
 #for $m in $classObj.virtual_methods
-   $m.result.marshal_type ${classObj.bridge_name}_${m.getGenericName()}($classObj.type* self_,
-      ', '.join($m.parameters))
+#set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
+#silent $params[0:0] = ["%s* self_" % $classObj.getCPlusPlusName()]
+#set $p = ', '.join($params)
+#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+   ## XXX: Need to handle marshaling the return type here.
+   $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
-#if $m.result != 'void'
-#set $p = ', '.join(['::'.join(x[0].name) for x in $m.parameters])
-#if $m.result.mustMarshal()
-      return new ${m.result}(self_->$classObj.type::${m.getGenericName()}($p));
-#else
-      return self_->$classObj.type::${m.getGenericName()}(', '.join($p));
+#set $class_name = $classObj.getCPlusPlusName()
+#set $method_name = $m.name[0]
+#if $getCPlusPlusName($m.result) != 'void'
+      return
 #end if
+#if $m.result.must_marshal
+      new ${getCPlusPlusName($m.result)}(self_->${class_name}::${method_name}($arg_list));
 #else
-      self_->$classObj.type::${m.getGenericName()}(', '.join($p));
+      self_->${class_name}::${method_name}($arg_list);
 #end if
    }
 
 #end for
 
+#*
 #for $m in $classObj.static_methods
    $m.result.marshal_type ${classObj.getGenericName()}_${m.getGenericName()}(', '.join($m.parameters))
    {
