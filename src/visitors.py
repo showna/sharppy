@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.19 2003-11-18 22:25:05 patrick Exp $
+# $Id: visitors.py,v 1.20 2003-11-18 22:33:28 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -389,9 +389,8 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
                self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
                self.__needs_unsafe = False
             else:
-#               self.usage = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
-#                            (self.usage, self.usage)
-               self.usage = 'IntPtr'
+               self.usage = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
+                            (self.usage, self.usage)
 
    def needsUnsafe(self):
       return self.__needs_unsafe
@@ -426,8 +425,7 @@ class CSharpParamVisitor(CSharpVisitor):
                self.__param_name   = 'ref ' + self.__orig_param_name
             else:
                self.__must_marshal = True
-#               self.__param_name = self.__orig_param_name
-               self.__param_name = self.__orig_param_name + '.mRawObject'
+               self.__param_name = self.__orig_param_name
 
    def mustMarshal(self):
       return self.__must_marshal
