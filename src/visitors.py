@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.34 2004-02-04 06:09:00 patrick Exp $
+# $Id: visitors.py,v 1.35 2004-02-05 17:39:22 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -597,32 +597,25 @@ class CSharpVisitor(DeclarationVisitor):
       elif cxx_name.find('boost::shared_ptr', 0) != -1:
          type_id = SHARED_PTR
       else:
-         # XXX: Figure out if there is a simpler way of dealing with unsigned
-         # integers.  It depends largely on the order that the type information
-         # is returned ("int unsigned" versus "unsigned int").
-         if cxx_name.find('long long') != -1:
-            if cxx_name.find('unsigned') != -1:
-               type_id = UNSIGNED_LONG_LONG
-            else:
-               type_id = LONG_LONG
-         elif cxx_name.find('short') != -1:
-            if cxx_name.find('unsigned') != -1:
-               type_id = UNSIGNED_SHORT
-            else:
-               type_id = SHORT
+         if cxx_name == 'long long unsigned int':
+            type_id = UNSIGNED_LONG_LONG
+         elif cxx_name == 'long long int':
+            type_id = LONG_LONG
+         elif cxx_name == 'short':
+            type_id = SHORT
+         elif cxx_name == 'unsigned short' or cxx_name == 'short unsigned int':
+            type_id = UNSIGNED_SHORT
+         elif cxx_name == 'long' or cxx_name == 'int':
+            type_id = LONG
          # Assume that a long (not a long long) is supposed to be a 32-bit
          # integer.
-         elif cxx_name.find('long') != -1 or cxx_name.find('int') != -1:
-            if cxx_name.find('unsigned') != -1:
-               type_id = UNSIGNED_LONG
-            else:
-               type_id = LONG
+         elif cxx_name == 'unsigned long' or cxx_name == 'unsigned int':
+            type_id = UNSIGNED_LONG
+         elif cxx_name == 'char':
+            type_id = CHAR
          # Translate char, which is 1 byte in C/C++, into byte.
-         elif cxx_name.find('char') != -1:
-            if cxx_name.find('unsigned') != -1:
-               type_id = UNSIGNED_CHAR
-            else:
-               type_id = CHAR
+         elif cxx_name == 'unsigned char':
+            type_id = UNSIGNED_CHAR
 
       # Based on type_id, process the problem type.
       if type_id != UNKNOWN:
