@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.28 2003-11-12 20:07:19 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.29 2003-11-12 20:22:28 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
@@ -132,26 +132,45 @@ extern "C"
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}($p)
 #end if
    {
-## XXX: Parameter marshaling is missing here.
+## Copy constructor.
 #if $c.IsCopy()
       $class_name* obj = new ${class_name}(*p);
 #for $m in $classObj.virtual_methods
 #set $callback_name = getCallbackName($m)
       obj->$callback_name = p->$callback_name;
 #end for
+## Normal constructor.
 #else
-#set $arg_list = ', '.join([x[1] for x in $c.parameters])
+## Pre-call parameter marshaling.
+#set $all_args = []
+#for $param in $c.parameters
+#silent $param_visitor.setParamName($param[1])
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+      $param_visitor.getPreCallMarshal(); // Pre-call marshaling for $param[1]
+#silent $all_args.append($param_visitor.getMarshalParamName())
+#else
+#silent $all_args.append($param[1])
+#end if
+#end for
+#set $arg_list = ', '.join($all_args)
       $class_name* obj = new ${class_name}($arg_list);
 #for $count in range(len($classObj.virtual_methods))
 #set $callback_name = getCallbackName($classObj.virtual_methods[$count])
       obj->$callback_name = cb$count;
+#end for
+## Post-call parameter marshaling.
+#for $param in $c.parameters
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+      $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
+#end if
 #end for
 #end if
       return ($class_visitor.getRawName()*) obj;
    }
 
 #end for
-
 #if $classObj.hasDestructor() or $classObj.hasVirtualMethods()
    SHARPPY_API void delete_${class_id}($class_visitor.getRawName()* self_)
    {
