@@ -79,7 +79,8 @@ class ReferenceTypeInfo(DeclarationInfo):
         self._Attribute('module', module)
         # create a ReferenceTypeExporter
         exporter = ReferenceTypeExporter.ReferenceTypeExporter(InfoWrapper(self), tail)
-        if exporter not in exporters.exporters: 
+        if exporter not in exporters.exporters:
+            print "Appending", exporter, "for", name
             exporters.exporters.append(exporter) 
         exporter.interface_file = exporters.current_interface 
 
@@ -119,23 +120,26 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('module', module)
 
-    def Instantiate(self, type_list, rename=None):
+    def Instantiate(self, type_list, headers = [], rename=None):
         if not rename:
             rename = GenerateName(self._Attribute('name'), type_list)
         # generate code to instantiate the template
         types = ', '.join(type_list)
-        tail = 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
+        tail = ''
+        for h in headers:
+           tail += '#include <%s>\n' % h
+        tail += 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
         tail += 'void __instantiate_%s()\n' % rename
         tail += '{ sizeof(%s); }\n\n' % rename
         # create a ReferenceTypeInfo.
-        class_ = ReferenceTypeInfo(rename, self._Attribute('module'), self._Attribute('include'), tail, self)
+        class_ = ReferenceTypeInfo(self._Attribute('module'), rename, self._Attribute('include'), tail, self)
         return class_
 
 
-    def __call__(self, types, rename=None):
+    def __call__(self, types, headers = [], rename=None):
         if isinstance(types, str):
             types = types.split() 
-        return self.Instantiate(types, rename)
+        return self.Instantiate(types, headers, rename)
 
 class ValueTypeTemplateInfo(DeclarationInfo):
 
@@ -145,23 +149,26 @@ class ValueTypeTemplateInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('module', module)
 
-    def Instantiate(self, type_list, rename=None):
+    def Instantiate(self, type_list, headers = [], rename = None):
         if not rename:
             rename = GenerateName(self._Attribute('name'), type_list)
         # generate code to instantiate the template
         types = ', '.join(type_list)
-        tail = 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
+        tail = ''
+        for h in headers:
+           tail += '#include <%s>\n' % h
+        tail += 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
         tail += 'void __instantiate_%s()\n' % rename
         tail += '{ sizeof(%s); }\n\n' % rename
         # create a ReferenceTypeInfo.
-        class_ = ValueTypeInfo(rename, self._Attribute('module'), self._Attribute('include'), tail, self)
+        class_ = ValueTypeInfo(self._Attribute('module'), rename, self._Attribute('include'), tail, self)
         return class_
 
 
-    def __call__(self, types, rename=None):
+    def __call__(self, types, headers = [], rename = None):
         if isinstance(types, str):
             types = types.split() 
-        return self.Instantiate(types, rename)
+        return self.Instantiate(types, headers, rename)
 
 #==============================================================================
 # EnumInfo
