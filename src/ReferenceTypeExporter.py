@@ -114,7 +114,6 @@ class ReferenceTypeExporter(Exporter):
             self.ExportConstructors()
             self.ExportVirtualMethods()
             self.ExportMethods()
-            self.ExportVirtualMethodWrappers()
             self.ExportOperators()
             self.ExportNestedClasses(exported_names)
             self.ExportNestedEnums(exported_names)
@@ -384,29 +383,6 @@ class ReferenceTypeExporter(Exporter):
     def ExportMethods(self):
         '''Export all the non-virtual methods of this class, plus any function
         that is to be exported as a method'''
-            
-        declared = {}
-        def DeclareOverloads(m):
-            'Declares the macro for the generation of the overloads'
-            if (isinstance(m, Method) and m.static) or type(m) == Function:
-                func = m.FullName()
-                macro = 'BOOST_PYTHON_FUNCTION_OVERLOADS'
-            else:
-                func = m.name
-                macro = 'BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS' 
-            code = '%s(%s, %s, %i, %i)\n' % (macro, self.OverloadName(m), func, m.minArgs, m.maxArgs)
-            if code not in declared:
-                declared[code] = True
-                self.Add('declaration', code)
-
-        def Pointer(m):
-            'returns the correct pointer declaration for the method m'
-            # check if this method has a wrapper set for him
-            wrapper = self.info[m.name].wrapper
-            if wrapper:
-                return '&' + wrapper.FullName()
-            else:
-                return m.PointerDeclaration() 
 
         def IsExportable(m):
             'Returns true if the given method is exportable by this routine'
@@ -477,21 +453,10 @@ class ReferenceTypeExporter(Exporter):
             for member in self.class_:
                 if type(member) == Method and member.virtual:
                     self.virtual_methods.append(member)
-#            if holder:
-#                self.Add('template', holder(self.wrapper_generator.FullName()))
-#            else:
-#                self.Add('template', self.wrapper_generator.FullName())
-#            for definition in self.wrapper_generator.GenerateDefinitions():
-#                self.Add('inside', definition)
         else:
             if holder:
                 assert(False)
 #                self.Add('template', holder(self.class_.FullName()))
-
-    def ExportVirtualMethodWrappers(self):
-        pass
-#        if self.hasVirtualMethods():
-#            self.callback_typedefs = self.wrapper_generator.callback_typedefs
 
     # Operators natively supported by C#.  This list comes from page 46 of
     # /C# Essentials/, Second Edition.
