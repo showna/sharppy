@@ -8,7 +8,7 @@ from settings import *
 from policies import *
 from SingleCodeUnit import SingleCodeUnit
 from EnumExporter import EnumExporter
-from utils import makeid, enumerate
+from utils import makeid, enumerate, generateUniqueName
 import copy
 import exporterutils
 import re
@@ -30,10 +30,12 @@ class ReferenceTypeExporter(Exporter):
         # constructor, like class_<C>(...)
         self.sections['constructor'] = []
         # inside: everything within the class_<> statement        
-        self.sections['inside'] = []        
+        self.sections['inside'] = []
+
+        self.exportable_methods = {}
 
         # XXX: Delete me later.
-        self.sections['scope'] = []        
+        self.sections['scope'] = []
 
         # Bridge declarations.
         self.sections['declaration'] = []
@@ -153,10 +155,9 @@ class ReferenceTypeExporter(Exporter):
             return isinstance(member, valid_members) and member.visibility == Scope.public
         self.public_members = [x for x in self.class_ if IsValid(x)] 
 
-
     def Write(self, codeunit):
         self.WriteCPlusPlus(codeunit)
-#        self.WriteCSharp(codeunit)
+        self.WriteCSharp(codeunit)
 
     def WriteCPlusPlus(self, codeunit):
         'Generates the C++ and C code needed for the bridging.'
@@ -223,6 +224,43 @@ class ReferenceTypeExporter(Exporter):
         # export the constructor section
         constructor_params = ', '.join(self.sections['constructor'])
 
+        for method_name, methods in self.exportable_methods.items():
+            print method_name, "will be exported"
+            for i in range(0, len(methods)):
+                method = methods[i]
+                print "Working on %s(%s)" % (method_name, method.parameters)
+                method_info = self.info[method.name]
+
+                # The C wrapper function will be named based on the parameter
+                # type list.  This gives us a guaranteed unique name.
+                param_id = "_".join(generateUniqueName(method.parameters))
+                if param_id:
+                    param_id = "_" + param_id
+                c_wrapper = "%s_%s%s" % (wrapper_class_name, method_name, param_id)
+
+                if method.minArgs != method.maxArgs:
+                    c_wrapper += "_%d" % i
+                    print "We'll need some extra functions for this one"
+
+                params = []   # The list of typed parameters for the C wrapper
+                args = []     # The list of arguments passed to the C++ method
+                for i in range(0, len(method.parameters)):
+                    param = method.parameters[i]
+                    params.append("%s p%d" % (param.FullName(), i))
+                    args.append("p%d" % i)
+
+                param_list = ", ".join(params)
+                arg_list   = ", ".join(args)
+                if param_list:
+                    param_list = ", " + param_list
+
+                code += "SHARPPY_API %s %s(%s* self_%s)\n" %\
+                        (method.result.FullName(), c_wrapper,
+                         wrapper_class_name, param_list)
+                code += "{\n"
+                code += indent + "self->%s(%s);\n" % (method.name, arg_list)
+                code += "}\n\n"
+
         # export the inside section
         in_indent = indent*2
         for line in self.sections['inside']:
@@ -265,6 +303,9 @@ class ReferenceTypeExporter(Exporter):
         if includes:
             codeunit.WriteCPlusPlus('include', includes)
 
+    def WriteCSharp(self, codeunit):
+        'Generates the C# needed for the bridging.'
+        indent = self.INDENT
 
     def Add(self, section, item):
         'Add the item into the corresponding section'
@@ -415,56 +456,62 @@ class ReferenceTypeExporter(Exporter):
             'Returns true if the given method is exportable by this routine'
             ignore = (Constructor, ClassOperator, Destructor)
             return isinstance(m, Function) and not isinstance(m, ignore) and not m.virtual        
-        
-        methods = [x for x in self.public_members if IsExportable(x)]        
+
+        methods = [x for x in self.public_members if IsExportable(x)]
         methods.extend(self.GetAddedMethods())
-        
-        staticmethods = {}
-        
+
+#        staticmethods = {}
+
         for method in methods:
             method_info = self.info[method.name]
-            
+
             # skip this method if it was excluded by the user
             if method_info.exclude:
                 continue 
 
             # rename the method if the user requested
             name = method_info.rename or method.name
-            
+
+            # Use a list to keep track of each method since overloading can
+            # occur without using default arguments.
+            if not self.exportable_methods.has_key(name):
+                self.exportable_methods[name] = []
+            self.exportable_methods[name].append(method)
+
             # warn the user if this method needs a policy and doesn't have one
             method_info.policy = exporterutils.HandlePolicy(method, method_info.policy)
             
             # check for policies
-            policy = method_info.policy or ''
-            if policy:
-                policy = ', %s()' % (policy.Code())
+ #           policy = method_info.policy or ''
+ #           if policy:
+ #               policy = ', %s()' % (policy.Code())
             # check for overloads
-            overload = ''
+#            overload = ''
             if method.minArgs != method.maxArgs:
                 # add the overloads for this method
                 DeclareOverloads(method)
-                overload_name = self.OverloadName(method)
-                overload = ', %s%s()' % (namespaces.sharppy, overload_name)
+#                overload_name = self.OverloadName(method)
+#                overload = ', %s%s()' % (namespaces.sharppy, overload_name)
         
-            # build the .def string to export the method
-            pointer = Pointer(method)
-            code = '.def("%s", %s' % (name, pointer)
-            code += policy
-            code += overload
-            code += ')'
-            self.Add('inside', code)
-            # static method
-            if isinstance(method, Method) and method.static:
-                staticmethods[name] = 1
+#            # build the .def string to export the method
+#            pointer = Pointer(method)
+#            code = '.def("%s", %s' % (name, pointer)
+#            code += policy
+#            code += overload
+#            code += ')'
+#            self.Add('inside', code)
+#            # static method
+#            if isinstance(method, Method) and method.static:
+#                staticmethods[name] = 1
             # add wrapper code if this method has one
             wrapper = method_info.wrapper
             if wrapper and wrapper.code:
                 self.Add('declaration', wrapper.code)
         
-        # export staticmethod statements
-        for name in staticmethods:
-            code = '.staticmethod("%s")' % name
-            self.Add('inside', code) 
+#        # export staticmethod statements
+#        for name in staticmethods:
+#            code = '.staticmethod("%s")' % name
+#            self.Add('inside', code) 
 
 
                 
