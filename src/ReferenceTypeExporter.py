@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.30 2003-11-14 20:29:45 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.31 2003-11-18 22:38:38 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -31,7 +31,6 @@ class ReferenceTypeExporter(Exporter):
  
    def __init__(self, info, parser_tail=None, module = 'Unknown'):
       Exporter.__init__(self, info, parser_tail, module)
-      self.marshalers = {}
 
       self.cxx_template = Template(file = self.cxx_template_file)
       self.csharp_template = Template(file = self.csharp_template_file)
@@ -157,7 +156,6 @@ class ReferenceTypeExporter(Exporter):
          self.cxx_template.exp_class     = self
          self.cxx_template.module        = self.module
          self.csharp_template.exp_class  = self
-         self.csharp_template.marshalers = self.marshalers
          self.csharp_template.module     = self.module
 
          # Execute the templates.
@@ -603,7 +601,7 @@ class ReferenceTypeExporter(Exporter):
       nested_classes = [x for x in self.public_members if isinstance(x, NestedClass)]
       for nested_class in nested_classes:
          nested_info = self.info[nested_class.FullName()]
-         print nested_info.exclude
+#         print nested_info.exclude
          if not nested_info.exclude:
             nested_info.include = self.info.include
             nested_info.name = nested_class.FullName()

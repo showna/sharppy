@@ -1,19 +1,10 @@
-## $Id: class_cs.tmpl,v 1.37 2003-11-18 22:25:05 patrick Exp $
-// Generated from \$Revision: 1.37 $ of \$File$
+## $Id: class_cs.tmpl,v 1.38 2003-11-18 22:36:18 patrick Exp $
+// Generated from \$Revision: 1.38 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 
 #from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName, getBridgeName, getHolderName
 #import visitors
-
-#set $marsharler_visitor = visitors.CSharpVisitor()
-#for $m, $c in $marshalers
-#silent $c.class_accept($marshaler_visitor)
-// Marshaler for $marshaler_visitor.getRawName().
-class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
-{
-}
-#end for
 
 #def generateMethod($methodDecl)
 #set $method_visitor    = visitors.CSharpVisitor()
@@ -67,7 +58,6 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 ## Otherwise, set up the P/Invoke information and the method body.
 #else
 #set $unsafe = False
-## XXX: Need custom marshaling on P/Invoke parameters.
 #if $methodDecl.static
 #set $pi_params = []
 #set $pi_call_args = []
@@ -405,7 +395,6 @@ public class $marshaler_name : ICustomMarshaler
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters])
 ## Set up the P/Invoke information and the method body.
 #set $unsafe = False
-## XXX: Need custom marshaling on P/Invoke parameters.
 #set $pi_params = ['IntPtr obj']
 #for $param in $m.parameters
 #silent $param[0].accept($pi_param_visitor)
