@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.69 2004-02-24 18:10:48 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.70 2004-02-24 23:51:42 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -30,7 +30,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
    cxx_adapter_template_file = os.path.dirname(__file__) + '/class_cxx_adapter.tmpl'
    c_wrapper_template_file   = os.path.dirname(__file__) + '/class_cxx.tmpl'
    csharp_template_file      = os.path.dirname(__file__) + '/class_cs.tmpl'
- 
+
    def __init__(self, info, parser_tail=None):
       Exporter.Exporter.__init__(self, info, parser_tail)
 
@@ -114,7 +114,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       Returns all the base classes of self without taking into account
       hierarchy or which base classes are (or are not) being exported.
       '''
-      all_bases = []       
+      all_bases = []
       for level in self.class_.hierarchy:
          for base in level:
             all_bases.append(base)
@@ -140,7 +140,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       '''
       Return the TOTAL number of bases that this class has, including the
       bases' bases.  Do this because base classes must be instantialized
-      before the derived classes in the module definition.  
+      before the derived classes in the module definition.
       '''
       num_bases = len(self.ClassBases())
       return num_bases, self.class_.getFullCPlusPlusName()
@@ -254,13 +254,13 @@ class ReferenceTypeExporter(Exporter.Exporter):
             if base.getFullCPlusPlusName() not in exported_names:
                for member in base:
                   if type(member) in valid_members:
-                     member_copy = copy.deepcopy(member)   
+                     member_copy = copy.deepcopy(member)
                      member_copy.class_ = self.class_.getFullAbstractName()
                      member_info = self.info[member_copy.name[0]]
                      if not member_info.exclude:
                         if not isinstance(member_copy, declarations.Method) and \
                            member_copy.getFullCPlusPlusName() not in fullnames:
-                           self.class_.AddMember(member)        
+                           self.class_.AddMember(member)
             # This base class has been exported.
             else:
                level_exported = True
@@ -284,12 +284,12 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
    def ExportConstructors(self):
       '''
-      Exports all the public contructors of the class, plus indicates if the 
+      Exports all the public contructors of the class, plus indicates if the
       class is noncopyable.
       '''
       constructors = [x for x in self.public_members if isinstance(x, declarations.Constructor)]
 
-      # don't export the copy constructor if the class is 
+      # don't export the copy constructor if the class is
       if self.class_.abstract:
          for cons in constructors:
             if cons.IsCopy():
@@ -311,10 +311,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
    def OverloadName(self, method):
       'Returns the name of the overloads struct for the given method'
       name = utils.makeid(method.getFullCPlusPlusName())
-      overloads = '_overloads_%i_%i' % (method.minArgs, method.maxArgs)    
+      overloads = '_overloads_%i_%i' % (method.minArgs, method.maxArgs)
       return name + overloads
 
-    
    def GetAddedMethods(self):
       added_methods = self.info.__added__
       result = []
@@ -378,7 +377,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
          # Do this here so that each method declaration has its information
          # (policies, etc.) for later use during the code generation phase.
          member.setInfo(self.info[member.name[0]])
- 
+         print "Set info for", member.getFullCPlusPlusName()
+
          # XXX: This is a very slow way to figure out if a method is
          # overriding a base class method.  If gccxml would tell us
          # when a method is an override, this code would be obsoleted.
@@ -425,7 +425,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
             if m.visibility == declarations.Scope.protected:
                exports_protected_methods = True
                break
-   
+
          result = self.hasVirtualMethods() or exports_protected_methods
 
       # The first time we determine that self needs an adapter, that condition
@@ -702,7 +702,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       for method in methods:
          return_opaque_policy = policies.return_value_policy(policies.return_opaque_pointer)
          if self.info[method.getFullCPlusPlusName()].policy == return_opaque_policy:
-            macro = exporterutils.EspecializeTypeID(method.result.name) 
+            macro = exporterutils.EspecializeTypeID(method.result.name)
             if macro:
                self.Add('declaration-outside', macro)
 
