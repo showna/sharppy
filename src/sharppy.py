@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.8 2003-11-18 22:43:53 patrick Exp $
+# $Id: sharppy.py,v 1.9 2003-11-19 19:48:07 patrick Exp $
 
 """
 Sharppy version %s
@@ -299,7 +299,10 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
       if header:
          tail = tails[(interface, header)]
          # declarations contains everything read in from parsing header.
+         print "\tParsing %s..." % header,
+         sys.__stdout__.flush()
          declarations, parsed_header = parser.Parse(header, interface, tail)
+         print "Done."
       else:
          declarations = []
          parsed_header = None

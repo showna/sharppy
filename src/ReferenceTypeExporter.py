@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.32 2003-11-19 19:33:18 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.33 2003-11-19 19:48:07 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -12,10 +12,11 @@ from declarations import *
 from settings import *
 from policies import *
 from EnumExporter import EnumExporter
-from utils import makeid, enumerate, generateUniqueName, operatorToString
+from utils import makeid, operatorToString
 import copy
 import exporterutils
 import os
+import sys
 
 from Cheetah.Template import Template
 
@@ -163,16 +164,30 @@ class ReferenceTypeExporter(Exporter):
          csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
 
          try:
+            print "\t[C++]",
+            sys.__stdout__.flush()
             cxx_file = open(cxx_out, 'w')
+            print ".",
+            sys.__stdout__.flush()
             cxx_file.write(str(self.cxx_template))
+            print ".",
+            sys.__stdout__.flush()
             cxx_file.close()
+            print "Done"
          except IOError, (errno, strerror):
             print "I/O error (%s) [%s]: %s" % (errno, cxx_out, strerror)
 
          try:
+            print "\t[C#]",
+            sys.__stdout__.flush()
             csharp_file = open(csharp_out, 'w')
+            print ".",
+            sys.__stdout__.flush()
             csharp_file.write(str(self.csharp_template))
+            print ".",
+            sys.__stdout__.flush()
             csharp_file.close()
+            print "Done"
          except IOError, (errno, strerror):
             print "I/O error (%s) [%s]: %s" % (errno, csharp_out, strerror)
 
