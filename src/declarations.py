@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.34 2004-02-19 23:40:35 patrick Exp $
+# $Id: declarations.py,v 1.35 2004-02-19 23:42:05 patrick Exp $
 
 import copy
 import re
@@ -871,8 +871,9 @@ class Variable(Declaration):
     @ivar _type: The type of the variable.
     '''
 
-    def __init__(self, type, name, namespace, init):
+    def __init__(self, type, name, namespace, init, visib = Scope.public):
         Declaration.__init__(self, name, namespace)
+        self.visibility = visib
         self.type = type
         self.init_value = init
 
@@ -893,8 +894,7 @@ class ClassVariable(Variable):
     '''
 
     def __init__(self, type, name, class_, visib, static, init):
-        Variable.__init__(self, type, name, None, init)
-        self.visibility = visib
+        Variable.__init__(self, type, name, None, init, visib)
         self.static = static
         self.class_ = class_
 

@@ -1,5 +1,5 @@
-## $Id: free_types_cs.tmpl,v 1.2 2004-02-19 16:46:07 patrick Exp $
-// Generated from \$Revision: 1.2 $ of \$RCSfile: free_types_cs.tmpl,v $
+## $Id: free_types_cs.tmpl,v 1.3 2004-02-19 23:42:05 patrick Exp $
+// Generated from \$Revision: 1.3 $ of \$RCSfile: free_types_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 #import TemplateHelpers
@@ -10,7 +10,7 @@ public sealed abstract class $className
 #set $const_visitor = visitors.CSharpVariableVisitor()
 #for $c in $wrapperObj.constants
 #silent $c.accept($const_visitor)
-   const $const_visitor.getUsage() $const_visitor.getName() = $const_visitor.getValue();
+   $c.visibility const $const_visitor.getUsage() $const_visitor.getName() = $const_visitor.getValue();
 #end for
 #del $const_visitor
 
