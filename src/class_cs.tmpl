@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.16 2003-11-06 17:17:26 patrick Exp $
+## $Id: class_cs.tmpl,v 1.17 2003-11-06 17:31:51 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -101,13 +101,16 @@ public class $class_visitor.getRawName(False) : $b
 
    // Overloads.
 
-   // Non-virtual methods.
+## ---------------------------- Non-virtual methods ---------------------------
+#if $classObj.hasNonVirtualMethods()
+
+   // Start of non-virtual methods.
 #set $method_visitor = CSharpVisitor()
 #set $result_visitor = CSharpVisitor()
 #for $m in $classObj.non_virtual_methods
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
-#set $name = $method_visitor.getGenericName()
+#set $pi_name = $method_visitor.getGenericName()
 ## XXX: More marshaling is necessary here.
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $pi_params[0:0] = ['IntPtr obj']
@@ -118,7 +121,7 @@ public class $class_visitor.getRawName(False) : $b
 #set $native_return_type = $result_visitor.getUsage()
 #end if
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static $native_return_type ${name}($pi_p);
+   private extern static $native_return_type ${pi_name}($pi_p);
 
 ## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
@@ -128,26 +131,31 @@ public class $class_visitor.getRawName(False) : $b
    public $result_visitor.getUsage() ${m.name[0]}($p)
    {
 #if $m.result.must_marshal
-      return new ${result_visitor.getUsage()}(${name}($arg_list), true);
+      return new ${result_visitor.getUsage()}(${pi_name}($arg_list), true);
 #else
-      #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${name}($arg_list);
+      #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${pi_name}($arg_list);
 #end if
    }
 
 #end for
-   // Virtual methods.
+   // End of non-virtual methods.
+#end if
+## ------------------------------ Virtual methods -----------------------------
+#if $classObj.hasVirtualMethods()
+
+   // Start of virtual methods.
 #for $m in $classObj.virtual_methods
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
-#set $name = $m.name[0]
+#set $method_name = $m.name[0]
 #set $pi_name = $method_visitor.getGenericName()
 ## XXX: More marshaling is necessary here.
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #set $delegate_params = ', '.join($pi_params)
-   // Delegate for the ${name}() callback.
+   // Delegate for the ${method_name}() callback.
 ## XXX: Filling in the parameter list here could be tricky... marshal, marshal, marshal!
-   public delegate $result_visitor.getUsage() ${name}Delegate($delegate_params);
-   protected ${name}Delegate m_${name}Delegate;
+   public delegate $result_visitor.getUsage() ${method_name}Delegate($delegate_params);
+   protected ${method_name}Delegate m_${method_name}Delegate;
 
 #if $m.result.must_marshal
 #set $native_return_type = 'IntPtr'
@@ -164,7 +172,7 @@ public class $class_visitor.getRawName(False) : $b
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']
 #set $arg_list = ', '.join($args)
-   public virtual $result_visitor.getUsage() ${name}($p)
+   public virtual $result_visitor.getUsage() ${method_name}($p)
    {
 #if $m.result.must_marshal
       return new ${result_visitor.getUsage()}(${pi_name}($arg_list), true);
@@ -174,11 +182,16 @@ public class $class_visitor.getRawName(False) : $b
    }
 
 #end for
-   // Static methods.
+   // End of virtual methods.
+#end if
+## ------------------------------ Static methods ------------------------------
+#if $classObj.hasStaticMethods()
+
+   // Start of static methods.
 #for $m in $classObj.static_methods
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
-#set $name = $method_visitor.getGenericName()
+#set $pi_name = $method_visitor.getGenericName()
 ## XXX: More marshaling is necessary here.
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #set $pi_p = ',\n\t'.join($pi_params)
@@ -188,7 +201,7 @@ public class $class_visitor.getRawName(False) : $b
 #set $native_return_type = $result_visitor.getUsage()
 #end if
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static $native_return_type ${name}($pi_p);
+   private extern static $native_return_type ${pi_name}($pi_p);
 
 ## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
@@ -197,13 +210,15 @@ public class $class_visitor.getRawName(False) : $b
    public static $result_visitor.getUsage() ${m.name[0]}($p)
    {
 #if $m.result.must_marshal
-      return new ${result_visitor.getUsage()}(${name}($arg_list), true);
+      return new ${result_visitor.getUsage()}(${pi_name}($arg_list), true);
 #else
-      #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${name}($arg_list);
+      #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${pi_name}($arg_list);
 #end if
    }
 
 #end for
+   // End of static methods.
+#end if
    // Static data.
 #set $data_visitor = CSharpVisitor()
 #set $data_type_visitor = CSharpVisitor()

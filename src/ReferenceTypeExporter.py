@@ -437,6 +437,22 @@ class ReferenceTypeExporter(Exporter):
 
         return False
 
+    def hasNonVirtualMethods(self):
+        # Check to see if this class has any non-virtual, non-static methods.
+        for member in self.class_:
+            if type(member) == Method and not member.virtual and not member.static:
+                return True
+
+        return False
+
+    def hasStaticMethods(self):
+        # Check to see if this class has any static methods.
+        for member in self.class_:
+            if type(member) == Method and member.static:
+                return True
+
+        return False
+
     def hasDestructor(self):
         # Check to see if this class has a public destructor.
         for member in self.class_:
