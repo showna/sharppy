@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.34 2003-11-14 21:36:55 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.35 2003-11-18 17:50:06 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
@@ -97,7 +97,7 @@ public:
    virtual ~${class_name}()
    {;}
 
-#set $return_visitor = CPlusPlusVisitor()
+#set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
 #if not $m.abstract
 #set $callback_name = getCallbackName($m)
@@ -109,7 +109,12 @@ public:
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    virtual $return_visitor.getRawName() ${m.name[0]}($p)
    {
-      #if $return_visitor.getRawName() != 'void' then 'return' else ''# ${getCallbackName($m)}($arg_list);
+#set $returns = $return_visitor.getRawName() != 'void'
+#set $call = '%s(%s)' % ($getCallbackName($m), $arg_list)
+#if $return_visitor.mustMarshal()
+#set $call = '*(%s);' % $call
+#end if
+      #if $returns then 'return ' else ''#$call;
    }
 
 #end if

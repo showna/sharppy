@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.34 2003-11-14 20:53:55 patrick Exp $
+## $Id: class_cs.tmpl,v 1.35 2003-11-18 17:50:06 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -23,13 +23,28 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #silent $methodDecl.accept($method_visitor)
 #silent $methodDecl.result.accept($result_visitor)
 #set $method_name = $methodDecl.name[0]
+## XXX: Need custom marshaling on delegate parameters.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters])
 ## If this method is virtual and is not an override, declare the delegate type
 ## and member variable.
 #if $methodDecl.virtual and not $methodDecl.override
 #set $delegate_name = getDelegateName($methodDecl)
    // Delegate for the ${method_name}() callback.
-   public delegate $result_visitor.getUsage() ${delegate_name}($p);
+## If the reutrn value on the delegate must be marshaled, define an adapter
+## callback that will wrap the actual virtual function.
+#if $methodDecl.result.must_marshal
+#set $adapter_params = ', '.join([x[1] for x in $methodDecl.parameters])
+   protected IntPtr ${method_name}Adapter($p)
+   {
+## XXX: See if we can take advantage of custom marshalers here.
+      return ${method_name}($adapter_params).mRawObject;
+   }
+
+#set $return_type = 'IntPtr'
+#else
+#set $return_type = $result_visitor.getUsage()
+#end if
+   public delegate $return_type ${delegate_name}($p);
    protected $delegate_name m_${delegate_name};
 
 #end if
@@ -174,9 +189,14 @@ class $class_visitor.getRawName(False) : $b
    {
 #if $classObj.hasVirtualMethods()
 #for $m in $classObj.virtual_methods
+## We only have to initialize delegate members for virtual functions that we
+## declare.  Those that are overridden are initialized in the base class.
+#if not $m.override
 #set $delegate_name = getDelegateName($m)
       m_$delegate_name = new ${delegate_name}($m.name[0]);
 #silent $cons_args.append('m_' + $delegate_name)
+#end if
+#silent $cons_args.append('m_' + $getDelegateName($m))
 #end for
 #end if
 #set $arg_list = ', '.join($cons_args)
@@ -190,6 +210,23 @@ class $class_visitor.getRawName(False) : $b
    {
       mRawObject   = instPtr;
       mWeOwnMemory = ownMemory;
+   }
+
+## Handle the case where an abstract (base) class has virtual methods.  We
+## initialize the delegate members in the base class so that sub-classes do
+## not have to do it over and over.
+#elif $classObj.hasVirtualMethods()
+   // Simple constructor for initializing the virtual method callbacks.
+   protected ${class_visitor.getRawName(False)}()
+   {
+#for $m in $classObj.virtual_methods
+#set $callback_name = $m.name[0]
+#if $m.result.must_marshal
+#set $callback_name = $callback_name + 'Adapter'
+#end if
+#set $delegate_type = getDelegateName($m)
+      m_$delegate_type = new ${delegate_type}($callback_name);
+#end if
    }
 
 #end if
@@ -323,7 +360,6 @@ $generateClass($nc)
 #end for
 } // class $class_visitor.getRawName()
 
-#if not $classObj.class_.abstract
 #set $marshaler_name = $class_visitor.getRawName(False) + 'Marshaler'
 ## XXX: Change this over to the C# documentation format.
 // Custom marshaler for $class_visitor.getRawName().  Use this with P/Invoke
@@ -358,12 +394,16 @@ public class $marshaler_name : ICustomMarshaler
    // Marshaling for native memory coming from C++.
    public Object MarshalNativeToManaged(IntPtr nativeObj)
    {
+#if $classObj.class_.abstract
+## XXX: We cannot instantiate abstract types, but pointers to abstract types
+## can be returned from C++.
+      return null;
+#else
 #if $classObj.info.only_smart_ptr
       return new ${class_visitor.getRawName()}(new_${holder_name}(nativeObj));
 #else
-## XXX: We cannot instantiate abstract types, but pointers to abstract types
-## can be returned from C++.
       return new ${class_visitor.getRawName()}(nativeObj, false);
+#end if
 #end if
    }
 
@@ -374,7 +414,6 @@ public class $marshaler_name : ICustomMarshaler
 
    private static $marshaler_name mInstance = new ${marshaler_name}();
 }
-#end if
 #end def
 
 #def generateInterface($classObj)
