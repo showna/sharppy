@@ -6,7 +6,6 @@ from Exporter import Exporter
 from declarations import *
 from settings import *
 from policies import *
-from SingleCodeUnit import SingleCodeUnit
 from EnumExporter import EnumExporter
 from utils import makeid, enumerate
 import copy
