@@ -138,7 +138,10 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('module', module)
 
-    def Instantiate(self, type_list, headers = [], rename=None):
+    def Instantiate(self, type_list, headers = None, rename=None):
+        if headers is None:
+            headers = []
+
 #        if not rename:
 #            generic_name = GenerateName(self._Attribute('name'), type_list)
 #        else:
