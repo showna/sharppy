@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.79 2004-07-06 15:50:58 patrick Exp $
-// Generated from \$Revision: 1.79 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.80 2004-07-06 16:18:49 patrick Exp $
+// Generated from \$Revision: 1.80 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -95,7 +95,8 @@ abstract #slurp
 sealed #slurp
 #end if
 #set $has_virtuals = $classObj.hasVirtualMethods()
-class $class_visitor.getRawName(False)
+#set $class_name = $class_visitor.getRawName(False)
+class $class_name
 #if $b
    : $b
 #end if
@@ -153,7 +154,7 @@ class $class_visitor.getRawName(False)
 ## Allocate a special protected constructor that will only allocate the
 ## delegate data members--if there are any.  This is critical in making
 ## inheritance from C++ work correctly.
-   protected ${class_visitor.getRawName(False)}(NoInitTag doInit)
+   protected ${class_name}(NoInitTag doInit)
 #if $has_base_class
       : base(doInit)
 #end if
@@ -176,7 +177,7 @@ class $class_visitor.getRawName(False)
    private extern static IntPtr ${native_cons_name}($pi_params);
 
 #set $cons_params = ', '.join($cons_visitor.getParamTypeList())
-   $c.visibility ${class_visitor.getRawName(False)}($cons_params)
+   $c.visibility ${class_name}($cons_params)
 #if $has_base_class
       : base(new NoInitTag())   // Do not initialize mRawObject in base class
 #end if
@@ -202,7 +203,7 @@ class $class_visitor.getRawName(False)
 #end for
 #end for
    // Internal constructor needed for marshaling purposes.
-   internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)
+   internal ${class_name}(IntPtr instPtr, bool ownMemory)
 #if $has_base_class
       : base(new NoInitTag())
 #end if
@@ -217,7 +218,7 @@ class $class_visitor.getRawName(False)
 
 #if $classObj.hasPublicDestructor()
    // Destructor.
-   ~${class_visitor.getRawName(False)}()
+   ~${class_name}()
    {
       if ( mWeOwnMemory && IntPtr.Zero != mRawObject )
       {
@@ -369,7 +370,7 @@ class $class_visitor.getRawName(False)
 #end if
    private extern static $result_visitor.getUsage() ${pi_name}($pi_p);
 
-   $o.visibility #if $o.override then 'new ' else ''#static implicit operator ${result_visitor.getUsage()}($class_visitor.getRawName(False) obj)
+   $o.visibility #if $o.override then 'new ' else ''#static implicit operator ${result_visitor.getUsage()}($class_name obj)
    {
       return ${pi_name}(obj.mRawObject);
    }
