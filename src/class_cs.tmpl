@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.57 2004-01-08 22:20:37 patrick Exp $
-// Generated from \$Revision: 1.57 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.58 2004-01-12 16:22:39 patrick Exp $
+// Generated from \$Revision: 1.58 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -222,6 +222,8 @@ class $class_visitor.getRawName(False)
 #set $cons_name = $method_visitor.getGenericName()
 #set $pi_params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $pi_param_visitor), x[1]) for x in $c.parameters]
 #set $cons_params = ', '.join(['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters])
+## No need to add delegate parameters to a copy constructor.
+#if not $c.IsCopy()
 ## Add the delegates to the P/Invoke function call parameter list.
 #for $j in range(len($classObj.virtual_methods))
 #set $m = $classObj.virtual_methods[$j]
@@ -234,6 +236,7 @@ class $class_visitor.getRawName(False)
 #set $delegate_name = TemplateHelpers.getDelegateName($m)
 #silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j + len($classObj.virtual_methods)))
 #end for
+#end if
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static IntPtr ${cons_name}($pi_p);
@@ -243,11 +246,13 @@ class $class_visitor.getRawName(False)
       : base(new NoInitTag())   // Do not initialize mRawObject in base class
 #end if
    {
-#if $has_virtuals
+#if $has_virtuals and not $c.IsCopy()
       allocDelegates();
 #end if
 #set $cons_args = [x[1] for x in $c.parameters]
+#if not $c.IsCopy()
 #silent $cons_args += $delegate_args
+#end if
 #set $arg_list = ', '.join($cons_args)
       mRawObject   = ${cons_name}($arg_list);
       mWeOwnMemory = true;
