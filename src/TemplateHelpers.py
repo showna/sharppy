@@ -1,29 +1,12 @@
-# $Id: TemplateHelpers.py,v 1.2 2003-10-09 19:06:10 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.3 2003-10-31 23:41:23 patrick Exp $
 
-def getCPlusPlusName(decl):
-   return decl.FullName()
-#   full_name = decl.getFullNameAbstract()
-#   if 'basic_string' in full_name:
-#      if decl.const:
-#         const = 'const '
-#      return const + 'char*' + decl.suffix
-#   else:
-#      return decl.FullName()
+def getDeclName(decl, visitor):
+   decl.accept(visitor)
+   return visitor.getRawName()
 
-def getCSharpName(decl):
-   return '.'.join(decl.getFullNameAbstract())
-#   if not translateProblemTypes:
-#      return '.'.join(decl.getFullNameAbstract())
-#   else:
-#      name = []
-#      for n in decl.getFullNameAbstract():
-#         if n.startswith("basic_string"):
-#            name = ['String']
-#            break
-#         else:
-#            name.append(n)
-#
-#      return '.'.join(name)
+def getDeclUsage(decl, visitor):
+   decl.accept(visitor)
+   return visitor.getUsage()
 
 def getCallbackTypedefName(funcHolder, scoped = False):
    if scoped:
@@ -32,6 +15,9 @@ def getCallbackTypedefName(funcHolder, scoped = False):
       return funcHolder.type
 
 def makeCPlusPlusTypedef(funcHolder):
+   def getCPlusPlusName(decl):
+      return decl.FullName()
+
    func = funcHolder.func
    param_types = ', '.join([p[0].FullName() for p in func.parameters])
    typedef = 'typedef %s (%s*)(%s)' % \

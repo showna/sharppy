@@ -67,12 +67,11 @@ class Declaration(object):
             name[0:0] = self.namespace
         return name
 
-    def getGenericName(self):
-        return '_'.join(self.getFullNameAbstract())
+    def accept(self, visitor):
+        visitor.visit(self)
 
     def __repr__(self):        
         return '<Declaration %s at %s>' % (self.FullName(), id(self))
-
 
     def __str__(self):
         return 'Declaration of %s' % self.FullName()

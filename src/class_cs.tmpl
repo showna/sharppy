@@ -1,11 +1,14 @@
 using System;
 using System.Runtime.InteropServices;
 
-#from TemplateHelpers import getCSharpName
+#from TemplateHelpers import getDeclName, getDeclUsage
+#from visitors import CSharpVisitor
 
+#set $marsharler_visitor = CSharpVisitor()
 #for $m, $c in $marshalers
-// Marshaler for $c.getCSharpName().
-class $c.getCSharpName()_Marshaler : ICustomMarshaler
+#silent $c.class_accept($marshaler_visitor)
+// Marshaler for $marshaler_visitor.getRawName().
+class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 {
 }
 #end for
@@ -13,15 +16,19 @@ class $c.getCSharpName()_Marshaler : ICustomMarshaler
 #def generateClass($classObj)
 #set $bases = []
 #set $has_base = False
+#set $class_visitor = CSharpVisitor()
+#set $base_visitor = CSharpVisitor()
+#silent $classObj.class_.accept($class_visitor)
 #for $b in $classObj.bases
-#if $getCSharpName($b) != $classObj.getCSharpName()
-#silent $bases.append($getCSharpName($b))
+#silent $b.accept($base_visitor)
+#if $base_visitor.getRawName() != $class_visitor.getRawName()
+#silent $bases.append($base_visitor.getRawName())
 #set $has_base = True
 #end if
 #end for
 #silent bases.append('IDisposable')
 #set $b = ', '.join($bases)
-public class $classObj.getCSharpName() : $b
+public class $class_visitor.getRawName(False) : $b
 {
 ## If we have a base class, it will hold mRawObject.
 #if not $has_base
@@ -30,14 +37,15 @@ public class $classObj.getCSharpName() : $b
 #end if
 
    // Constructors.
+#set $cons_visitor = CSharpVisitor()
 #for $c in $classObj.constructors
-#set $pi_p = ',\n\t'.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $c.parameters])
+#set $pi_p = ',\n\t'.join(['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters])
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private static extern IntPtr new_${classObj.bridge_name}($pi_p);
 
 #set $p = $pi_p
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-   public ${classObj.getCSharpName()}($p)
+   public ${class_visitor.getRawName(False)}($p)
    {
       mRawObject   = new_${classObj.bridge_name}($arg_list);
       mWeOwnMemory = true;
@@ -68,20 +76,21 @@ public class $classObj.getCSharpName() : $b
 
    // Non-virtual methods.
 #for $m in $classObj.non_virtual_methods
-#set $name = $m.getGenericName()
-#set $pi_params = ['%s %s' % (getCSharpName(x[0]), x[1]) for x in $m.parameters]
+#silent $m.accept($class_visitor)
+#set $name = $class_visitor.getGenericName()
+#set $pi_params = ['%s %s' % (getDeclName(x[0], $class_visitor), x[1]) for x in $m.parameters]
 #silent $pi_params[0:0] = ['IntPtr obj']
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static $getCSharpName($m.result) ${name}($pi_p);
+   private extern static $getDeclName($m.result, $class_visitor) ${name}($pi_p);
 
-#set $p = ', '.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $class_visitor), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']
 #set $arg_list = ', '.join($args)
-   public $getCSharpName($m.result) ${m.name[0]}($p)
+   public $getDeclName($m.result, $class_visitor) ${m.name[0]}($p)
    {
-#if $getCSharpName($m.result) != 'void'
+#if $getDeclName($m.result, $class_visitor) != 'void'
       return ${name}($arg_list);
 #else
       ${name}($arg_list);
@@ -96,8 +105,10 @@ public class $classObj.getCSharpName() : $b
 
    // Static data.
 
+#set $nested_visitor = CSharpVisitor()
 #for $nc in $classObj.nested_classes
-   // Nested class $nc.getCSharpName().
+#silent $nc.class_.accept($nested_visitor)
+   // Nested class $nested_visitor.getRawName().
 $generateClass($nc)
 #end for
 }

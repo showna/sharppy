@@ -47,15 +47,6 @@ class ReferenceTypeExporter(Exporter):
         self.nested_classes = []
         self.nested_enums   = []
 
-    def getCPlusPlusName(self):
-        return '::'.join(self.class_.getFullNameAbstract())
-
-    def getCSharpName(self, withNamespace = True):
-        if withNamespace:
-            return '.'.join(self.class_.getFullNameAbstract())
-        else:
-            return '.'.join(self.class_.name)
-
     def getClassName(self):
         return makeid(self.class_.FullName())
 
@@ -86,8 +77,9 @@ class ReferenceTypeExporter(Exporter):
             else:
                 self.class_ = decl
             self.class_ = copy.deepcopy(self.class_)
-            self.cxx_output_file = self.class_.getGenericName() + '.cpp'
-            self.csharp_output_file = self.class_.getGenericName() + '.cs'
+            base_fname = '_'.join(self.class_.getFullNameAbstract())
+            self.cxx_output_file = base_fname + '.cpp'
+            self.csharp_output_file = base_fname + '.cs'
         else:
             self.class_ = None
             self.cxx_output_file = 'yikes.cpp'
@@ -542,6 +534,7 @@ class ReferenceTypeExporter(Exporter):
         nested_classes = [x for x in self.public_members if isinstance(x, NestedClass)]
         for nested_class in nested_classes:
             nested_info = self.info[nested_class.FullName()]
+            print nested_info.exclude
             if not nested_info.exclude:
                 nested_info.include = self.info.include
                 nested_info.name = nested_class.FullName()

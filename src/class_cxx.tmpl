@@ -1,23 +1,27 @@
 \#include "sharppy.h"
-#from TemplateHelpers import getCPlusPlusName, getCallbackTypedefName, makeCPlusPlusTypedef
+#from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
+#from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
 
 #def exportClass($classObj)
-#set $class_name = $classObj.getCPlusPlusName()
+#set $cxx_visitor = CPlusPlusVisitor()
+#silent $classObj.class_.accept($cxx_visitor)
+#set $class_name = $cxx_visitor.getRawName()
 #for $i in $classObj.includes
 \#include <$i>
 #end for
 
 #if $classObj.hasVirtualMethods()
-#set $base_list = ['public %s' % getCPlusPlusName(x) for x in $classObj.bases]
+#set $base_list = ['public %s' % getDeclName(x, $cxx_visitor) for x in $classObj.bases]
 #set $bases = ', '.join($base_list)
 class SHARPPY_API $classObj.bridge_name : $bases
 {
 public:
 #for $c in $classObj.constructors
 
-#set $p = ', '.join(['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-#set $base_cons = getCPlusPlusName($classObj.bases[0])
+#silent $classObj.bases[0].accept($cxx_visitor)
+#set $base_cons = $cxx_visitor.getRawName()
    ${classObj.bridge_name}($p)
       : ${base_cons}($arg_list)
    {;}
@@ -31,11 +35,11 @@ public:
    $makeCPlusPlusTypedef($m.callback);
    $getCallbackTypedefName($m.callback) ${m.name[0]}_callback;
 
-#set $p = ', '.join(['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   virtual $getCPlusPlusName($m.result) ${m.name[0]}($p)
+   virtual $getDeclName($m.result, $cxx_visitor) ${m.name[0]}($p)
    {
-#set $result_type = getCPlusPlusName($m.result)
+#set $result_type = getDeclName($m.result, $cxx_visitor)
       #if $result_type != 'void' then 'return' else ''# ${m.name[0]}_callback($arg_list);
    }
 #end for
@@ -49,7 +53,7 @@ extern "C"
    // Copy constructor wrapper.
    SHARPPY_API $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
 #else
-#set $param_list = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters]
+#set $param_list = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
 #set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
 #silent $param_list.append($q)
@@ -89,40 +93,47 @@ extern "C"
 #end if
 
 #for $m in $classObj.non_virtual_methods
-#set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
+#set $return_visitor = CPlusPlusReturnVisitor()
+#silent $m.result.accept($return_visitor)
+#silent $m.accept($cxx_visitor)
    ## XXX: Need to handle marshaling the return type here.
-   SHARPPY_API $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
+   SHARPPY_API $return_visitor.getUsage() ${cxx_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
-#if $getCPlusPlusName($m.result) != 'void'
+#if $return_visitor.getRawName() != 'void'
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${getCPlusPlusName(m.result)}(self_->${m.getGenericName()}($arg_list));
+      new ${return_visitor.getRawName()}(self_->${cxx_visitor.getGenericName()}($arg_list));
 #else
-      self_->${m.getGenericName()}($arg_list);
+      self_->${cxx_visitor.getGenericName()}($arg_list);
 #end if
    }
 
 #end for
 
 #for $m in $classObj.virtual_methods
-#set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
+#set $method_visitor = CPlusPlusVisitor()
+#set $return_visitor = CPlusPlusReturnVisitor()
+#silent $m.accept($method_visitor)
+#silent $m.result.accept($return_visitor)
    ## XXX: Need to handle marshaling the return type here.
-   SHARPPY_API $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
+   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
-#if $getCPlusPlusName($m.result) != 'void'
+#if $return_visitor.getRawName() != 'void'
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${getCPlusPlusName($m.result)}(self_->${class_name}::${method_name}($arg_list));
+      new ${return_visitor.getRawName()}(self_->${class_name}::${method_name}($arg_list));
 #else
       self_->${class_name}::${method_name}($arg_list);
 #end if
@@ -132,19 +143,24 @@ extern "C"
 
 #*
 #for $m in $classObj.static_methods
-#set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
+#set $params = ['%s %s' % (getDeclName(x[0], $cxx_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
+#set $method_visitor = CPlusPlusVisitor()
+#set $return_visitor = CPlusPlusReturnVisitor()
+#silent $m.accept($method_visitor)
+#silent $m.result.accept($return_visitor)
    ## XXX: Need to handle marshaling the return type here.
-   SHARPPY_API $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
+   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
-#if $m.result != 'void'
+#if $return_visitor.getRawName() != 'void'
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${m.result}(${class_name}::${method_name}($arg_list));
+      new ${return_visitor.getRawName()}(${class_name}::${method_name}($arg_list));
+#else
       ${class_name}::${method_name}($arg_list);
 #end if
    }
@@ -154,7 +170,8 @@ extern "C"
 }
 
 #for $nc in $classObj.nested_classes
-// Nested class $nc.getCPlusPlusName().
+#silent $nc.class_.accept($cxx_visitor)
+// Nested class $cxx_visitor.getRawName().
 $exportClass($nc)
 #end for
 #end def
