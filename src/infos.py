@@ -71,16 +71,17 @@ class FunctionInfo(DeclarationInfo):
 #==============================================================================
 class ReferenceTypeInfo(DeclarationInfo):
 
-    def __init__(self, module, name, include, tail=None, otherInfo=None):
+    def __init__(self, module, name, include, tail = None, otherInfo = None,
+                 extraHeaders = []):
         DeclarationInfo.__init__(self, otherInfo)
         self._Attribute('name', name)
         self._Attribute('include', include)
+        self._Attribute('extra_headers', extraHeaders)
         self._Attribute('exclude', False)
         self._Attribute('module', module)
         # create a ReferenceTypeExporter
         exporter = ReferenceTypeExporter.ReferenceTypeExporter(InfoWrapper(self), tail)
         if exporter not in exporters.exporters:
-            print "Appending", exporter, "for", name
             exporters.exporters.append(exporter) 
         exporter.interface_file = exporters.current_interface 
 
@@ -128,11 +129,14 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
         tail = ''
         for h in headers:
            tail += '#include <%s>\n' % h
+        # XXX: I don't think that this should be in the global namespace...
         tail += 'typedef %s< %s > %s;\n' % (self._Attribute('name'), types, rename)
         tail += 'void __instantiate_%s()\n' % rename
         tail += '{ sizeof(%s); }\n\n' % rename
         # create a ReferenceTypeInfo.
-        class_ = ReferenceTypeInfo(self._Attribute('module'), rename, self._Attribute('include'), tail, self)
+        class_ = ReferenceTypeInfo(self._Attribute('module'),
+                                   rename, self._Attribute('include'), tail,
+                                   self, headers)
         return class_
 
 
