@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.66 2004-01-17 18:40:50 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.67 2004-01-17 18:48:30 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -441,6 +441,17 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.overloadsEquality = lambda x = result: x
       return result
 
+   def hasPublicDestructor(self):
+      'Determines whether the wrapped C++ class has a public destructor.'
+      result = False
+      for member in self.class_:
+         if type(member) == declarations.Destructor:
+            result = member.visibility == declarations.Scope.public
+            break
+
+      self.hasPublicDestructor = lambda x = result: x
+      return result
+
    def hasVirtualMethods(self):
       assert(self.export_methods_run == True,
              "hasVirtualMethods() called too early")
@@ -479,14 +490,6 @@ class ReferenceTypeExporter(Exporter.Exporter):
       # Check to see if this class has any static data members.
       for member in self.class_:
          if type(member) == declarations.ClassVariable and member.static:
-            return True
-
-      return False
-
-   def hasDestructor(self):
-      # Check to see if this class has a public destructor.
-      for member in self.class_:
-         if type(member) == declarations.Destructor and member.visibility == declarations.Scope.public:
             return True
 
       return False

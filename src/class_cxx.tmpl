@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.56 2004-01-17 16:45:54 patrick Exp $
-// Generated from \$Revision: 1.56 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.57 2004-01-17 18:48:30 patrick Exp $
+// Generated from \$Revision: 1.57 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -204,13 +204,14 @@ extern "C"
 
 ## End of constructor loop.
 #end for
-## Simple destructor wrapper.  All classes will have one.
-## XXX: What about classes with non-public destructors?
+## Simple destructor wrapper.
+#if $classObj.hasPublicDestructor()
    SHARPPY_API void delete_${class_id}($class_name* self_)
    {
       delete self_;
    }
 
+#end if
 ## ---------------------------- Non-virtual methods ---------------------------
 #for $m in $classObj.non_virtual_methods
 #set $method_call = 'self_->%s' + $m.name[0]
