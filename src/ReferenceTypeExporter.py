@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.51 2003-12-23 21:49:50 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.52 2003-12-31 01:15:29 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -389,6 +389,16 @@ class ReferenceTypeExporter(Exporter.Exporter):
       # of the above computations for any future calls.
       self.needsAdapter = lambda x = result: x
 
+      return result
+
+   def overloadsEquality(self):
+      'Determines whether the wrapped C++ class overloads operator==.'
+      result = False
+      for o in self.member_operators:
+         if o.name[0] == '==':
+            result = True
+            break
+      self.overloadsEquality = lambda x = result: x
       return result
 
    def hasVirtualMethods(self):
