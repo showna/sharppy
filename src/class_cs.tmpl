@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.51 2003-12-22 21:06:27 patrick Exp $
-// Generated from \$Revision: 1.51 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.52 2003-12-22 22:22:34 patrick Exp $
+// Generated from \$Revision: 1.52 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -94,6 +94,9 @@ using System.Reflection;
 #end if
 #elif $methodDecl.static
 #set $method_type = 'static'
+#if $methodDecl.override
+#set $method_type = 'new ' + $method_type
+#end if
 #else
 #set $method_type = ''
 #end if
