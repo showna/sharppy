@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.55 2004-01-08 22:20:37 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.56 2004-01-09 20:20:34 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -18,8 +18,7 @@ import os
 import sys
 import re
 
-import Cheetah.Template
-ct = Cheetah.Template
+import Cheetah.Template as ct
 
 
 #==============================================================================
