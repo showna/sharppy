@@ -1,9 +1,9 @@
-## $Id: class_cs.tmpl,v 1.32 2003-11-13 22:50:32 patrick Exp $
+## $Id: class_cs.tmpl,v 1.33 2003-11-14 17:54:47 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
 
-#from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName, getBridgeName
+#from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName, getBridgeName, getHolderName
 #from visitors import CSharpVisitor, CSharpPInvokeParamVisitor, CSharpParamVisitor, CSharpReturnVisitor
 
 #set $marsharler_visitor = CSharpVisitor()
@@ -152,7 +152,9 @@ class $class_visitor.getRawName(False) : $b
 #end if
 
 #set $method_visitor = CSharpVisitor()
-#if not $classObj.class_.abstract
+## Do not define constructors if this class is abstract or it appears only as
+## as smart pointer.
+#if not $classObj.class_.abstract and not $classObj.info.only_smart_ptr
    // Constructors.
 #set $cons_visitor = CSharpVisitor()
 #for $c in $classObj.constructors
@@ -351,12 +353,22 @@ public class $marshaler_name : ICustomMarshaler
       return (($class_visitor.getRawName()) obj).mRawObject;
    }
 
+#if $classObj.info.only_smart_ptr
+#set $holder_name = $getHolderName($class_visitor)
+   [DllImport("$module")]
+   private extern static IntPtr new_${holder_name}(IntPtr obj);
+
+#end if
    // Marshaling for native memory coming from C++.
    public Object MarshalNativeToManaged(IntPtr nativeObj)
    {
+#if $classObj.info.only_smart_ptr
+      return new ${class_visitor.getRawName()}(new_${holder_name}(nativeObj));
+#else
 ## XXX: We cannot instantiate abstract types, but pointers to abstract types
 ## can be returned from C++.
       return new ${class_visitor.getRawName()}(nativeObj, false);
+#end if
    }
 
    public static ICustomMarshaler GetInstance(string cookie)
