@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.43 2004-05-20 20:44:09 patrick Exp $
+# $Id: declarations.py,v 1.44 2004-05-24 16:32:29 patrick Exp $
 
 import copy
 import re
@@ -691,13 +691,21 @@ class Type(Declaration):
         self.type_decl = cxxTypeDecl
 
         real_type = self.type_decl
-        while ( type(real_type) == Typedef ):
+        while type(real_type) == Typedef:
             real_type = real_type.type
 
         self.real_type = real_type
 
-        if None != cxxTypeDecl:
-            self.must_marshal = cxxTypeDecl.must_marshal
+        # If self.real_type is not the same object reference as self.type_decl,
+        # then self.type_decl is almost certainly a typedef.  A Typedef
+        # object will not have correct marshaling information--only the real
+        # type has that set correctly.
+        if self.real_type is not self.type_decl and self.real_type is not None:
+            self.must_marshal = self.real_type.must_marshal
+        # Otherwise, if self.type_decl is not an empty reference, then we can
+        # get our marshaling information from it.
+        elif self.type_decl is not None:
+            self.must_marshal = self.type_decl.must_marshal
 
         self.const = const
 
