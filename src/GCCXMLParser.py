@@ -294,7 +294,7 @@ class GCCXMLParser(object):
             # a nested class
             visib = element.get('access', Scope.public)
             class_ = NestedClass(
-                name, context.FullName(), visib, [], abstract)
+                name, context.getFullNameAbstract(), visib, [], abstract)
         class_.incomplete = incomplete
         # we have to add the declaration of the class before trying        
         # to parse its members and bases, to avoid recursion.
@@ -352,7 +352,7 @@ class GCCXMLParser(object):
 
 
     def ParseMethodType(self, id, element):
-        class_ = self.GetDecl(element.get('basetype')).FullName()
+        class_ = self.GetDecl(element.get('basetype')).getFullNameAbstract()
         result = self.GetType(element.get('returns'))
         args = self.GetArguments(element)
         method = MethodType(result, args, class_)
@@ -362,7 +362,7 @@ class GCCXMLParser(object):
     def ParseField(self, id, element):
         name = element.get('name').split('::')
         visib = element.get('access', Scope.public)
-        classname = self.GetDecl(element.get('context')).FullName()
+        classname = self.GetDecl(element.get('context')).getFullNameAbstract()
         type_ = self.GetType(element.get('type'))
         static = bool(int(element.get('extern', '0')))
         location = self.GetLocation(element.get('location'))
@@ -374,7 +374,7 @@ class GCCXMLParser(object):
     def ParseMethod(self, id, element, methodType=Method):
         name = element.get('name').split('::')
         result = self.GetType(element.get('returns'))
-        classname = self.GetDecl(element.get('context')).FullName()
+        classname = self.GetDecl(element.get('context')).getFullNameAbstract()
         visib = element.get('access', Scope.public)
         static = bool(int(element.get('static', '0')))
         virtual = bool(int(element.get('virtual', '0')))
@@ -396,7 +396,7 @@ class GCCXMLParser(object):
     def ParseConstructor(self, id, element):
         name = element.get('name').split('::')
         visib = element.get('access', Scope.public)
-        classname = self.GetDecl(element.get('context')).FullName()
+        classname = self.GetDecl(element.get('context')).getFullNameAbstract()
         location = self.GetLocation(element.get('location'))
         params = self.GetArguments(element)
         ctor = Constructor(name, classname, params, visib)
@@ -407,7 +407,7 @@ class GCCXMLParser(object):
     def ParseDestructor(self, id, element):
         name = element.get('name').split('::')
         visib = element.get('access', Scope.public)
-        classname = self.GetDecl(element.get('context')).FullName()
+        classname = self.GetDecl(element.get('context')).getFullNameAbstract()
         virtual = bool(int(element.get('virtual', '0')))
         location = self.GetLocation(element.get('location'))
         des = Destructor(name, classname, visib, virtual)
@@ -439,7 +439,7 @@ class GCCXMLParser(object):
             enum = Enumeration(name, context)
         else:
             visib = element.get('access', Scope.public)
-            enum = ClassEnumeration(name, context.FullName(), visib)
+            enum = ClassEnumeration(name, context.getFullNameAbstract(), visib)
         self.AddDecl(enum)
         enum.location = location
         for child in element:

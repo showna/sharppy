@@ -2,6 +2,7 @@
 # See http://www.boost.org/ for more information.
 
 from utils import makeid
+import re
 
 
 '''
@@ -175,12 +176,14 @@ class NestedClass(Class):
 
     def __init__(self, name, class_, visib, members, abstract):
         Class.__init__(self, name, None, members, abstract)
+        assert(type(class_) == list)
         self.class_ = class_
         self.visibility = visib
 
     def _getFullName(self):
-        name = [self.class_]
-        name[1:1] = self.name
+        name = []
+        name[0:0] = self.name
+        name[0:0] = self.class_
         return name
 
 #    def FullName(self):
@@ -237,6 +240,7 @@ class Function(Declaration):
 
         for i in xrange(len(params)):
             s = 'p' + str(i)
+#            print params[i].name
             self.parameters.append((params[i], s))
 
         # the exception specification
@@ -317,6 +321,7 @@ class Method(Function):
         self.virtual = virtual
         self.abstract = abstract
         self.static = static
+        assert(type(class_) == list)
         self.class_ = class_
         self.const = const
 
@@ -326,16 +331,12 @@ class Method(Function):
             self.callback = None
             self.delegate = None
 
-#        self.param_names = ['p' + str(i) for i in xrange(len(params))]
-    
     def _getFullName(self):
-        name = [self.class_]
-        name[1:1] = Function._getFullName(self)
+        name = []
+        name[0:0] = Function._getFullName(self)
+        assert(type(self.class_) is list)
+        name[0:0] = self.class_
         return name
-
-#    def FullName(self):
-#        return self.class_ + '::' + Function.FullName(self)
-
 
     def PointerDeclaration(self, force=False):
         '''Returns a declaration of a pointer to this member function.
@@ -404,14 +405,8 @@ class Destructor(Method):
     def __init__(self, name, class_, visib, virtual):
         Method.__init__(self, name, class_, None, [], visib, virtual, False, False, False)
 
-    def _getFullName(self):
-        name = [self.class_]
-        name[1:1] = Method._getFullName(self)
-        return name
-
-#    def FullName(self):
-#        return self.class_ + '::~' + Method.FullName(self)
-
+    def FullName(self):
+        return '::'.join(self.class_) + '::~' + self.name[0]
 
     def PointerDeclaration(self, force=False):
         return ''
@@ -424,13 +419,8 @@ class Destructor(Method):
 class ClassOperator(Method):
     'A custom operator in a class.'
     
-    def _getFullName(self):
-        name = [self.class_]
-        name[1:1] = Method._getFullName(self)
-        return name
-
-#    def FullName(self):
-#        return self.class_ + '::operator ' + Method.FullName(self)
+    def FullName(self):
+        return '::'.join(self.class_) + '::operator ' + self.name[0]
 
 
 
@@ -441,7 +431,7 @@ class ConverterOperator(ClassOperator):
     'An operator in the form "operator OtherClass()".'
     
     def _getFullName(self):
-        name = [self.class_]
+        name = [self.class_.name]
         name[1:1] = self.result._getFullName()
         return name
 
@@ -572,6 +562,7 @@ class MethodType(FunctionType):
     '''
 
     def __init__(self, result, parameters, class_):  
+        assert(type(class_) == list)
         self.class_ = class_
         FunctionType.__init__(self, result, parameters)
 
@@ -620,8 +611,9 @@ class ClassVariable(Variable):
         self.class_ = class_
     
     def _getFullName(self):
-        name = [self.class_]
-        name[1:1] = Variable._getFullName(self)
+        name = []
+        name[0:0] = Variable._getFullName(self)
+        name[0:0] = self.class_
         return name
 
 #    def FullName(self):
@@ -665,12 +657,14 @@ class ClassEnumeration(Enumeration):
 
     def __init__(self, name, class_, visib):
         Enumeration.__init__(self, name, None)
+        assert(type(class_) == list)
         self.class_ = class_
         self.visibility = visib
 
     def _getFullName(self):
-       name = [self.class_]
-       name[1:1] = Enumeration._getFullName(self)
+       name = []
+       name[0:0] = Enumeration._getFullName(self)
+       name[0:0] = self.class_
        return name
 
 #    def FullName(self):
