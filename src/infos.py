@@ -240,6 +240,11 @@ def instantiate(template, types, rename=None):
         types = types.split()
     return template.Instantiate(types, rename)
 
+def use_smart_ptr(info, decl, exclusive = False):
+    info._Attribute('smart_ptr', True)
+    info._Attribute('smart_ptr_decl', decl)
+    info._Attribute('only_smart_ptr', exclusive)
+
 def use_shared_ptr(info, exclusive = False):
     info._Attribute('smart_ptr', True)
     info._Attribute('smart_ptr_decl', 'boost::shared_ptr< %s >')
