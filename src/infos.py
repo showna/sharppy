@@ -173,7 +173,10 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
                                  self._Attribute('include'), tail, self,
                                  headers, rename)
 
-    def __call__(self, types, headers = [], rename=None):
+    def __call__(self, types, headers = None, rename = None):
+        if headers is None:
+            headers = []
+
         if isinstance(types, str):
             types = types.split() 
         return self.Instantiate(types, headers, rename)
@@ -186,7 +189,10 @@ class ValueTypeTemplateInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('module', module)
 
-    def Instantiate(self, type_list, headers = [], rename = None):
+    def Instantiate(self, type_list, headers = None, rename = None):
+        if headers is None:
+            headers = []
+
         if not rename:
             rename = GenerateName(self._Attribute('name'), type_list)
         # generate code to instantiate the template
@@ -202,7 +208,10 @@ class ValueTypeTemplateInfo(DeclarationInfo):
         return class_
 
 
-    def __call__(self, types, headers = [], rename = None):
+    def __call__(self, types, headers = None, rename = None):
+        if headers is None:
+            headers = []
+
         if isinstance(types, str):
             types = types.split() 
         return self.Instantiate(types, headers, rename)
