@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.21 2003-11-10 18:13:27 patrick Exp $
+## $Id: class_cs.tmpl,v 1.22 2003-11-10 19:50:36 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -29,7 +29,9 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #set $has_base = True
 ##end if
 #end for
+#if not $has_base
 #silent bases.append('IDisposable')
+#end if
 #set $b = ', '.join($bases)
 public #slurp
 #if classObj.class_.abstract
@@ -86,6 +88,8 @@ class $class_visitor.getRawName(False) : $b
    }
 
 #end if
+## If we have a base class, we let it worry about this stuff.
+#if not $has_base
    // Destructor.
    public void Dispose()
    {
@@ -105,6 +109,7 @@ class $class_visitor.getRawName(False) : $b
       }
    }
 
+#end if
    // Overloads.
 
 #set $method_visitor = CSharpVisitor()
@@ -178,7 +183,7 @@ class $class_visitor.getRawName(False) : $b
    [DllImport("vpr_bridge", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${pi_name}($pi_p);
 
-   public virtual $result_visitor.getUsage() ${method_name}($p)
+   public #if $m.override then 'override' else 'virtual'# $result_visitor.getUsage() ${method_name}($p)
    {
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']

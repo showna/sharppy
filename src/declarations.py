@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.11 2003-11-10 18:13:27 patrick Exp $
+# $Id: declarations.py,v 1.12 2003-11-10 19:50:36 patrick Exp $
 
 from utils import makeid
 import copy
@@ -330,6 +330,7 @@ class Method(Function):
         assert(type(class_) == list)
         self.class_ = class_
         self.const = const
+        self.override = False
 
         if virtual and not isinstance(self, Destructor):
             self.callback = Callback(self)

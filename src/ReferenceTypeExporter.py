@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.23 2003-11-10 18:13:27 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.24 2003-11-10 19:50:36 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -528,6 +528,13 @@ class ReferenceTypeExporter(Exporter):
       if self.hasVirtualMethods():
          for member in self.class_:
             if type(member) == Method and member.virtual:
+               # XXX: This is a very slow way to figure out if a method is
+               # overriding a base class method.  If gccxml would tell us
+               # when a method is an override, this coode would be obsoleted.
+               for b in self.all_bases:
+                  for base_mem in b.getMembers():
+                     if member.name == base_mem.name:
+                        member.override = True
                self.virtual_methods.append(member)
       else:
          if holder:
