@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.16 2003-11-03 21:50:32 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.17 2003-11-03 22:00:22 patrick Exp $
 
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
@@ -150,7 +150,6 @@ extern "C"
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.static_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)
