@@ -1,10 +1,11 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.20 2003-12-22 20:57:03 patrick Exp $
+# $Id: declarations.py,v 1.21 2003-12-23 18:15:06 patrick Exp $
 
 import copy
 import re
+import utils
 
 '''
 Defines classes that represent declarations found in C++ header files.
@@ -353,11 +354,12 @@ class Function(Declaration):
 # Operator
 #==============================================================================
 class Operator(Function):
-    '''The declaration of a custom operator. Its name is the same as the 
-    operator name in C++, ie, the name of the declaration "operator+(..)" is
-    "+".
     '''
-    
+    The declaration of a custom operator. Its name is the same as the 
+    operator name in C++, ie, the name of the declaration "operator+(..)"
+    is "+".
+    '''
+
     def FullName(self):
         namespace = '::'.join(self.namespace) or ''
         if not namespace.endswith('::'):
@@ -474,9 +476,24 @@ class Destructor(Method):
 #==============================================================================
 class ClassOperator(Method):
     'A custom operator in a class.'
-    
+
+    def getCleanName(self):
+        name = self.getFullNameAbstract()
+        unary = len(self.parameters) is 0
+        name[len(name) - 1] = utils.operatorToString(self.name[0], unary)
+        cleaner = re.compile(r"[<:>,\s]")
+        for i in xrange(len(name)):
+#            assert(name[i].find('<') == -1)
+            name[i] = cleaner.sub("_", name[i])
+        return '_'.join(name)
+
+    def _getFullName(self):
+        name = self.class_.split('::')
+        name.append('operator' + self.name[0])
+        return name
+
     def FullName(self):
-        return '::'.join(self.class_) + '::operator ' + self.name[0]
+        return self.class_ + '::operator ' + self.name[0]
 
 
 #==============================================================================
@@ -484,14 +501,12 @@ class ClassOperator(Method):
 #==============================================================================
 class ConverterOperator(ClassOperator):
     'An operator in the form "operator OtherClass()".'
-    
-    def _getFullName(self):
-        name = [self.class_.name]
-        name[1:1] = self.result._getFullName()
-        return name
 
-#    def FullName(self):
-#        return self.class_ + '::operator ' + self.result.FullName()
+    def _getFullName(self):
+        return self.class_.split('::') + self.result._getFullName()
+
+    def FullName(self):
+        return self.class_ + '::operator ' + self.result.FullName()
 
 
 #==============================================================================
