@@ -557,6 +557,7 @@ class ReferenceTypeExporter(Exporter):
                 exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
                 exporter.SetDeclarations(self.declarations)
                 exporter.Export(exported_names)
+                self.nested_enums.append(exporter)
 
 
     def ExportSmartPointer(self):

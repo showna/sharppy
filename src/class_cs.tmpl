@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.11 2003-11-01 23:18:28 patrick Exp $
+## $Id: class_cs.tmpl,v 1.12 2003-11-03 23:24:24 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -112,6 +112,17 @@ public class $class_visitor.getRawName(False) : $b
    // Static data.
 
 #set $nested_visitor = CSharpVisitor()
+#for $ne in $classObj.nested_enums
+#silent $ne.enum.accept($nested_visitor)
+#set $enum_values = ["%s = %d" % (v, $ne.enum.values[v]) for v in $ne.enum.values.keys()]
+#set $body = ', '.join($enum_values)
+   // Nested enumeration $nested_visitor.getRawName().
+   public enum $nested_visitor.getRawName(False)
+   {
+      $body
+   };
+#end for
+
 #for $nc in $classObj.nested_classes
 #silent $nc.class_.accept($nested_visitor)
    // Nested class $nested_visitor.getRawName().
