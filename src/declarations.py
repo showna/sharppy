@@ -23,7 +23,7 @@ class Declaration(object):
     @ivar namespace: The namespace of the declaration.
     '''
 
-    def __init__(self, name, namespace):
+    def __init__(self, name, namespace, mustMarshal = False):
         '''
         @type name: string
         @param name: The name of this declaration
@@ -32,10 +32,17 @@ class Declaration(object):
         '''
         assert(type(name) == list)
         self.name = name
-        self.namespace = namespace
+
+        if namespace is None:
+           self.namespace = []
+        else:
+           assert(type(namespace) == list)
+           self.namespace = namespace
+
         self.location = '', -1  # (filename, line)
         self.incomplete = False
         self.is_unique = True
+        self.must_marshal = mustMarshal
 
 
     def FullName(self):
@@ -57,7 +64,7 @@ class Declaration(object):
         name = []
         name[0:0] = self._getFullName()
         if self.namespace:
-            name.insert(0, self.namespace)
+            name[0:0] = self.namespace
         return name
 
     def getGenericName(self):
@@ -292,7 +299,7 @@ class Operator(Function):
     '''
     
     def FullName(self):
-        namespace = self.namespace or ''
+        namespace = '::'.join(self.namespace) or ''
         if not namespace.endswith('::'):
             namespace += '::'
         return namespace + 'operator' + self.name[0]

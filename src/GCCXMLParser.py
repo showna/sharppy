@@ -176,7 +176,10 @@ class GCCXMLParser(object):
             elem, decl = self.elements[id]
             decl.static = True
         else:
-            namespace = context
+            if isinstance(context, str):
+                namespace = context.split('::')
+            else:
+                namespace = context.getFullNameAbstract()
             name = element.get('name').split('::')
             type_ = self.GetType(element.get('type'))
             location = self.GetLocation(element.get('location'))
@@ -217,6 +220,10 @@ class GCCXMLParser(object):
         params = self.GetArguments(element)
         incomplete = bool(int(element.get('incomplete', 0)))
         throws = self.GetExceptions(element.get('throw', None))
+        if isinstance(namespace, str):
+           namespace = namespace.split('::')
+        else:
+           namespace = namespace.getFullNameAbstract()
         function = functionType(name, namespace, returns, params, throws) 
         function.location = location
         self.AddDecl(function)
@@ -289,7 +296,7 @@ class GCCXMLParser(object):
         context = self.GetDecl(element.get('context'))
         incomplete = bool(int(element.get('incomplete', 0)))
         if isinstance(context, str): 
-            class_ = Class(name, context, [], abstract)
+            class_ = Class(name, context.split('::'), [], abstract)
         else:
             # a nested class
             visib = element.get('access', Scope.public)
@@ -424,7 +431,9 @@ class GCCXMLParser(object):
         type = self.GetType(element.get('type'))        
         context = self.GetDecl(element.get('context'))
         if isinstance(context, Class):
-            context = context.FullName()
+            context = context.getFullNameAbstract()
+        else:
+            context = context.split('::')
         typedef = Typedef(type, name, context)
         self.Update(id, typedef)
         self.AddDecl(typedef)
@@ -436,7 +445,7 @@ class GCCXMLParser(object):
         context = self.GetDecl(element.get('context'))
         incomplete = bool(int(element.get('incomplete', 0))) 
         if isinstance(context, str):
-            enum = Enumeration(name, context)
+            enum = Enumeration(name, context.split('::'))
         else:
             visib = element.get('access', Scope.public)
             enum = ClassEnumeration(name, context.getFullNameAbstract(), visib)
