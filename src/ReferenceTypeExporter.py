@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.28 2003-11-13 22:58:20 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.29 2003-11-14 19:32:21 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -448,7 +448,9 @@ class ReferenceTypeExporter(Exporter):
       def IsExportable(m):
          'Returns true if the given method is exportable by this routine'
          ignore = (Constructor, ClassOperator, Destructor)
-         return isinstance(m, Function) and not isinstance(m, ignore) and not m.virtual        
+         method_info = self.info[m.name[0]]
+         return not method_info.exclude and isinstance(m, Function) and \
+                not isinstance(m, ignore) and not m.virtual        
 
       methods = [x for x in self.public_members if IsExportable(x)]
       methods.extend(self.GetAddedMethods())
@@ -513,7 +515,8 @@ class ReferenceTypeExporter(Exporter):
       self.virtual_methods = []
       if self.hasVirtualMethods():
          for member in self.class_:
-            if type(member) == Method and member.virtual:
+            member_info = self.info[member.name[0]]
+            if not member_info.exclude and type(member) == Method and member.virtual:
                # XXX: This is a very slow way to figure out if a method is
                # overriding a base class method.  If gccxml would tell us
                # when a method is an override, this coode would be obsoleted.
