@@ -1,6 +1,9 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
+# For Python 2.1 compatibility.
+#from __future__ import nested_scope
+
 import exporters
 from Exporter import Exporter
 from declarations import *
@@ -12,6 +15,7 @@ from utils import makeid, enumerate, generateUniqueName, operatorToString
 import copy
 import exporterutils
 import re
+
 
 #==============================================================================
 # ReferenceTypeExporter
@@ -177,19 +181,28 @@ class ReferenceTypeExporter(Exporter):
                 return ('other< %s >()' % param.name)
 
         def HandleSpecialOperator(operator):
-            # gatter information about the operator and its parameters
+            # Gather information about the operator and its parameters.
             result_name = operator.result.name                        
             param1_name = ''
             if operator.parameters:
                 param1_name = operator.parameters[0].name
-                
+
             # check for str
             ostream = 'basic_ostream'
             is_str = result_name.find(ostream) != -1 and param1_name.find(ostream) != -1
             if is_str:
-                namespace = 'self_ns::'
-                self_ = 'self'
-                return '.def(%sstr(%s))' % (namespace, self_)
+                sstream_inc = '#include <sstream>\n'
+                if sstream_inc not in self.sections['include']:
+                   self.sections['include'].append(sstream_inc)
+
+                code = 'char* %s_ToString(%s* self_)\n' % \
+                       (wrapperClassName, wrapperClassType)
+                code += '{\n'
+                code += indent + "std::ostringstream text;\n"
+                code += indent + "text << *self_;\n"
+                code += indent + "return text.str().c_str();\n"
+                code += '}\n\n'
+                return code
 
             # is not a special operator
             return None
@@ -235,7 +248,7 @@ class ReferenceTypeExporter(Exporter):
                 self.Add('inside', '.def("%s", %s%s)' % (rename, pointer, policy))
             
             elif has_special_representation:
-                self.Add('inside', special_code)
+                code += special_code
                 
             elif operator.name in self.CSHARP_SUPPORTED_OPERATORS:
                 # export this operator using boost's facilities
