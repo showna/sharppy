@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.26 2003-11-12 19:17:50 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.27 2003-11-12 19:43:22 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
@@ -96,9 +96,10 @@ public:
 
 extern "C"
 {
-#for $i in range(len($classObj.constructors))
-#set $c = $classObj.constructors[$i]
-#set $cons_name = "new_" + $class_id + "_" + str($i)
+#set $method_visitor = CPlusPlusVisitor()
+#for $c in $classObj.constructors
+#silent $c.accept($method_visitor)
+#set $cons_name = $method_visitor.getGenericName()
 #if $c.IsCopy()
    // Copy constructor wrapper.
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
@@ -142,7 +143,6 @@ extern "C"
 #end if
 
 ## ---------------------------- Non-virtual methods ---------------------------
-#set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.non_virtual_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]

@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.27 2003-11-10 23:26:24 patrick Exp $
+## $Id: class_cs.tmpl,v 1.28 2003-11-12 19:43:22 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -43,12 +43,13 @@ class $class_visitor.getRawName(False) : $b
    protected bool mWeOwnMemory = false;
 #end if
 
+#set $method_visitor = CSharpVisitor()
 #if not $classObj.class_.abstract
    // Constructors.
 #set $cons_visitor = CSharpVisitor()
-#for $i in range(len($classObj.constructors))
-#set $c = $classObj.constructors[$i]
-#set $cons_name = "new_" + $classObj.bridge_name + "_" + str($i)
+#for $c in $classObj.constructors
+#silent $c.accept($method_visitor)
+#set $cons_name = $method_visitor.getGenericName()
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters]
 #set $p = ', '.join($pi_params)
 #if $classObj.hasVirtualMethods()
@@ -110,7 +111,6 @@ class $class_visitor.getRawName(False) : $b
 #end if
    // Overloads.
 
-#set $method_visitor = CSharpVisitor()
 #set $param_visitor  = CSharpParamVisitor()
 #set $result_visitor = CSharpReturnVisitor()
 ## ---------------------------- Non-virtual methods ---------------------------
