@@ -2,6 +2,7 @@
 #from TemplateHelpers import getCPlusPlusName, getCallbackTypedefName, makeCPlusPlusTypedef
 
 #def exportClass($classObj)
+#set $class_name = $classObj.getCPlusPlusName()
 #for $i in $classObj.includes
 \#include <$i>
 #end for
@@ -46,7 +47,7 @@ extern "C"
 #for $c in $classObj.constructors
 #if $c.IsCopy()
    // Copy constructor wrapper.
-   $classObj.getCPlusPlusName()* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
+   $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
 #else
 #set $param_list = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
@@ -55,7 +56,7 @@ extern "C"
 #end for
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
-   $classObj.getCPlusPlusName()* new_${classObj.bridge_name}($p)
+   $class_name* new_${classObj.bridge_name}($p)
 #end if
    {
 #if $c.IsCopy()
@@ -74,13 +75,13 @@ extern "C"
 #set $count = $count + 1
 #end for
 #end if
-      return ($classObj.getCPlusPlusName()*) obj;
+      return ($class_name*) obj;
    }
 
 #end for
 
 #if $classObj.hasDestructor() or $classObj.hasVirtualMethods()
-   void delete_${classObj.bridge_name}($classObj.getCPlusPlusName()* self_)
+   void delete_${classObj.bridge_name}($class_name* self_)
    {
       delete self_;
    }
@@ -89,18 +90,18 @@ extern "C"
 
 #for $m in $classObj.non_virtual_methods
 #set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $classObj.getCPlusPlusName()]
+#silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
    $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
+#set $method_name = $m.name[0]
 #if $getCPlusPlusName($m.result) != 'void'
-#if $m.result.must_marshal
-      return new ${getCPlusPlusName(m.result)}(self_->${m.getGenericName()}($arg_list));
-#else
-      return self_->${m.getGenericName()}($arg_list);
+      return #slurp
 #end if
+#if $m.result.must_marshal
+      new ${getCPlusPlusName(m.result)}(self_->${m.getGenericName()}($arg_list));
 #else
       self_->${m.getGenericName()}($arg_list);
 #end if
@@ -110,16 +111,15 @@ extern "C"
 
 #for $m in $classObj.virtual_methods
 #set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $classObj.getCPlusPlusName()]
+#silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
    $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
-#set $class_name = $classObj.getCPlusPlusName()
 #set $method_name = $m.name[0]
 #if $getCPlusPlusName($m.result) != 'void'
-      return
+      return #slurp
 #end if
 #if $m.result.must_marshal
       new ${getCPlusPlusName($m.result)}(self_->${class_name}::${method_name}($arg_list));
@@ -132,17 +132,20 @@ extern "C"
 
 #*
 #for $m in $classObj.static_methods
-   $m.result.marshal_type ${classObj.getGenericName()}_${m.getGenericName()}(', '.join($m.parameters))
+#set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
+#silent $params[0:0] = ["%s* self_" % $class_name]
+#set $p = ', '.join($params)
+#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+   ## XXX: Need to handle marshaling the return type here.
+   $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
+#set $method_name = $m.name[0]
 #if $m.result != 'void'
-#set $p = ', '.join(['::'.join(x[0].name) for x in $m.parameters])
-#if $m.result.must_marshal
-      return new ${m.result}($classObj.type::${m.getGenericName()}($p));
-#else
-      return $classObj.type::${m.getGenericName()}(', '.join($p));
+      return #slurp
 #end if
-#else
-      $classObj.type::${m.getGenericName()}(', '.join($p));
+#if $m.result.must_marshal
+      new ${m.result}(${class_name}::${method_name}($arg_list));
+      ${class_name}::${method_name}($arg_list);
 #end if
    }
 
