@@ -72,7 +72,7 @@ class GCCXMLParser(object):
         try:
             tree.parse(filename)
         except ExpatError:
-            raise InvalidXMLError, 'Not a XML file: %s' % filename
+            raise InvalidXMLError, 'Not an XML file: %s' % filename
 
         root = tree.getroot()
         if root.tag != 'GCC_XML':
