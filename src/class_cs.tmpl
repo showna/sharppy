@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.43 2003-11-24 18:04:00 patrick Exp $
-// Generated from \$Revision: 1.43 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.44 2003-11-24 20:50:43 patrick Exp $
+// Generated from \$Revision: 1.44 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -77,7 +77,7 @@ using System.Reflection;
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
 #if $methodDecl.result.must_marshal
-#set $marshaler_name = $result_visitor.getRawName(False) + 'Marshaler'
+#set $marshaler_name = $result_visitor.getUsage() + 'Marshaler'
    [return : MarshalAs(UnmanagedType.CustomMarshaler,
                        MarshalTypeRef = typeof($marshaler_name))]
 #end if
@@ -255,6 +255,7 @@ class $class_visitor.getRawName(False) : $b
    }
 
 #end for
+#end if
    // Internal constructor needed for marshaling purposes.
    internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)
 #if $has_base_class
@@ -265,7 +266,6 @@ class $class_visitor.getRawName(False) : $b
       mWeOwnMemory = ownMemory;
    }
 
-#end if
 ## If we have a base class, we let it worry about this stuff.
 #if not $has_base_class
    // Destructor.
@@ -456,7 +456,7 @@ public class $marshaler_name : ICustomMarshaler
 #set $pi_p = ',\n\t'.join($pi_params)
       [DllImport("$module", CharSet = CharSet.Ansi)]
 #if $m.result.must_marshal
-#set $marshaler_name = $result_visitor.getRawName(False) + 'Marshaler'
+#set $marshaler_name = $result_visitor.getUsage() + 'Marshaler'
       [return : MarshalAs(UnmanagedType.CustomMarshaler,
                           MarshalTypeRef = typeof($marshaler_name))]
 #end if
@@ -559,10 +559,11 @@ public class $marshaler_name : ICustomMarshaler
       return new ${dummy_name}(nativeObj);
 #else
 #if $classObj.info.only_smart_ptr
-      return new ${class_visitor.getRawName()}(new_${holder_name}(nativeObj));
+#set $ptr_str = 'new_' + $holder_name + '(nativeObj)'
 #else
-      return new ${class_visitor.getRawName()}(nativeObj, false);
+#set $ptr_str = 'nativeObj'
 #end if
+      return new ${class_visitor.getRawName()}($ptr_str, false);
 #end if
    }
 

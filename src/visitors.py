@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.22 2003-11-19 21:40:36 patrick Exp $
+# $Id: visitors.py,v 1.23 2003-11-24 20:50:43 patrick Exp $
 
 import re
 
@@ -14,6 +14,7 @@ LONG               = 7
 UNSIGNED_LONG      = 8
 LONG_LONG          = 9
 UNSIGNED_LONG_LONG = 10
+SHARED_PTR         = 11
 
 class DeclarationVisitor:
    def __init__(self):
@@ -285,6 +286,8 @@ class CSharpVisitor(DeclarationVisitor):
 
       if full_name[0] == 'std' and full_name[1].find('basic_string', 0) != -1:
          type_id = STD_STRING
+      elif full_name[0] == 'boost' and full_name[1].find('shared_ptr', 0) != 1:
+         type_id = SHARED_PTR
       else:
          # XXX: Figure out if there is a simpler way of dealing with unsigned
          # integers.  It depends largely on the order that the type information
@@ -346,6 +349,15 @@ class CSharpVisitor(DeclarationVisitor):
          self.usage = 'ulong'
       elif typeID == LONG_LONG:
          self.usage = 'long'
+      elif typeID == SHARED_PTR:
+         real_type_re = re.compile(r"^boost.shared_ptr<(.*)>$")
+         match = real_type_re.match(self.usage)
+         if None != match:
+            # XXX: Once we have the type contained by the shared pointer, do
+            # we need to do anything with it?
+            self.usage = match.groups()[0]
+         else:
+            assert(False)
 
    def _isFundamentalType(self, decl):
       return self.usage in self.fundamental_types
