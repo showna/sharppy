@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.46 2003-12-22 23:12:52 patrick Exp $
-// Generated from \$Revision: 1.46 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.47 2003-12-23 18:17:27 patrick Exp $
+// Generated from \$Revision: 1.47 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getAdapterName, getHolderName
 #import visitors
 
@@ -257,6 +257,11 @@ $fillMethodWrapperBody($m, $method_visitor.getRawName())
    }
 #end if
 
+#end for
+## --------------------------------- Operators --------------------------------
+#for $o in $classObj.member_operators
+#set $method_call = 'self_->operator%s' + $o.name[0]
+$fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #end for
 } // extern "C" for $class_visitor.getRawName()
 

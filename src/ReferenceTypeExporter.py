@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.48 2003-12-22 23:49:35 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.49 2003-12-23 18:17:27 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -16,6 +16,7 @@ import copy
 import exporterutils
 import os
 import sys
+import re
 
 from Cheetah.Template import Template
 
@@ -45,6 +46,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.non_virtual_methods = []
       self.static_methods      = []
       self.virtual_methods     = []
+      self.member_operators    = []
+      self.global_operators    = []
 
       self.protected_static_methods      = []
       self.protected_non_virtual_methods = []
@@ -261,137 +264,6 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
       self.public_members = [x for x in self.class_ if IsValid(x)]
 
-   def WriteOperatorsCPlusPlus(self, indent, wrapperClassName, wrapperClassType):
-      'Export all member operators and free operators related to this class'
-
-      def GetFreeOperators():
-         'Get all the free (global) operators related to this class'
-         operators = []
-         for decl in self.declarations:
-            if isinstance(decl, Operator):
-               # check if one of the params is this class
-               for param in decl.parameters:
-                  if param.name == self.class_.FullName():
-                     operators.append(decl)
-                     break
-         return operators
-
-      def GetOperand(param):
-         'Returns the operand of this parameter (either "self", or "other<type>")'
-         if param.name == self.class_.FullName():
-            return 'self'
-         else:
-            return ('other< %s >()' % param.name)
-
-      def HandleSpecialOperator(operator):
-         # Gather information about the operator and its parameters.
-         result_name = operator.result.name                        
-         param1_name = ''
-         if operator.parameters:
-            param1_name = operator.parameters[0].name
-
-         # check for str
-         ostream = 'basic_ostream'
-         is_str = result_name.find(ostream) != -1 and param1_name.find(ostream) != -1
-         if is_str:
-            sstream_inc = '#include <sstream>\n'
-            if sstream_inc not in self.sections['include']:
-              self.sections['include'].append(sstream_inc)
-
-            code = 'char* %s_ToString(%s* self_)\n' % \
-                   (wrapperClassName, wrapperClassType)
-            code += '{\n'
-            code += indent + "std::ostringstream text;\n"
-            code += indent + "text << *self_;\n"
-            code += indent + "return text.str().c_str();\n"
-            code += '}\n\n'
-            return code
-
-         # is not a special operator
-         return None
-
-      frees = GetFreeOperators()
-      members = [x for x in self.public_members if type(x) == ClassOperator]
-      all_operators = frees + members
-      operators = [x for x in all_operators if not self.info['operator'][x.name].exclude]
-        
-      code = ''
-
-      for operator in operators:
-         # gatter information about the operator, for use later
-         wrapper = self.info['operator'][operator.name].wrapper
-         if wrapper:
-            pointer = '&' + wrapper.FullName()
-            if wrapper.code:
-               self.Add('declaration', wrapper.code)
-         else:
-            pointer = operator.PointerDeclaration()                 
-         rename = self.info['operator'][operator.name].rename
-
-         # Check if this operator will be exported as a method.
-#         export_as_method = wrapper or rename or operator.name in self.CSHARP_SUPPORTED_OPERATORS
-         export_as_method = False
-
-         # check if this operator has a special representation in boost
-         special_code = HandleSpecialOperator(operator)
-         has_special_representation = special_code is not None
-
-         if export_as_method:
-            # Export this operator as a normal method, renaming or using
-            # the given wrapper
-            if not rename:
-               if wrapper:
-                  rename = wrapper.name
-#               else:
-#                  rename = self.CSHARP_RENAME_OPERATORS[operator.name]
-            policy = ''
-            policy_obj = self.info['operator'][operator.name].policy
-            if policy_obj:
-               policy = ', %s()' % policy_obj.Code() 
-            self.Add('inside', '.def("%s", %s%s)' % (rename, pointer, policy))
-            
-         elif has_special_representation:
-            code += special_code
-                
-         elif operator.name in self.CSHARP_SUPPORTED_OPERATORS:
-            # export this operator using boost's facilities
-            op = operator
-            is_unary = isinstance(op, Operator) and len(op.parameters) == 1 or\
-                       isinstance(op, ClassOperator) and len(op.parameters) == 0
-
-            c_wrapper_name = "%s_%s" % \
-                             (wrapperClassName,
-                              utils.operatorToString(operator.name, is_unary))
-            return_type = 'bool'
-            param_list  = ''
-            op_call     = ''
-
-            # Unary operator.
-            if is_unary:
-               param_list = "%s* p0" % wrapperClassType
-               op_call    = "%s(*p0)" % op.name
-#               self.Add('inside', '.def( %sself )' % (operator.name))
-            # Binary operator.
-            else:
-               param_list = "%s* p0, %s* p1" % (wrapperClassType, wrapperClassType)
-               op_call    = "*p0 %s *p1" % op.name
-#               if len(operator.parameters) == 2:
-#                  left_operand = GetOperand(operator.parameters[0])
-#                  right_operand = GetOperand(operator.parameters[1])
-#               else:
-#                  left_operand = 'self'
-#                  right_operand = GetOperand(operator.parameters[0])
-#               self.Add('inside', '.def( %s %s %s )' % \
-#                   (left_operand, operator.name, right_operand))
-
-            code += 'SHARPPY_API %s %s(%s)\n' % \
-                    (return_type, c_wrapper_name, param_list)
-            code += '{\n'
-            code += indent + 'return %s;\n' % op_call
-            code += '}\n\n'
-
-      return code
-
    def ExportBasics(self):
       '''Export the name of the class and its class_ statement.'''
       pass
@@ -602,26 +474,21 @@ class ReferenceTypeExporter(Exporter.Exporter):
 #       '()' : '__call__',
 #   }
 #
-#   # converters which have a special name in python
-#   # it's a map of a regular expression of the converter's result to the
-#   # appropriate python name
-#   SPECIAL_CONVERTERS = {
-#       re.compile(r'(const)?\s*double$') : '__float__',
-#       re.compile(r'(const)?\s*float$') : '__float__',
-#       re.compile(r'(const)?\s*int$') : '__int__',
-#       re.compile(r'(const)?\s*long$') : '__long__',
-#       re.compile(r'(const)?\s*char\s*\*?$') : '__str__',
-#       re.compile(r'(const)?.*::basic_string<.*>\s*(\*|\&)?$') : '__str__',
-#   }
+   # converters which have a special name in python
+   # it's a map of a regular expression of the converter's result to the
+   # appropriate python name
+   SPECIAL_CONVERTERS = {
+      re.compile(r'(const)?\s*double$') : '__float__',
+      re.compile(r'(const)?\s*float$') : '__float__',
+      re.compile(r'(const)?\s*int$') : '__int__',
+      re.compile(r'(const)?\s*long$') : '__long__',
+      re.compile(r'(const)?\s*char\s*\*?$') : 'ToString()',
+      re.compile(r'(const)?.*::basic_string<.*>\s*(\*|\&)?$') : 'ToString()',
+   }
 
    def ExportOperators(self):
       'Export all member operators and free operators related to this class'
-        
-      # export the converters.
-      # export them as simple functions with a pre-determined name
 
-      converters = [x for x in self.public_members if type(x) == declarations.ConverterOperator]
-                
       def ConverterMethodName(converter):
          result_fullname = converter.result.FullName()
          result_name = converter.result.name
@@ -632,25 +499,86 @@ class ReferenceTypeExporter(Exporter.Exporter):
             # extract the last name from the full name
             result_name = utils.makeid(result_name)
             return 'to_' + result_name
-            
-      for converter in converters:
-         info = self.info['operator'][converter.result.FullName()]
-         # check if this operator should be excluded
-         if info.exclude:
+
+      def GetFreeOperators():
+         'Get all the free (global) operators related to this class'
+         operators = []
+         for decl in self.declarations:
+            if isinstance(decl, declarations.Operator):
+               # check if one of the params is this class
+               for param in decl.parameters:
+                  if param[0].getCPlusPlusName() == self.class_.FullName():
+                     operators.append(decl)
+                     break
+         return operators
+
+      # Handle converter operators first.
+#      converters = [x for x in self.public_members if type(x) == declarations.ConverterOperator]
+#
+#      for converter in converters:
+#         info = self.info['operator'][converter.result.FullName()]
+#         # check if this operator should be excluded
+#         if info.exclude:
+#            continue
+#
+#         special_code = HandleSpecialOperator(converter)
+#         if info.rename or not special_code:
+#            # export as method
+#            name = info.rename or ConverterMethodName(converter)
+#            pointer = converter.PointerDeclaration()
+#            policy_code = ''
+#            if info.policy:
+#               policy_code = ', %s()' % info.policy.Code()
+#            self.Add('inside', '.def("%s", %s%s)' % (name, pointer, policy_code))
+#
+#         elif special_code:
+#            self.Add('inside', special_code)
+
+      # Now handle free operators and member operators.
+      frees = GetFreeOperators()
+      members = [x for x in self.public_members if type(x) == declarations.ClassOperator]
+      all_operators = frees + members
+      operators = [x for x in all_operators if not self.info['operator'][x.FullName()].exclude]
+
+      for operator in all_operators:
+         if operator.name[0] not in self.CSHARP_SUPPORTED_OPERATORS:
             continue
-            
-         special_code = HandleSpecialOperator(converter)
-         if info.rename or not special_code:
-            # export as method
-            name = info.rename or ConverterMethodName(converter)
-            pointer = converter.PointerDeclaration()
-            policy_code = ''
-            if info.policy:
-               policy_code = ', %s()' % info.policy.Code()
-            self.Add('inside', '.def("%s", %s%s)' % (name, pointer, policy_code))
-                    
-         elif special_code:
-            self.Add('inside', special_code)
+
+         # Gather information about the operator, for use later.
+#         wrapper = self.info['operator'][operator.name].wrapper
+#         rename = self.info['operator'][operator.FullName()].rename
+
+         # Check if this operator will be exported as a method.
+         if isinstance(operator, declarations.ClassOperator):
+            result_name = operator.result.getCPlusPlusName()
+            param1_name = ''
+            if operator.parameters:
+               param1_name = operator.parameters[0][0].getCPlusPlusName()
+
+            # check for str
+            ostream = 'basic_ostream'
+            is_str = result_name.find(ostream) != -1 and param1_name.find(ostream) != -1
+
+            self.member_operators.append(operator)
+#            # Export this operator as a normal method, renaming or using
+#            # the given wrapper
+#            if not rename:
+#               if wrapper:
+#                  rename = wrapper.name
+##               else:
+##                  rename = self.CSHARP_RENAME_OPERATORS[operator.name]
+         else:
+            result_name = operator.result.getCPlusPlusName()
+            param1_name = operator.parameters[0][0].getCPlusPlusName()
+            param2_name = operator.parameters[1][0].getCPlusPlusName()
+
+            # check for str
+            ostream = 'basic_ostream'
+            is_str = result_name.find(ostream) != -1 and \
+                     (param1_name.find(ostream) != -1 or \
+                      param2_name.find(ostream) != -1)
+
+            self.global_operators.append(operator)
 
    def ExportNestedClasses(self, exported_names):
       nested_classes = [x for x in self.public_members if isinstance(x, declarations.NestedClass)]
