@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.14 2003-11-01 23:45:50 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.15 2003-11-03 20:41:13 patrick Exp $
 
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
@@ -33,17 +33,18 @@ public:
    virtual ~${classObj.bridge_name}()
    {;}
 
+#set $return_visitor = CPlusPlusVisitor()
 #for $m in $classObj.virtual_methods
 
    $makeCPlusPlusTypedef($m.callback);
    $getCallbackTypedefName($m.callback) ${m.name[0]}_callback;
 
+#silent $m.result.accept($return_visitor)
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-   virtual $getDeclName($m.result, $generic_visitor) ${m.name[0]}($p)
+   virtual $return_visitor.getRawName() ${m.name[0]}($p)
    {
-#set $result_type = getDeclName($m.result, $generic_visitor)
-      #if $result_type != 'void' then 'return' else ''# ${m.name[0]}_callback($arg_list);
+      #if $return_visitor.getRawName() != 'void' then 'return' else ''# ${m.name[0]}_callback($arg_list);
    }
 #end for
 }; // class $classObj.bridge_name
@@ -95,6 +96,7 @@ extern "C"
 
 #end if
 
+#set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.non_virtual_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
@@ -102,9 +104,9 @@ extern "C"
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #set $return_visitor = CPlusPlusReturnVisitor()
 #silent $m.result.accept($return_visitor)
-#silent $m.accept($generic_visitor)
+#silent $m.accept($method_visitor)
    ## XXX: Need to handle marshaling the return type here.
-   SHARPPY_API $return_visitor.getUsage() ${generic_visitor.getGenericName()}($p)
+   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
 #if $return_visitor.getRawName() != 'void'
@@ -119,13 +121,13 @@ extern "C"
 
 #end for
 
+#set $method_visitor = CPlusPlusVisitor()
+#set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-#set $method_visitor = CPlusPlusVisitor()
-#set $return_visitor = CPlusPlusReturnVisitor()
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($return_visitor)
    ## XXX: Need to handle marshaling the return type here.
@@ -145,13 +147,13 @@ extern "C"
 #end for
 
 #*
+#set $method_visitor = CPlusPlusVisitor()
+#set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.static_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $params[0:0] = ["%s* self_" % $class_name]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
-#set $method_visitor = CPlusPlusVisitor()
-#set $return_visitor = CPlusPlusReturnVisitor()
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($return_visitor)
    ## XXX: Need to handle marshaling the return type here.
