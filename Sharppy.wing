@@ -1,0 +1,68 @@
+#!wing
+#!version=1.0
+##################################################################
+# Wing IDE project file                                          #
+# Combined project data: Change file type to 'shared' for better #
+# results when sharing this project with other developers using  #
+# a source code control system.                                  #
+##################################################################
+buildcmd = {'linux': ''}
+env-vars = {'linux': ''}
+file_list = ['src/CodeExporter.py',
+             'src/CppParser.py',
+             'src/EnumExporter.py',
+             'src/Exporter.py',
+             'src/FunctionExporter.py',
+             'src/GCCXMLParser.py',
+             'src/HeaderExporter.py',
+             'src/MultipleCodeUnit.py',
+             'src/ReferenceTypeExporter.py',
+             'src/SingleCodeUnit.py',
+             'src/SmartFile.py',
+             'src/ValueTypeExporter.py',
+             'src/VarExporter.py',
+             'src/__init__.py',
+             'src/declarations.py',
+             'src/exporters.py',
+             'src/exporterutils.py',
+             'src/infos.py',
+             'src/policies.py',
+             'src/settings.py',
+             'src/sharppy.py',
+             'src/utils.py']
+file_type = 'normal'
+main_debug_file = None
+pyexec = {'linux': ''}
+pypath = {'linux': ''}
+rundir = {'linux': ''}
+user_file_attributes = [('Sharppy.wing',
+                         {'open-windows': (('manager',
+        (('Project: untitled_6.wpr',
+          {}),),
+        (1240,
+         26,
+         340,
+         1090)),)}),
+                        ('unknown:untitled-1.py',
+                         {'display-font-size': {},
+                          'last-window-loc': (10,
+        26,
+        650,
+        1090),
+                          'visual-state': {'first-line': 0,
+        'selection_end': 0,
+        'selection_start': 0}}),
+                        ('unknown:untitled_6.wpr',
+                         {'open-windows': (('manager',
+        (('Project: untitled_6.wpr',
+          {}),),
+        (1240,
+         26,
+         340,
+         1090)),)})]
+version = '1.0'
+which-console = {'linux': 'default'}
+which-env-vars = {'linux': 'default'}
+which-pyexec = {'linux': 'default'}
+which-pypath = {'linux': 'default'}
+which-rundir = {'linux': 'default'}
