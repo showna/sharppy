@@ -44,6 +44,9 @@ class ReferenceTypeExporter(Exporter):
         self.virtual_methods     = []
         self.callback_typedefs   = []
 
+        self.nested_classes = []
+        self.nested_enums   = []
+
     def getCPlusPlusName(self):
         return '::'.join(self.class_.getFullNameAbstract())
 
@@ -104,7 +107,7 @@ class ReferenceTypeExporter(Exporter):
         '''
         num_bases = len(self.ClassBases())
         return num_bases, self.class_.FullName()
-    
+
     def Export(self, exported_names):
         self.InheritMethods(exported_names)
         self.MakeNonVirtual()
@@ -535,33 +538,34 @@ class ReferenceTypeExporter(Exporter):
             elif special_code:
                 self.Add('inside', special_code)
 
-
-
     def ExportNestedClasses(self, exported_names):
         nested_classes = [x for x in self.public_members if isinstance(x, NestedClass)]
         for nested_class in nested_classes:
             nested_info = self.info[nested_class.FullName()]
-            nested_info.include = self.info.include
-            nested_info.name = nested_class.FullName()
-            exporter = ReferenceTypeExporter(nested_info)
-            exporter.setModule(self.module)
-            exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
-            exporter.SetDeclarations(self.declarations)
-            exporter.Export(exported_names)
+            if not nested_info.exclude:
+                nested_info.include = self.info.include
+                nested_info.name = nested_class.FullName()
+                exporter = ReferenceTypeExporter(nested_info)
+                exporter.setModule(self.module)
+                exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
+                exporter.SetDeclarations(self.declarations)
+                exporter.Export(exported_names)
+                self.nested_classes.append(exporter)
 
     def ExportNestedEnums(self, exported_names):
         nested_enums = [x for x in self.public_members if isinstance(x, ClassEnumeration)]
         for enum in nested_enums:
             enum_info = self.info[enum.name]
-            enum_info.include = self.info.include
-            enum_info.name = enum.FullName()
-            exporter = EnumExporter(enum_info)
-            exporter.setModule(self.module)
-            exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
-            exporter.SetDeclarations(self.declarations)
-            # XXX: This can't possibly be done yet...
-            assert(False)
-            exporter.Export(exported_names)
+            if not nested_info.exclude:
+                enum_info.include = self.info.include
+                enum_info.name = enum.FullName()
+                exporter = EnumExporter(enum_info)
+                exporter.setModule(self.module)
+                exporter.setOutputDirs(self.cxx_dir, self.csharp_dir)
+                exporter.SetDeclarations(self.declarations)
+                # XXX: This can't possibly be done yet...
+                assert(False)
+                exporter.Export(exported_names)
 
 
     def ExportSmartPointer(self):

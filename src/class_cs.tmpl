@@ -96,6 +96,10 @@ public class $classObj.getCSharpName(False) : $b
 
    // Static data.
 
+#for $nc in $classObj.nested_classes
+   // Nested class $nc.getCSharpName().
+$generateClass($nc)
+#end for
 }
 #end def
 
