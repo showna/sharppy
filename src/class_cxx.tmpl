@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.43 2003-11-24 22:09:56 patrick Exp $
-// Generated from \$Revision: 1.43 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.44 2003-11-24 22:24:57 patrick Exp $
+// Generated from \$Revision: 1.44 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #import visitors
 
@@ -68,13 +68,11 @@ $return_visitor.getMethodCall($method_call, '      ')
 #set $generic_visitor = visitors.CPlusPlusVisitor()
 #set $param_visitor = visitors.CPlusPlusParamVisitor()
 #silent $classObj.class_.accept($class_visitor)
-#set $class_name = $class_visitor.getRawName()
+#set $class_id = $class_visitor.getGenericName()
 #if $classObj.hasVirtualMethods()
 #set $class_name = getBridgeName($class_visitor)
-#set $class_id   = $class_name
 #else
 #set $class_name = $class_visitor.getRawName()
-#set $class_id   = $class_visitor.getGenericName()
 #end if
 #if $classObj.smart_ptr
 struct $getHolderName($class_visitor)

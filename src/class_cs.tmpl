@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.47 2003-11-24 22:09:56 patrick Exp $
-// Generated from \$Revision: 1.47 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.48 2003-11-24 22:24:57 patrick Exp $
+// Generated from \$Revision: 1.48 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -264,20 +264,16 @@ class $class_visitor.getRawName(False)
       mWeOwnMemory = ownMemory;
    }
 
-#if $has_virtuals
-#set $bridge_name = getBridgeName($class_visitor)
-#else
-#set $bridge_name = $class_visitor.getGenericName()
-#end if
+#set $delete_func = 'delete_' + $class_visitor.getGenericName()
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static void delete_${bridge_name}(IntPtr obj);
+   private extern static void ${delete_func}(IntPtr obj);
 
    // Destructor.
    ~${class_visitor.getRawName(False)}()
    {
       if ( mWeOwnMemory && IntPtr.Zero != mRawObject )
       {
-         delete_${bridge_name}(mRawObject);
+         ${delete_func}(mRawObject);
          mWeOwnMemory = false;
          mRawObject   = IntPtr.Zero;
       }
