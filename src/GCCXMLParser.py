@@ -176,7 +176,8 @@ class GCCXMLParser(object):
             name = element.get('name')                    
             type_ = self.GetType(element.get('type'))
             location = self.GetLocation(element.get('location'))
-            variable = declarations.Variable(type_, name, namespace)
+            init = element.get('init')
+            variable = declarations.Variable(type_, name, namespace, init)
             variable.location = location
             self.AddDecl(variable)
             self.Update(id, variable)

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.32 2004-02-05 23:00:46 patrick Exp $
+# $Id: declarations.py,v 1.33 2004-02-19 16:30:21 patrick Exp $
 
 import copy
 import re
@@ -870,10 +870,11 @@ class Variable(Declaration):
     @type _type: L{Type}
     @ivar _type: The type of the variable.
     '''
-    
-    def __init__(self, type, name, namespace):
+
+    def __init__(self, type, name, namespace, init):
         Declaration.__init__(self, name, namespace)
         self.type = type
+        self.init_value = init
 
 
 #==============================================================================
