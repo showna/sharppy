@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.35 2003-11-18 17:50:06 patrick Exp $
+## $Id: class_cs.tmpl,v 1.36 2003-11-18 21:52:37 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -70,7 +70,7 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #end for
 #set $pi_name = $method_visitor.getGenericName()
 #set $pi_p = ',\n\t'.join($pi_params)
-   [DllImport("vpr_bridge", CharSet = CharSet.Ansi)]
+   [DllImport("$module", CharSet = CharSet.Ansi)]
 #if $methodDecl.result.must_marshal
 #set $marshaler_name = $result_visitor.getRawName(False) + 'Marshaler'
    [return : MarshalAs(UnmanagedType.CustomMarshaler,
@@ -108,7 +108,7 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #set $arg_list = ', '.join($pi_call_args)
 #set $returns = $result_visitor.getRawName() != 'void'
 #if $returns
-      $result_visitor.getUsage result;
+      $result_visitor.getUsage() result;
 #end if
 #set $method_call = $pi_name + '(' + $arg_list + ')'
 ## Keep the "unsafe" block wrapped tightly around the P/Invoke call.
@@ -366,6 +366,99 @@ $generateClass($nc)
 // calls when a C# object of this type needs to be passed to native code.
 public class $marshaler_name : ICustomMarshaler
 {
+## To allow marshaling of abstract base types, define a dummy class that
+## allows the raw pointer passed to MarshalNativeToManaged() to be used.
+#if $classObj.class_.abstract
+#set $dummy_name = 'Dummy' + $class_visitor.getRawName(False)
+   private class $dummy_name : $class_visitor.getRawName()
+   {
+      public ${dummy_name}(IntPtr rawObject)
+      {
+         mRawObject   = rawObject;
+         mWeOwnMemory = false;
+      }
+
+## Override abstract methods.
+#for $m in $classObj.virtual_methods
+#if $m.abstract
+#set $method_visitor   = CSharpVisitor()
+#set $pi_param_visitor = CSharpPInvokeParamVisitor()
+#set $param_visitor    = CSharpParamVisitor()
+#set $result_visitor   = CSharpReturnVisitor()
+#silent $m.accept($method_visitor)
+#silent $m.result.accept($result_visitor)
+#set $method_name = $m.name[0]
+## XXX: Need custom marshaling on delegate parameters.
+#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters])
+## Set up the P/Invoke information and the method body.
+#set $unsafe = False
+#set $pi_params = ['IntPtr obj']
+#for $param in $m.parameters
+#silent $param[0].accept($pi_param_visitor)
+#if not $unsafe and $pi_param_visitor.needsUnsafe()
+#set $unsafe = True
+#end if
+#silent $pi_params.append('%s %s' % ($pi_param_visitor.getUsage(), $param[1]))
+#end for
+#set $pi_name = $method_visitor.getGenericName()
+#set $pi_p = ',\n\t'.join($pi_params)
+      [DllImport("$module", CharSet = CharSet.Ansi)]
+#if $m.result.must_marshal
+#set $marshaler_name = $result_visitor.getRawName(False) + 'Marshaler'
+      [return : MarshalAs(UnmanagedType.CustomMarshaler,
+                          MarshalTypeRef = typeof($marshaler_name))]
+#end if
+      private #if $unsafe then 'unsafe ' else ''#extern static $result_visitor.getUsage() ${pi_name}($pi_p);
+
+      public override $result_visitor.getUsage() ${method_name}($p)
+      {
+## Pre-call parameter marshaling.
+#set $pi_call_args = ['mRawObject']
+#for $param in $m.parameters
+#silent $param_visitor.setParamName($param[1])
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+#if not $unsafe and $param_visitor.needsUnsafe()
+#set $unsafe = True
+#end if
+         $param_visitor.getPreCallMarshal()
+#silent $pi_call_args.append($param_visitor.getMarshalParamName())
+#else
+#silent $pi_call_args.append($param[1])
+#end if
+#end for
+#set $arg_list = ', '.join($pi_call_args)
+#set $returns = $result_visitor.getRawName() != 'void'
+#if $returns
+         $result_visitor.getUsage() result;
+#end if
+#set $method_call = $pi_name + '(' + $arg_list + ')'
+## Keep the "unsafe" block wrapped tightly around the P/Invoke call.
+#if $unsafe
+         unsafe
+         {
+#end if
+         #if $returns then 'result = ' else ''#$method_call;
+#if $unsafe
+         }
+#end if
+## Post-call parameter marshaling.
+#for $param in $m.parameters
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+         $param_visitor.getPostCallMarshal()
+#end if
+#end for
+#if $returns
+         return result;
+#end if
+      }
+
+#end if
+#end for
+   }
+
+#end if
    public void CleanUpManagedData(Object obj)
    {
    }
@@ -395,9 +488,7 @@ public class $marshaler_name : ICustomMarshaler
    public Object MarshalNativeToManaged(IntPtr nativeObj)
    {
 #if $classObj.class_.abstract
-## XXX: We cannot instantiate abstract types, but pointers to abstract types
-## can be returned from C++.
-      return null;
+      return new ${dummy_name}(nativeObj);
 #else
 #if $classObj.info.only_smart_ptr
       return new ${class_visitor.getRawName()}(new_${holder_name}(nativeObj));
