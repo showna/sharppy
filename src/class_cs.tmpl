@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.29 2003-11-12 23:46:01 patrick Exp $
+## $Id: class_cs.tmpl,v 1.30 2003-11-13 17:14:09 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -319,6 +319,46 @@ $generateClass($nc)
 #end if
 #end for
 } // class $class_visitor.getRawName()
+
+#if not $classObj.class_.abstract
+#set $marshaler_name = $class_visitor.getRawName(False) + 'Marshaler'
+// Custom marshaler for $class_visitor.getRawName().  Use this with P/Invoke
+// calls when a C# object of this type needs to be passed to native code.
+public class $marshaler_name : ICustomMarshaler
+{
+   public void CleanUpManagedData(Object obj)
+   {
+   }
+
+   public void CleanUpNativeData(IntPtr nativeData)
+   {
+   }
+
+   public int GetNativeDataSize()
+   {
+      return -1;
+   }
+
+   public IntPtr MarshalManagedToNative(Object obj)
+   {
+      return (($class_visitor.getRawName()) obj).mRawObject;
+   }
+
+   public Object MarshalNativeToManaged(IntPtr nativeObj)
+   {
+## XXX: For now, use the internal constructor rather than calling the C++
+## copy constructor.
+      return new ${class_visitor.getRawName()}(nativeObj, false);
+   }
+
+   public static ICustomMarshaler GetInstance(string cookie)
+   {
+      return mInstance;
+   }
+
+   private static $marshaler_name mInstance = new ${marshaler_name}();
+}
+#end if
 #end def
 
 #def generateInterface($classObj)
