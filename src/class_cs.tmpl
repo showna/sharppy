@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.70 2004-01-26 22:16:56 patrick Exp $
-// Generated from \$Revision: 1.70 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.71 2004-02-18 23:41:38 patrick Exp $
+// Generated from \$Revision: 1.71 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -7,21 +7,14 @@ using System.Reflection;
 #import visitors
 
 #def generateMethod($methodDecl, $hasBase, $sealed = False)
-#set $method_visitor    = visitors.CSharpVisitor()
-#set $pi_param_visitor  = visitors.CSharpPInvokeParamVisitor()
-#set $param_visitor     = visitors.CSharpParamVisitor()
-#set $result_visitor    = visitors.CSharpReturnVisitor()
-#set $dlg_param_visitor = visitors.CSharpDelegateParamVisitor()
+#set $method_visitor = visitors.CSharpMethodVisitor()
+#silent $method_visitor.setHasBaseClass($hasBase)
+#silent $method_visitor.setSealed($sealed)
 #silent $methodDecl.accept($method_visitor)
-#silent $methodDecl.result.accept($result_visitor)
 #set $method_name = $methodDecl.name[0]
-#set $method_params = ', '.join(['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters])
-## If our class is sealed, we do not need to declare a delegate.
-## If this method is virtual and not an override of a non-abstract method,
-## then we need a delegate and member variable to hold the delegate.
-## XXX: Can this expression be simplified?
-#if not $sealed and (($methodDecl.virtual and not $methodDecl.override) or ($methodDecl.virtual and not $hasBase))
-#set $delegate_name = TemplateHelpers.getDelegateName($methodDecl)
+#set $method_params = ', '.join($method_visitor.getParamTypeList())
+#if $method_visitor.needsDelegate()
+#set $delegate_name = $method_visitor.getDelegateName()
    // Delegate for the ${method_name}() callback.
 ## If the reutrn value on the delegate must be marshaled, define an adapter
 ## callback that will wrap the actual virtual function.
@@ -33,119 +26,47 @@ using System.Reflection;
       return ${method_name}($adapter_params).mRawObject;
    }
 
-#set $return_type = 'IntPtr'
+#set $dlg_return_type = 'IntPtr'
 #else
-#set $return_type = $result_visitor.getUsage()
+#set $dlg_return_type = $method_visitor.getReturnType()
 #end if
-## Build up the parameter list for the delegate.
-#set $delegate_param_list = []
-#for $param in $methodDecl.parameters
-#silent $param[0].accept($dlg_param_visitor)
-#if $dlg_param_visitor.mustMarshal()
-#set $marshaler_name = $dlg_param_visitor.getUsage() + 'Marshaler'
-#set $param_decl = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%s))] %s %s' % ($marshaler_name, $dlg_param_visitor.getUsage(), $param[1])
-#else
-#set $param_decl = '%s %s' % ($dlg_param_visitor.getUsage(), $param[1])
-#end if
-#silent $delegate_param_list.append($param_decl)
-#end for
-#set $delegate_params = ',\n\t'.join($delegate_param_list)
-   public delegate $return_type ${delegate_name}($delegate_params);
+#set $delegate_params = ',\n\t'.join($method_visitor.getDelegateParamTypeList())
+   public delegate $dlg_return_type ${delegate_name}($delegate_params);
    protected $delegate_name m_${delegate_name};
 
 #end if
 ## If this method is virtual and abstract, declare it as such.
 #if $methodDecl.virtual and $methodDecl.abstract
-   $methodDecl.visibility abstract $result_visitor.getUsage() ${method_name}($method_params);
+   $methodDecl.visibility abstract $method_visitor.getReturnType() ${method_name}($method_params);
 ## Otherwise, set up the P/Invoke information and the method body.
 #else
-#set $unsafe = False
-#if $methodDecl.static
-#set $pi_params = []
-#set $pi_call_args = []
-#else
-#set $pi_params = ['IntPtr obj']
-#set $pi_call_args = ['mRawObject']
-#end if
-#for $param in $methodDecl.parameters
-#silent $param[0].accept($pi_param_visitor)
-#if not $unsafe and $pi_param_visitor.needsUnsafe()
-#set $unsafe = True
-#end if
-#silent $pi_params.append('%s %s' % ($pi_param_visitor.getUsage(), $param[1]))
-#end for
-#set $pi_name = $method_visitor.getGenericName()
-#set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
 #if $methodDecl.result.must_marshal
-#set $marshaler_name = $result_visitor.getUsage() + 'Marshaler'
+#set $marshaler_name = $method_visitor.getReturnType() + 'Marshaler'
    [return : MarshalAs(UnmanagedType.CustomMarshaler,
                        MarshalTypeRef = typeof($marshaler_name))]
 #end if
-   private #if $unsafe then 'unsafe ' else ''#extern static $result_visitor.getUsage() ${pi_name}($pi_p);
+   $method_visitor.getPInvokeDecl();
 
-#if $methodDecl.virtual
-## If we are overriding a method but do not have a base class, then the method
-## comes from an interface we are implementing.  In that case, it needs to be
-## virtual.
-#if $methodDecl.override and $hasBase
-#set $method_type = 'override'
-#elif $sealed
-#set $method_type = ''
-#else
-#set $method_type = 'virtual'
-#end if
-#elif $methodDecl.static
-#set $method_type = 'static'
-#if $methodDecl.override
-#set $method_type = 'new ' + $method_type
-#end if
-#else
-#set $method_type = ''
-#end if
-   $methodDecl.visibility $method_type $result_visitor.getUsage() ${method_name}($method_params)
+   $methodDecl.visibility $method_visitor.getKind() $method_visitor.getReturnType() ${method_name}($method_params)
    {
 ## Pre-call parameter marshaling.
-#for $param in $methodDecl.parameters
-#silent $param_visitor.setParamName($param[1])
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-#if not $unsafe and $param_visitor.needsUnsafe()
-#set $unsafe = True
-#end if
-      $param_visitor.getPreCallMarshal()
-#silent $pi_call_args.append($param_visitor.getMarshalParamName())
-#else
-#silent $pi_call_args.append($param[1])
-#end if
+#for $pre_marshal in $method_visitor.getPreCallMarshalList()
+      $pre_marshal;
 #end for
-#set $arg_list = ', '.join($pi_call_args)
-#set $returns = $result_visitor.getRawName() != 'void'
-#if $returns
-      $result_visitor.getUsage() result;
-#end if
-#set $method_call = $pi_name + '(' + $arg_list + ')'
-## Keep the "unsafe" block wrapped tightly around the P/Invoke call.
-#if $unsafe
-      unsafe
-      {
-#end if
-      #if $returns then 'result = ' else ''#$method_call;
-#if $unsafe
-      }
-#end if
+#for $method_call_line in $method_visitor.getMethodCallLines()
+      $method_call_line
+#end for
 ## Post-call parameter marshaling.
-#for $param in $methodDecl.parameters
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal()
-#end if
+#for $post_marshal in $method_visitor.getPostCallMarshalList()
+      $post_marshal;
 #end for
-#if $returns
-      return result;
+#if $method_visitor.returns()
+      $method_visitor.getReturnStatement();
 #end if
    }
 #end if
+#del $method_visitor
 #end def
 
 #def generateClass($classObj)

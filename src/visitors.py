@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.36 2004-02-18 20:20:20 patrick Exp $
+# $Id: visitors.py,v 1.37 2004-02-18 23:41:39 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -799,3 +799,198 @@ class CSharpReturnVisitor(CSharpVisitor):
 
    def visit(self, decl):
       CSharpVisitor.visit(self, decl)
+
+class CSharpMethodVisitor(CSharpVisitor):
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+      self.__initialize()
+
+   def __initialize(self):
+      self.__has_base_class           = False
+      self.__sealed_class             = False
+      self.__method_kind              = ''
+      self.__needs_delegate           = False
+      self.__delegate_name            = ''
+      self.__delegate_param_type_list = []
+      self.__method_call              = []
+      self.__returns                  = False
+      self.__return_type              = ''
+      self.__return_statement         = ''
+      self.__pi_param_type_list       = []
+      self.__pinvoke_decl             = ''
+      self.__param_type_list          = []
+      self.__param_list               = []
+      self.__pre_call_marshal         = []
+      self.__post_call_marshal        = []
+
+   def setSealed(self, sealed):
+      self.__sealed_class = sealed
+
+   def setHasBaseClass(self, hasBase):
+      self.__has_base_class = hasBase
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl)
+
+      # Determine if we need a delegate right away so that code below can take
+      # advantage of that knowledge.
+      # If our class is sealed, we do not need to declare a delegate.
+      # If this method is virtual and not an override of a non-abstract method,
+      # then we need a delegate and member variable to hold the delegate.
+      # XXX: Can this expression be simplified?
+      if not self.__sealed_class and \
+         ((decl.virtual and not decl.override) or \
+          (decl.virtual and not self.__has_base_class)):
+         self.__needs_delegate = True
+         self.__delegate_name  = th.getDelegateName(self.decl)
+
+      # Virtual method.
+      if decl.virtual:
+         if decl.override and self.__has_base_class:
+            self.__method_kind = 'override'
+         elif self.__sealed_class:
+            self.__method_kind =  ''
+         else:
+            self.__method_kind = 'virtual'
+      # Static method.
+      elif decl.static:
+         self.__method_kind = 'static'
+         if decl.override:
+            self.__method_kind = 'new static'
+      # Non-virtual, non-static method.
+      else:
+         if decl.override:
+            self.__method_kind = 'new'
+
+      if decl.static:
+         self.__pi_param_type_list = []
+         self.__param_list         = []
+      else:
+         self.__pi_param_type_list = ['IntPtr obj']
+         self.__param_list         = ['mRawObject']
+
+      # Handle the result type before all the parameter stuff.
+      result_visitor = CSharpReturnVisitor()
+      decl.result.accept(result_visitor)
+      self.__return_type = result_visitor.getUsage()
+
+      self.__returns = self.__return_type != 'void'
+
+      param_visitor     = CSharpParamVisitor()
+      dlg_param_visitor = CSharpDelegateParamVisitor()
+      pi_param_visitor  = CSharpPInvokeParamVisitor()
+
+      unsafe = False
+
+      for p in decl.parameters:
+         param_visitor.setParamName(p[1])
+         p[0].accept(param_visitor)
+         p[0].accept(pi_param_visitor)
+
+         param_type = param_visitor.getUsage()
+
+         if param_visitor.mustMarshal():
+            pre_marshal  = param_visitor.getPreCallMarshal()
+            post_marshal = param_visitor.getPostCallMarshal()
+
+            if pre_marshal != '':
+               self.__pre_call_marshal.append(param_visitor.getPreCallMarshal())
+            if post_marshal != '':
+               self.__post_call_marshal.append(param_visitor.getPostCallMarshal())
+
+            self.__param_list.append(param_visitor.getMarshalParamName())
+         else:
+            self.__param_list.append(p[1])
+
+         if self.needsDelegate():
+            p[0].accept(dlg_param_visitor)
+   
+            if dlg_param_visitor.mustMarshal():
+               marshaler_name = dlg_param_visitor.getUsage() + 'Marshaler'
+               delegate_param_type = \
+                  '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%s))] %s %s' % \
+                     (marshaler_name, dlg_param_visitor.getUsage(), p[1])
+            else:
+               delegate_param_type = '%s %s' % (dlg_param_visitor.getUsage(), p[1])
+
+            self.__delegate_param_type_list.append(delegate_param_type)
+
+         if not unsafe and pi_param_visitor.needsUnsafe():
+            unsafe = True
+
+         self.__param_type_list.append(param_type + ' ' + p[1])
+         self.__pi_param_type_list.append('%s %s' % (pi_param_visitor.getUsage(), p[1]))
+
+      del dlg_param_visitor
+
+      if unsafe:
+         unsafe_str = 'unsafe '
+      else:
+         unsafe_str = ''
+
+      pinvoke_name = self.getGenericName()
+
+      pinvoke_decl_params = ',\n\t'.join(self.__pi_param_type_list)
+      self.__pinvoke_decl = 'private %sextern static %s %s(%s)' % \
+                            (unsafe_str, result_visitor.getUsage(),
+                             pinvoke_name, pinvoke_decl_params)
+
+      arg_list = ', '.join(self.__param_list)
+
+      # Start method_call out by making it a call to the P/Invoke function.
+      method_call = ['%s(%s);' % (pinvoke_name, arg_list)]
+
+      # If the method returns, add that information.
+      if self.returns():
+         method_call.insert(0, '%s result;' % self.__return_type)
+         method_call[1] = 'result = %s' % method_call[1]
+         self.__return_statement = 'return result'
+
+      # If the method is marked as unsafe, wrap the call in an 'unsafe' block.
+      if unsafe:
+         method_call.insert(1, 'unsafe {')
+         method_call.append('}')
+
+      self.__method_call = method_call
+
+   def needsDelegate(self):
+      return self.__needs_delegate
+
+   def getDelegateName(self):
+      assert(self.needsDelegate())
+      return self.__delegate_name
+
+   def getDelegateParamTypeList(self):
+      assert(self.needsDelegate())
+      return self.__delegate_param_type_list
+
+   def getPInvokeDecl(self):
+      return self.__pinvoke_decl
+
+   def getKind(self):
+      return self.__method_kind
+
+   def returns(self):
+      return self.__returns
+
+   def getReturnType(self):
+      return self.__return_type
+
+   def getParamTypeList(self):
+      return self.__param_type_list
+
+   def getParamList(self):
+      return self.__param_list
+
+   def getPreCallMarshalList(self):
+      return self.__pre_call_marshal
+
+   def getMethodCallLines(self):
+      return self.__method_call
+
+   def getPostCallMarshalList(self):
+      return self.__post_call_marshal
+
+   def getReturnStatement(self):
+      assert(self.returns())
+      return self.__return_statement
