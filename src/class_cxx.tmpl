@@ -1,13 +1,18 @@
-## $Id: class_cxx.tmpl,v 1.31 2003-11-13 22:58:20 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.32 2003-11-14 17:43:07 patrick Exp $
 
-#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName
+#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
 
-#def fillMethodWrapperBody($methodDecl, $methodCall, $classVisitor = None)
+#def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $classVisitor = None)
 #set $param_visitor  = CPlusPlusParamVisitor()
 #set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
 #if not $methodDecl.static
-#silent $params[0:0] = ["%s* self_" % $classVisitor.getRawName()]
+#silent $params[0:0] = ["%s self_" % $getSelfType($classObj, $classVisitor)]
+#if $classObj.info.only_smart_ptr
+#set $methodCall = $methodCall % 'mPtr->'
+#else
+#set $methodCall = $methodCall % ''
+#end if
 #end if
 #set $p = ', '.join($params)
 #set $method_visitor = CPlusPlusVisitor()
@@ -112,21 +117,37 @@ public:
 #if $classObj.smart_ptr
 struct $getHolderName($class_visitor)
 {
-#set $decl = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
-   $decl mPtr;
+#set $smart_ptr_decl = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
+   $smart_ptr_decl mPtr;
 };
 #end if
 
 extern "C"
 {
 #set $method_visitor = CPlusPlusVisitor()
+## We have a class that only appears as a smart pointer.  We only have one
+## constructor that copies the existing object.
+#if $classObj.info.only_smart_ptr
+#set $holder_name = $getHolderName($class_visitor)
+   SHARPPY_API $holder_name* new_${holder_name}($smart_ptr_decl ptr)
+   {
+      $holder_name* h = new $holder_name;
+      h->mPtr = ptr;
+      return h;
+   }
+## We have a class that does not necessarily appear as a smart pointer.  The
+## handling of this case is much more complicated.
+#else
 #for $c in $classObj.constructors
 #silent $c.accept($method_visitor)
 #set $cons_name = $method_visitor.getGenericName()
+## Handle the copy constructor a little different since we know what the
+## argument type will be.
 #if $c.IsCopy()
    // Copy constructor wrapper.
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
 #else
+## For non-copy constructors, build up the parameter list.
 #set $param_list = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters]
 #for $j in range(len($classObj.virtual_methods))
 #set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$j]), $j)
@@ -137,14 +158,14 @@ extern "C"
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}($p)
 #end if
    {
-## Copy constructor.
+## Copy constructor body.
 #if $c.IsCopy()
       $class_name* obj = new ${class_name}(*p);
 #for $m in $classObj.virtual_methods
 #set $callback_name = getCallbackName($m)
       obj->$callback_name = p->$callback_name;
 #end for
-## Normal constructor.
+## Normal constructor body.
 #else
 ## Pre-call parameter marshaling.
 #set $all_args = []
@@ -175,16 +196,20 @@ extern "C"
       return ($class_visitor.getRawName()*) obj;
    }
 
+## End of constructor loop.
 #end for
-   SHARPPY_API void delete_${class_id}($class_visitor.getRawName()* self_)
+#end if
+## Simple destructor wrapper.  All classes will have one.
+## XXX: What about classes with non-public destructors?
+   SHARPPY_API void delete_${class_id}($getSelfType($classObj, $class_visitor) self_)
    {
       delete self_;
    }
 
 ## ---------------------------- Non-virtual methods ---------------------------
 #for $m in $classObj.non_virtual_methods
-#set $method_call = 'self_->' + $m.name[0]
-$fillMethodWrapperBody($m, $method_call, $class_visitor)
+#set $method_call = 'self_->%s' + $m.name[0]
+$fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 #end for
 
 ## ------------------------------ Virtual methods -----------------------------
@@ -193,8 +218,8 @@ $fillMethodWrapperBody($m, $method_call, $class_visitor)
 #set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.virtual_methods
 #silent $m.accept($method_visitor)
-#set $method_call = 'self_->' + $method_visitor.getRawName()
-$fillMethodWrapperBody($m, $method_call, $class_visitor)
+#set $method_call = 'self_->%s' + $method_visitor.getRawName()
+$fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 #end for
 
 ## ------------------------------ Static methods ------------------------------
