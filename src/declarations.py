@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.36 2004-02-20 21:06:22 patrick Exp $
+# $Id: declarations.py,v 1.37 2004-02-20 21:07:04 patrick Exp $
 
 import copy
 import re
@@ -362,6 +362,7 @@ class Function(Declaration):
 
     def __init__(self, name, namespace, result, params, throws=None):
         Declaration.__init__(self, name, namespace)
+        self.info = None
         # the result type: instance of Type, or None (constructors)            
         self.result = result
         # the parameters: instances of Type
@@ -374,6 +375,14 @@ class Function(Declaration):
 
         # the exception specification
         self.throws = throws
+
+    def setInfo(self, info):
+        if info.returns_array:
+            self.returns_array = True
+        else:
+            self.returns_array = False
+
+        self.info = info
 
     def getID(self):
         base_name = Declaration.getID(self)
