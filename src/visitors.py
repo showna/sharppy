@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.52 2004-05-20 20:41:22 patrick Exp $
+# $Id: visitors.py,v 1.53 2004-05-20 21:39:58 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -188,6 +188,16 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
                                      (self.__param_name, self.__orig_param_name)]
             self.__post_marshal = ['*%s = strdup(%s.c_str());' % \
                                      (self.__orig_param_name, self.__param_name)]
+      elif typeID == SHARED_PTR:
+         self.__must_marshal = True
+         # XXX: This introduces one more shared pointer copy than we actually
+         # need.  It would be best if we could just pass the dereferenced
+         # pointer directly to the method call, but the structure of the code
+         # does not really allow for such a thing to be done at this time.
+         self.__pre_marshal = ['%s %s = *%s;' % \
+                                  (self.usage, self.__param_name,
+                                   self.__orig_param_name)]
+         self.usage += '*'
 
    def mustMarshal(self):
       return self.__must_marshal
@@ -549,7 +559,7 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
                method_call[1] = result_visitor.getMarshaledCall() % method_call[1]
             else:
                method_call[1] = '%s = %s;' % (result_visitor.getMarshalResultVarName(),
-                                             method_call[1])
+                                              method_call[1])
          else:
             method_call[1] = 'result = %s;' % method_call[1]
 
