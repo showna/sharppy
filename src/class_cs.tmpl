@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.78 2004-07-06 04:54:43 patrick Exp $
-// Generated from \$Revision: 1.78 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.79 2004-07-06 15:50:58 patrick Exp $
+// Generated from \$Revision: 1.79 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -86,11 +86,12 @@ using System.Reflection;
 #set $has_base_class = True
 #end if
 #end for
+#set $sealed = $classObj.info.sealed
 #set $b = ', '.join($bases)
 public #slurp
 #if $classObj.class_.abstract
 abstract #slurp
-#elif $classObj.info.sealed
+#elif $sealed
 sealed #slurp
 #end if
 #set $has_virtuals = $classObj.hasVirtualMethods()
@@ -101,9 +102,17 @@ class $class_visitor.getRawName(False)
 {
 ## If we have a base class, it will hold and manage access to mRawObject.
 #if not $has_base_class
-   protected IntPtr mRawObject = IntPtr.Zero;
-   protected bool mWeOwnMemory = false;
+#if $sealed
+#set $visib = 'private'
+#else
+#set $visib = 'protected'
+#end if
+   $visib IntPtr mRawObject = IntPtr.Zero;
+   $visib bool mWeOwnMemory = false;
+#del $visib
+#if not $sealed
    protected class NoInitTag {}
+#end if
 
    /// <summary>
    /// This is needed for the custom marshaler to be able to perform a
@@ -140,6 +149,7 @@ class $class_visitor.getRawName(False)
 
 #end if
    // Constructors.
+#if not $sealed
 ## Allocate a special protected constructor that will only allocate the
 ## delegate data members--if there are any.  This is critical in making
 ## inheritance from C++ work correctly.
@@ -153,6 +163,7 @@ class $class_visitor.getRawName(False)
 #end if
    }
 
+#end if
 #for $c in $classObj.constructors
 #for $i in range($c.MinArgs(), $c.MaxArgs() + 1)
 #set $cons_visitor = visitors.CSharpConstructorVisitor()
@@ -384,7 +395,7 @@ $generateMethod($m, $has_base_class)
    // End of virtual methods.
 #end if
 ## -------------------------- Sealed virtual methods --------------------------
-#if $classObj.info.sealed
+#if $sealed
 
    // Start of virtual methods.
 #for $m in $classObj.sealed_methods
