@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.19 2003-12-22 02:26:15 patrick Exp $
+# $Id: declarations.py,v 1.20 2003-12-22 20:57:03 patrick Exp $
 
 import copy
 import re
@@ -441,7 +441,13 @@ class Constructor(Method):
         class_as_param = param.cxx_name == self.class_
         param_reference = isinstance(param, ReferenceType) 
         is_public = self.visibility == Scope.public
-        return param_reference and class_as_param and param.const and is_public
+        result = param_reference and class_as_param and param.const and is_public
+
+        # Replace this method with a function that simply returns the result of
+        # the above computations.  This makes it so that the calculations only
+        # have to be done once for self.
+        self.IsCopy = lambda x = result: x
+        return result
 
     def PointerDeclaration(self, force=False):
         return ''
