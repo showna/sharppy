@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.33 2003-11-19 19:48:07 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.34 2003-11-19 20:04:09 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -26,9 +26,9 @@ from Cheetah.Template import Template
 #==============================================================================
 class ReferenceTypeExporter(Exporter):
    'Generates C# P/Invoke bridging code to export a class declaration.'
-    
-   cxx_template_file    = 'class_cxx.tmpl'
-   csharp_template_file = 'class_cs.tmpl'
+
+   cxx_template_file    = os.path.dirname(__file__) + '/class_cxx.tmpl'
+   csharp_template_file = os.path.dirname(__file__) + '/class_cs.tmpl'
  
    def __init__(self, info, parser_tail=None, module = 'Unknown'):
       Exporter.__init__(self, info, parser_tail, module)
