@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.18 2004-01-17 16:45:54 patrick Exp $
+# $Id: sharppy.py,v 1.19 2004-02-03 21:22:14 patrick Exp $
 
 """
 Sharppy version %s
@@ -142,7 +142,7 @@ def CreateContext():
    context = {}
    context['Import'] = ExecuteInterface
    # infos
-   context['Function'] = infos.FunctionInfo
+   context['FunctionHolder'] = infos.FunctionHolderInfo
    context['ValueType'] = infos.ValueTypeInfo
    context['ReferenceType'] = infos.ReferenceTypeInfo
    context['ReferenceTemplate'] = infos.ReferenceTypeTemplateInfo

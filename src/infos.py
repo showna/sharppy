@@ -7,7 +7,7 @@ import re
 import exporters 
 import ReferenceTypeExporter
 import ValueTypeExporter
-import FunctionExporter
+import FunctionHolderExporter
 import EnumExporter
 import HeaderExporter
 import VarExporter
@@ -52,20 +52,23 @@ class DeclarationInfo:
             self.__attributes[name] = value
 
 #==============================================================================
-# FunctionInfo
+# FunctionHolderInfo
 #==============================================================================
-class FunctionInfo(DeclarationInfo):
+class FunctionHolderInfo(DeclarationInfo):
 
-    def __init__(self, name, include, tail=None, otherOption=None):        
-        DeclarationInfo.__init__(self, otherOption)
-        self._Attribute('name', name)
+    def __init__(self, module, class_, include):
+        DeclarationInfo.__init__(self)
+        self._Attribute('holder_class', class_)
         self._Attribute('include', include)
-        self._Attribute('exclude', False)
-        # create a FunctionExporter
-        exporter = FunctionExporter.FunctionExporter(InfoWrapper(self), tail)
+        self._Attribute('module', module)
+        self._Attribute('funcs', [])
+        exporter = FunctionHolderExporter.FunctionHolderExporter(InfoWrapper(self))
         if exporter not in exporters.exporters:
-            exporters.exporters.append(exporter)
-        exporter.interface_file = exporters.current_interface
+            exporters.exporters.append(exporter) 
+        exporter.interface_file = exporters.current_interface 
+
+    def addFunction(self, name):
+        self._Attribute('funcs').append(name)
 
 
 #==============================================================================
