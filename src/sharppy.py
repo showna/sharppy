@@ -299,6 +299,7 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
             declarations = []
             parsed_header = None
         ExpandTypedefs(declarations, exported_names)
+        export.setModule(module + '_bridge')
         export.SetDeclarations(declarations)
         export.SetParsedHeader(parsed_header)
         export.GenerateCode(exported_names)

@@ -17,6 +17,7 @@ class Exporter(object):
         self.interface_file = None
         self.declarations = []
         self.includes = []
+        self.module = 'Unknown'
 
     def Name(self):
         raise NotImplementedError(self.__class__.__name__)
@@ -38,6 +39,9 @@ class Exporter(object):
     def SetParsedHeader(self, parsed_header):
         self.parser_header = parsed_header 
 
+    def setModule(self, module):
+        print "Setting module to", module
+        self.module = module
 
     def SetDeclarations(self, declarations):
         self.declarations = declarations
