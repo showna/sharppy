@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.10 2003-11-03 22:38:39 patrick Exp $
+# $Id: declarations.py,v 1.11 2003-11-10 18:13:27 patrick Exp $
 
 from utils import makeid
 import copy
@@ -147,6 +147,8 @@ class Class(Declaration):
                 return True
         return False
 
+    def getMembers(self):
+        return self.__members
 
     def AddMember(self, member):
         if member.FullName() in self.__member_names:
@@ -288,8 +290,6 @@ class Function(Declaration):
 
     maxArgs = property(MaxArgs)
 
-    
-    
 #==============================================================================
 # Operator
 #==============================================================================
@@ -304,7 +304,6 @@ class Operator(Function):
         if not namespace.endswith('::'):
             namespace += '::'
         return namespace + 'operator' + self.name[0]
-
 
 #==============================================================================
 # Method

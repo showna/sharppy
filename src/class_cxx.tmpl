@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.20 2003-11-06 16:37:10 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.21 2003-11-10 18:13:27 patrick Exp $
 
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
@@ -14,22 +14,19 @@
 #end for
 
 #if $classObj.hasVirtualMethods()
-#set $base_list = ['public %s' % getDeclName(x, $generic_visitor) for x in $classObj.bases]
+#set $base_list = ['public %s' % x for x in $classObj.bridge_bases]
 #set $bases = ', '.join($base_list)
 class SHARPPY_API $classObj.bridge_name : $bases
 {
 public:
 #for $c in $classObj.constructors
-
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-#silent $classObj.bases[0].accept($generic_visitor)
-#set $base_cons = $generic_visitor.getRawName()
    ${classObj.bridge_name}($p)
-      : ${base_cons}($arg_list)
+      : ${classObj.bridge_bases[0]}($arg_list)
    {;}
-#end for
 
+#end for
    virtual ~${classObj.bridge_name}()
    {;}
 
@@ -99,6 +96,7 @@ extern "C"
 
 #end if
 
+## ---------------------------- Non-virtual methods ---------------------------
 #set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.non_virtual_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
@@ -124,6 +122,7 @@ extern "C"
 
 #end for
 
+## ------------------------------ Virtual methods -----------------------------
 #set $method_visitor = CPlusPlusVisitor()
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
@@ -149,6 +148,7 @@ extern "C"
 
 #end for
 
+## ------------------------------ Static methods ------------------------------
 #set $method_visitor = CPlusPlusVisitor()
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.static_methods
@@ -173,6 +173,7 @@ extern "C"
 
 #end for
 
+## ---------------------------- Static data members ---------------------------
 #set $data_visitor = CPlusPlusVisitor()
 #set $data_type_visitor = CPlusPlusVisitor()
 #for $m in $classObj.static_members

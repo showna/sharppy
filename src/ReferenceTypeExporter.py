@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.22 2003-11-06 21:10:33 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.23 2003-11-10 18:13:27 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -12,7 +12,7 @@ from declarations import *
 from settings import *
 from policies import *
 from EnumExporter import EnumExporter
-from utils import makeid, enumerate, generateUniqueName, operatorToString
+from utils import makeid, enumerate, generateUniqueName, operatorToString, getClassBridgeName
 import copy
 import exporterutils
 import os
@@ -59,6 +59,9 @@ class ReferenceTypeExporter(Exporter):
 
    # The "bridge name" is used for the name of the class that will handle
    # bridging of virtual methods.
+   # XXX: This is mis-used for getting the generic name of a class.  Some
+   # rethinking of how to handle the bridge name versus the generic name is
+   # needed.
    def getBridgeName(self):
       bridge_name = makeid(self.class_.FullName())
       if self.hasVirtualMethods():
@@ -99,6 +102,9 @@ class ReferenceTypeExporter(Exporter):
          else:
             self.class_ = decl
          self.class_ = copy.deepcopy(self.class_)
+         self.all_bases = self.getAllClassBases()
+
+         # Set up the Cheetah template file names.
          base_fname = '_'.join(self.class_.getFullNameAbstract())
          self.cxx_output_file = base_fname + '.cpp'
          self.csharp_output_file = base_fname + '.cs'
@@ -107,13 +113,33 @@ class ReferenceTypeExporter(Exporter):
          self.cxx_output_file = 'yikes.cpp'
          self.csharp_output_file = 'yikes.cs'
 
-   def ClassBases(self):
+   def getAllClassBases(self):
+      '''
+      Returns all the base classes of self without taking into account
+      hierarchy or which base classes are (or are not) being exported.
+      '''
       all_bases = []       
       for level in self.class_.hierarchy:
          for base in level:
             all_bases.append(base)
-      return [self.GetDeclaration(x.name) for x in all_bases] 
-    
+      return [self.GetDeclaration(x.name) for x in all_bases]
+
+   def getImmediateClassBases(self, exportedNames):
+      '''
+      Returns only the immediate base classes (if any) of self that are
+      being exorted.
+      '''
+      bases = []
+      exported = False
+      for level in self.class_.hierarchy:
+         for b in level:
+            if b.visibility == Scope.public and b.name in exportedNames:
+               bases.append(b)
+               exported = True
+         if exported:
+            break
+      return [self.GetDeclaration(x.name) for x in bases] 
+
    def Order(self):
       '''
       Return the TOTAL number of bases that this class has, including the
@@ -167,7 +193,6 @@ class ReferenceTypeExporter(Exporter):
             csharp_file.close()
          except IOError, (errno, strerror):
             print "I/O error (%s) [%s]: %s" % (errno, csharp_out, strerror)
-
 
    def InheritMethods(self, exported_names):
       '''
@@ -341,19 +366,49 @@ class ReferenceTypeExporter(Exporter):
       '''Export the name of the class and its class_ statement.'''
       self.bridge_name = self.getBridgeName()
 
-   def ExportBases(self, exported_names):
-      'Expose the bases of the class into the template section'        
-      hierarchy = self.class_.hierarchy
-      exported = []
-      for level in hierarchy:
-         for base in level:
-            if base.visibility == Scope.public and base.name in exported_names:
-               exported.append(base.name)
-         if exported:
-            break
-      if exported:
-         code = 'bases< %s > ' %  (', '.join(exported))
-#         self.Add('template', code)
+   def ExportBases(self, exportedNames):
+      'Expose the bases of this class.'
+      self.bases = self.getImmediateClassBases(exportedNames)
+
+      # self.bridge_bases contains the names of the base classes as simple
+      # Python string objects and nothing more.
+      self.bridge_bases = []
+      exported = False
+
+      # If this reference type has virtual methods, then the inheritance
+      # hierarchy is going to be different.  We need a bridge class that
+      # derives from self.class_ and any bridge classes that exist for the
+      # base classes of self.class_.
+      # XXX: This may not be the right place to do this.  This really only
+      # matters for C++.
+      if self.hasVirtualMethods():
+         self.bridge_bases = [self.class_.FullName()]
+
+         for level in self.class_.hierarchy:
+            for b in level:
+               if b.visibility == Scope.public and b.name in exportedNames:
+                  base_decl = self.GetDeclaration(b.name)
+
+                  # We only care about b as a base class if it has virtual
+                  # methods.  In that case, we need to inherit from its bridge
+                  # class.
+                  for member in base_decl.getMembers():
+                     if type(member) == Method and member.virtual:
+                        # Create a new base declaration using the bridge name
+                        # for b.
+                        self.bridge_bases.append(getClassBridgeName(b))
+                        exported = True
+                        break
+            if exported:
+               break
+      else:
+         for level in self.class_.hierarchy:
+            for b in level:
+               if b.visibility == Scope.public and b.name in exportedNames:
+                  self.bridge_bases.exported.append(b.name)
+                  exported = True
+            if exported:
+               break
 
    def ExportConstructors(self):
       '''
@@ -362,7 +417,7 @@ class ReferenceTypeExporter(Exporter):
       '''
       constructors = [x for x in self.public_members if isinstance(x, Constructor)]
 
-      # don't export the copy constructor if the class is abstract
+      # don't export the copy constructor if the class is 
       if self.class_.abstract:
          for cons in constructors:
             if cons.IsCopy():
@@ -471,7 +526,6 @@ class ReferenceTypeExporter(Exporter):
       holder = self.info.holder
       self.virtual_methods = []
       if self.hasVirtualMethods():
-         self.bases = [self.class_]
          for member in self.class_:
             if type(member) == Method and member.virtual:
                self.virtual_methods.append(member)

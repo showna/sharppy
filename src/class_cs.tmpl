@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.20 2003-11-06 21:23:07 patrick Exp $
+## $Id: class_cs.tmpl,v 1.21 2003-11-10 18:13:27 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -24,10 +24,10 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #silent $classObj.class_.accept($class_visitor)
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
-#if $base_visitor.getRawName() != $class_visitor.getRawName()
+##if $base_visitor.getRawName() != $class_visitor.getRawName()
 #silent $bases.append($base_visitor.getRawName())
 #set $has_base = True
-#end if
+##end if
 #end for
 #silent bases.append('IDisposable')
 #set $b = ', '.join($bases)
@@ -310,10 +310,10 @@ $generateClass($nc)
 #silent $classObj.class_.accept($class_visitor)
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
-#if $base_visitor.getRawName() != $class_visitor.getRawName()
+##if $base_visitor.getRawName() != $class_visitor.getRawName()
 #silent $bases.append($base_visitor.getRawName())
 #set $has_base = True
-#end if
+##end if
 #end for
 public interface $class_visitor.getRawName(False)
 #if $has_base
