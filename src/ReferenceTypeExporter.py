@@ -212,7 +212,7 @@ class ReferenceTypeExporter(Exporter):
             for j in range(0, len(cons_params)):
                 arg_list.append('p' + str(j))
 
-            cons_wrapper_name = "new_%s_c%d" % (wrapper_class_name, i)
+            cons_wrapper_name = "%s_c%d" % (wrapper_class_name, i)
 
             # If this is a copy constructor, prepend "copy_" to the wrapper
             # name.
@@ -413,29 +413,13 @@ class ReferenceTypeExporter(Exporter):
 
 
     def ExportConstructors(self):
-        '''Exports all the public contructors of the class, plus indicates if the 
+        '''
+        Exports all the public contructors of the class, plus indicates if the 
         class is noncopyable.
         '''
         indent = self.INDENT
-        
-        def init_code(cons):
-            'return the init<>() code for the given contructor'
-            param_list = [p.FullName() for p in cons.parameters]
-            min_params_list = param_list[:cons.minArgs]
-            max_params_list = param_list[cons.minArgs:]
-            min_params = ', '.join(min_params_list)
-            max_params = ', '.join(max_params_list)
-            init = self.Name() + '('
-            init += min_params
-            if max_params:
-                if min_params:
-                    init += ', '
-#                init += py_ns + ('optional< %s >' % max_params)
-            init += ')'    
-            return init
-        
         constructors = [x for x in self.public_members if isinstance(x, Constructor)]
-#        self.constructors = constructors[:]
+
         # don't export the copy constructor if the class is abstract
         if self.class_.abstract:
             for cons in constructors:
@@ -445,27 +429,15 @@ class ReferenceTypeExporter(Exporter):
 
         self.constructors = constructors[:]
 
+        # At this point, if we have no constructors left, then this class
+        # cannot be instantiated.
         if not constructors:
             # declare no_init
             self.no_init = True
-#        else:
-#            # Write the constructor with fewest parameters to the constructor
-#            # section.
-#            smaller = None
-#            for cons in constructors:
-#                if smaller is None or len(cons.parameters) < len(smaller.parameters):
-#                    smaller = cons
-#            assert smaller is not None
-#            self.Add('constructor', init_code(smaller))
-#            constructors.remove(smaller)
-#            # write the rest to the inside section, using def()
-#            for cons in constructors:
-#                code = '.def(%s)' % init_code(cons) 
-#                self.Add('inside', code)
-        # check if the class is copyable
+
+        # Check if the class is copyable.
         if not self.class_.HasCopyConstructor() or self.class_.abstract:
             self.non_copyable = True
-#            self.Add('template', 'noncopyable')
 
     def OverloadName(self, method):
         'Returns the name of the overloads struct for the given method'
