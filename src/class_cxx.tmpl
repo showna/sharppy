@@ -1,10 +1,28 @@
-## $Id: class_cxx.tmpl,v 1.27 2003-11-12 19:43:22 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.28 2003-11-12 20:07:19 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
 
-#def fillMethodWrapperBody($methodDecl, $returnVisitor, $methodCall)
+#def fillMethodWrapperBody($methodDecl, $methodCall, $classVisitor = None)
 #set $param_visitor  = CPlusPlusParamVisitor()
+#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
+#if not $methodDecl.static
+#silent $params[0:0] = ["%s* self_" % $classVisitor.getRawName()]
+#end if
+#set $p = ', '.join($params)
+#set $method_visitor = CPlusPlusVisitor()
+#set $return_visitor = CPlusPlusReturnVisitor()
+#silent $methodDecl.result.accept($return_visitor)
+#silent $methodDecl.accept($method_visitor)
+#if $methodDecl.virtual
+#set $method_type = 'virtual'
+#elif $methodDecl.static
+#set $method_type = 'static'
+#else
+#set $method_type = 'non-virtual'
+#end if
+   // Wrapper for $method_type method ${method_visitor.getRawName()}()
+   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 ## Pre-call parameter marshaling.
 #set $all_args = []
@@ -19,14 +37,14 @@
 #end if
 #end for
 #set $arg_list = ', '.join($all_args)
-#set $returns = $returnVisitor.getRawName() != 'void'
+#set $returns = $return_visitor.getRawName() != 'void'
 #if $returns
-      $returnVisitor.getUsage() result;
+      $return_visitor.getUsage() result;
 #end if
 #set $method_call = $methodCall + '(' + $arg_list + ')'
 ## Return value marshaling.
 #if $methodDecl.result.must_marshal
-      result = new ${returnVisitor.getRawName()}($method_call);
+      result = new ${return_visitor.getRawName()}($method_call);
 #else
       #if $returns then 'result = ' else ''#$method_call;
 #end if
@@ -144,46 +162,24 @@ extern "C"
 
 ## ---------------------------- Non-virtual methods ---------------------------
 #for $m in $classObj.non_virtual_methods
-#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]
-#set $p = ', '.join($params)
-#set $return_visitor = CPlusPlusReturnVisitor()
-#silent $m.result.accept($return_visitor)
-#silent $m.accept($method_visitor)
-   // Wrapper for non-virtual method ${method_visitor.getRawName()}()
-   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
 #set $method_call = 'self_->' + $m.name[0]
-$fillMethodWrapperBody($m, $return_visitor, $method_call)
+$fillMethodWrapperBody($m, $method_call, $class_visitor)
 #end for
 
 ## ------------------------------ Virtual methods -----------------------------
+## XXX: Come up with a way to eliminate the use of a visitor here so that all
+## of that is handled by fillMethodWrapperBody().
 #set $method_visitor = CPlusPlusVisitor()
-#set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
-#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]
-#set $p = ', '.join($params)
-#set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)
-#silent $m.result.accept($return_visitor)
-   // Wrapper for virtual method ${method_visitor.getRawName()}()
-   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
 #set $method_call = 'self_->' + $method_visitor.getRawName()
-$fillMethodWrapperBody($m, $return_visitor, $method_call)
+$fillMethodWrapperBody($m, $method_call, $class_visitor)
 #end for
 
 ## ------------------------------ Static methods ------------------------------
-#set $method_visitor = CPlusPlusVisitor()
-#set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.static_methods
-#set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
-#set $p = ', '.join($params)
-#set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)
-#silent $m.result.accept($return_visitor)
-   // Wrapper for static method ${method_visitor.getRawName()}()
-   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
-$fillMethodWrapperBody($m, $return_visitor, $method_visitor.getRawName())
+$fillMethodWrapperBody($m, $method_visitor.getRawName())
 #end for
 
 ## ---------------------------- Static data members ---------------------------
