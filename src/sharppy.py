@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.15 2004-01-13 05:15:26 patrick Exp $
+# $Id: sharppy.py,v 1.16 2004-01-13 05:26:52 patrick Exp $
 
 """
 Sharppy version %s
@@ -156,6 +156,7 @@ def CreateContext():
    context['exclude'] = infos.exclude
    context['property'] = infos.property
    context['set_wrapper'] = infos.set_wrapper
+   context['use_smart_ptr'] = infos.use_smart_ptr
    context['use_shared_ptr'] = infos.use_shared_ptr
    context['use_auto_ptr'] = infos.use_auto_ptr
    context['holder'] = infos.holder
