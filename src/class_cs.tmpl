@@ -1,5 +1,5 @@
-import System;
-import System.Runtime.InteropServices;
+using System;
+using System.Runtime.InteropServices;
 
 #from TemplateHelpers import getCSharpName
 
@@ -104,7 +104,7 @@ $generateClass($nc)
 #end def
 
 #for $n in $exp_class.class_.namespace
-nameapace $n
+namespace $n
 {
 #end for
 
