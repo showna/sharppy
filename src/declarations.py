@@ -1,9 +1,8 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.15 2003-11-14 20:29:45 patrick Exp $
+# $Id: declarations.py,v 1.16 2003-11-19 21:40:36 patrick Exp $
 
-from utils import makeid
 import copy
 import re
 
@@ -77,6 +76,9 @@ class Declaration(object):
         for i in xrange(len(name)):
             name[i] = cleaner.sub("_", name[i])
         return '_'.join(name)
+
+    def getGenericName(self):
+      return '_'.join(self.getFullNameAbstract())
 
     def accept(self, visitor):
         visitor.visit(self)
@@ -267,6 +269,11 @@ class Function(Declaration):
 
         # the exception specification
         self.throws = throws
+
+    def getGenericName(self):
+      base_name = Declaration.getGenericName(self)
+      param_types = [x[0].getCleanName() for x in self.parameters]
+      return base_name + '__' +'_'.join(param_types)
 
     def Exceptions(self):
         if self.throws is None:

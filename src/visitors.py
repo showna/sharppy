@@ -1,7 +1,6 @@
-# $Id: visitors.py,v 1.21 2003-11-19 05:12:39 patrick Exp $
+# $Id: visitors.py,v 1.22 2003-11-19 21:40:36 patrick Exp $
 
 import re
-from declarations import Class, Function
 
 UNKNOWN            = -1
 STD_STRING         = 0
@@ -52,14 +51,6 @@ class DeclarationVisitor:
       '''
       return self.usage
 
-   def _makeGenericName(self):
-      return '_'.join(self.decl.getFullNameAbstract())
-
-   def _makeGenericFuncName(self):
-      base_name = self._makeGenericName()
-      param_types = [x[0].getCleanName() for x in self.decl.parameters]
-      return base_name + '__' +'_'.join(param_types)
-
    def _checkForProblemType(self):
       '''
       Template method used find and process "problem" types.
@@ -90,12 +81,7 @@ class CPlusPlusVisitor(DeclarationVisitor):
       self.decl         = decl
       self.problem_type = False
       self.name         = decl.FullName()
-
-      if isinstance(decl, Function):
-         self.generic_name = self._makeGenericFuncName()
-      else:
-         self.generic_name = self._makeGenericName()
-
+      self.generic_name = decl.getGenericName()
       self.no_ns_name = '::'.join(decl.name)
       self.usage = self.name
 
@@ -286,11 +272,7 @@ class CSharpVisitor(DeclarationVisitor):
       self.problem_type = False
 
       self.name = '.'.join(decl.getFullNameAbstract())
-
-      if isinstance(decl, Function):
-         self.generic_name = self._makeGenericFuncName()
-      else:
-         self.generic_name = self._makeGenericName()
+      self.generic_name = decl.getGenericName()
 
       self.no_ns_name = '.'.join(decl.name)
       self.usage = self.name
