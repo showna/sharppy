@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.32 2004-01-27 19:52:28 patrick Exp $
+# $Id: visitors.py,v 1.33 2004-01-27 20:10:52 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -336,10 +336,11 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
          # returns, then we need to assign the result to the original
          # std::string reference.
          if self.decl.suffix == '&' and not self.decl.const:
-            self.__pre_marshal  = 'char %s[256]' % marshal_param
+            self.__pre_marshal  = 'char* %s = (char*) malloc(sizeof(char) * 256)' % marshal_param
             self.__param_name   = '&' + self.__param_name
-            self.__post_marshal = '%s = %s' % \
-                                     (self.__orig_param_name, marshal_param)
+            self.__post_marshal = '%s = %s; free(%s)' % \
+                                     (self.__orig_param_name, marshal_param,
+                                      marshal_param)
 
          # Otherwise, we make a copy of the std::string object in a char* and
          # pass that to the CIL universe.
