@@ -42,12 +42,6 @@ def generateUniqueName(declList):
     return [makeid(x.FullName()) for x in declList]
 
 #==============================================================================
-# getClassBridgeName
-#==============================================================================
-def getClassBridgeName(c):
-    return makeid(c.FullName()) + '_bridge'
-
-#==============================================================================
 # operatorToString
 #==============================================================================
 def operatorToString(op, unary=True):
