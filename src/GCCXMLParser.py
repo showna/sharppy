@@ -394,7 +394,9 @@ class GCCXMLParser(object):
         type_ = self.GetType(element.get('type'))
         static = bool(int(element.get('extern', '0')))
         location = self.GetLocation(element.get('location'))
-        var = declarations.ClassVariable(type_, name, classname, visib, static)
+        init_value = element.get('init')
+        var = declarations.ClassVariable(type_, name, classname, visib, static,
+                                         init_value)
         var.location = location
         self.Update(id, var)
 

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.33 2004-02-19 16:30:21 patrick Exp $
+# $Id: declarations.py,v 1.34 2004-02-19 23:40:35 patrick Exp $
 
 import copy
 import re
@@ -892,8 +892,8 @@ class ClassVariable(Variable):
     @ivar _class: Full name of the class that this variable belongs to.
     '''
 
-    def __init__(self, type, name, class_, visib, static):
-        Variable.__init__(self, type, name, None)
+    def __init__(self, type, name, class_, visib, static, init):
+        Variable.__init__(self, type, name, None, init)
         self.visibility = visib
         self.static = static
         self.class_ = class_
