@@ -45,7 +45,6 @@ def generateUniqueName(declList):
 # operatorToString
 #==============================================================================
 def operatorToString(op, unary=True):
-    print 'converting', op
     if op == '+':
         return 'add'
     elif op == '-':
