@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.49 2003-12-23 18:17:27 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.50 2003-12-23 21:33:02 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -376,7 +376,20 @@ class ReferenceTypeExporter(Exporter.Exporter):
             member.virtual = not self.info[member.FullName()].no_override 
 
    def needsAdapter(self):
-      return self.hasVirtualMethods()
+      exports_protected_methods = False
+      for m in self.non_virtual_methods + self.static_methods:
+         if m.visibility == declarations.Scope.protected:
+            exports_protected_methods = True
+            break
+
+      result = self.hasVirtualMethods() or exports_protected_methods
+
+      # The first time we determine that self needs an adapter, that condition
+      # will not change.  We "optimize out" this method by storing the result
+      # of the above computations for any future calls.
+      self.needsAdapter = lambda x = result: x
+
+      return result
 
    def hasVirtualMethods(self):
       # Check to see if this class has any virtual methods.
