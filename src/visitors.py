@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.35 2004-02-05 17:39:22 patrick Exp $
+# $Id: visitors.py,v 1.36 2004-02-18 20:20:20 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -406,7 +406,7 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
       assert(self.needsParamHolder())
       return self.__param_holder_type
 
-class CPlusPlusMethodVisitor(CPlusPlusVisitor):
+class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
    '''
    Visitor for methods that appear in C++ adapter classes for those classes
    being exposed to C# that have virtual methods.  This visitor can handle

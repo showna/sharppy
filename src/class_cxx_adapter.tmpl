@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.15 2004-01-27 18:07:28 patrick Exp $
-// Generated from \$Revision: 1.15 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.16 2004-02-18 20:20:20 patrick Exp $
+// Generated from \$Revision: 1.16 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -26,7 +26,7 @@ public:
    {;}
 
 #set $base_name = $class_visitor.getRawName()
-#set $method_visitor = visitors.CPlusPlusMethodVisitor()
+#set $method_visitor = visitors.CPlusPlusAdapterMethodVisitor()
 #for $m in $classObj.virtual_method_callbacks
 #silent $m.accept($method_visitor)
 #for $holder in $method_visitor.getParamHolderDecls()
