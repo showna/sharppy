@@ -47,7 +47,7 @@ extern "C"
 #for $c in $classObj.constructors
 #if $c.IsCopy()
    // Copy constructor wrapper.
-   $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
+   SHARPPY_API $class_name* new_${classObj.bridge_name}(const ${classObj.bridge_name}* p)
 #else
 #set $param_list = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
@@ -56,7 +56,7 @@ extern "C"
 #end for
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
-   $class_name* new_${classObj.bridge_name}($p)
+   SHARPPY_API $class_name* new_${classObj.bridge_name}($p)
 #end if
    {
 #if $c.IsCopy()
@@ -81,7 +81,7 @@ extern "C"
 #end for
 
 #if $classObj.hasDestructor() or $classObj.hasVirtualMethods()
-   void delete_${classObj.bridge_name}($class_name* self_)
+   SHARPPY_API void delete_${classObj.bridge_name}($class_name* self_)
    {
       delete self_;
    }
@@ -94,7 +94,7 @@ extern "C"
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
-   $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
+   SHARPPY_API $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
 #if $getCPlusPlusName($m.result) != 'void'
@@ -115,7 +115,7 @@ extern "C"
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
-   $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
+   SHARPPY_API $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
 #if $getCPlusPlusName($m.result) != 'void'
@@ -137,7 +137,7 @@ extern "C"
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
-   $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
+   SHARPPY_API $getCPlusPlusName($m.result) ${m.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
 #if $m.result != 'void'
