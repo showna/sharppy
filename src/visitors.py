@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.20 2003-11-18 22:33:28 patrick Exp $
+# $Id: visitors.py,v 1.21 2003-11-19 05:12:39 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -104,10 +104,8 @@ class CPlusPlusVisitor(DeclarationVisitor):
 
    def _checkForProblemType(self):
       full_name = self.decl.getFullNameAbstract()
-      for s in full_name:
-         if s.find('basic_string') != -1:
-            self._processProblemType(STD_STRING)
-            break
+      if full_name[0] == 'std' and full_name[1].find('basic_string', 0) != -1:
+         self._processProblemType(STD_STRING)
 
    def _processProblemType(self, typeID):
       if typeID == STD_STRING:
@@ -303,39 +301,39 @@ class CSharpVisitor(DeclarationVisitor):
       full_name = self.decl.getFullNameAbstract()
       type_id   = UNKNOWN
 
-      # XXX: Figure out if there is a simpler way of dealing with unsigned
-      # integers.  It depends largely on the order that the type information
-      # is returned ("int unsigned" versus "unsigned int").
-      for s in full_name:
-         if s.find('basic_string') != -1:
-            type_id = STD_STRING
-            break
-         elif s.find('long long') != -1:
-            if s.find('unsigned') != -1:
-               type_id = UNSIGNED_LONG_LONG
-            else:
-               type_id = LONG_LONG
-            break
-         elif s.find('short') != -1:
-            if s.find('unsigned') != -1:
-               type_id = UNSIGNED_SHORT
-            else:
-               type_id = SHORT
-         # Assume that a long (not a long long) is supposed to be a 32-bit
-         # integer.
-         elif s.find('long') != -1 or s.find('int') != -1:
-            if s.find('unsigned') != -1:
-               type_id = UNSIGNED_LONG
-            else:
-               type_id = LONG
-            break
-         # Translate char, which is 1 byte in C/C++, into byte.
-         elif s.find('char') != -1:
-            if s.find('unsigned') != -1:
-               type_id = UNSIGNED_CHAR
-            else:
-               type_id = CHAR
-            break
+      if full_name[0] == 'std' and full_name[1].find('basic_string', 0) != -1:
+         type_id = STD_STRING
+      else:
+         # XXX: Figure out if there is a simpler way of dealing with unsigned
+         # integers.  It depends largely on the order that the type information
+         # is returned ("int unsigned" versus "unsigned int").
+         for s in full_name:
+            if s.find('long long') != -1:
+               if s.find('unsigned') != -1:
+                  type_id = UNSIGNED_LONG_LONG
+               else:
+                  type_id = LONG_LONG
+               break
+            elif s.find('short') != -1:
+               if s.find('unsigned') != -1:
+                  type_id = UNSIGNED_SHORT
+               else:
+                  type_id = SHORT
+            # Assume that a long (not a long long) is supposed to be a 32-bit
+            # integer.
+            elif s.find('long') != -1 or s.find('int') != -1:
+               if s.find('unsigned') != -1:
+                  type_id = UNSIGNED_LONG
+               else:
+                  type_id = LONG
+               break
+            # Translate char, which is 1 byte in C/C++, into byte.
+            elif s.find('char') != -1:
+               if s.find('unsigned') != -1:
+                  type_id = UNSIGNED_CHAR
+               else:
+                  type_id = CHAR
+               break
 
       # Based on type_id, process the problem type.
       if type_id != UNKNOWN:
