@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.45 2004-02-25 17:55:54 patrick Exp $
+# $Id: visitors.py,v 1.46 2004-02-25 21:04:38 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -131,8 +131,8 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
 
    def __initialize(self):
       # Basic data members needed for parameter marshaling.
-      self.__pre_marshal  = ''
-      self.__post_marshal = ''
+      self.__pre_marshal  = []
+      self.__post_marshal = []
       self.__must_marshal = False
 
    def visit(self, decl):
@@ -146,11 +146,11 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
             self.usage = re.sub(r"&", "*", self.name)
 
             self.__must_marshal = True
-            self.__pre_marshal  = '%s %s = *%s;' % \
-                                  (self.getRawName(), self.__param_name,
-                                   self.__orig_param_name)
-#            self.__post_marshal = '*%s = %s;' % \
-#                                  (self.__orig_param_name, self.__param_name)
+            self.__pre_marshal  = ['%s %s = *%s;' % \
+                                      (self.getRawName(), self.__param_name,
+                                       self.__orig_param_name)]
+#            self.__post_marshal = ['*%s = %s;' % \
+#                                     (self.__orig_param_name, self.__param_name)]
          # If we have a fundamental type being passed by const reference,
          # change that to pass-by-value semantics.  The .NET code expects
          # this (it's easier to pass value types by value in C#, and literal
@@ -173,10 +173,10 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
          # will be stored in the memory pointed to by the char**.
          if self.decl.suffix == '&' and not self.decl.const:
             self.__must_marshal = True
-            self.__pre_marshal  = 'std::string %s = *%s;' % \
-                                  (self.__param_name, self.__orig_param_name)
-            self.__post_marshal = '*%s = strdup(%s.c_str());' % \
-                                  (self.__orig_param_name, self.__param_name)
+            self.__pre_marshal  = ['std::string %s = *%s;' % \
+                                     (self.__param_name, self.__orig_param_name)]
+            self.__post_marshal = ['*%s = strdup(%s.c_str());' % \
+                                     (self.__orig_param_name, self.__param_name)]
 
    def mustMarshal(self):
       return self.__must_marshal
@@ -192,12 +192,10 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
       self.__param_name = 'marshal_' + paramName
       self.__orig_param_name = paramName
 
-   def getPreCallMarshal(self):
-      assert(self.mustMarshal())
+   def getPreCallMarshalList(self):
       return self.__pre_marshal
 
-   def getPostCallMarshal(self):
-      assert(self.mustMarshal())
+   def getPostCallMarshalList(self):
       return self.__post_marshal
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
@@ -256,10 +254,10 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    def getMarshalResultVarName(self):
       return self.__temp_result_var
 
-   def getPreCallMarshal(self):
+   def getPreCallMarshalList(self):
       return self.__pre_marshal
 
-   def getPostCallMarshal(self):
+   def getPostCallMarshalList(self):
       return self.__post_marshal
 
    def getMarshaledCall(self):
@@ -293,8 +291,8 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
 
    def __initialize(self):
       # Basic data members needed for parameter marshaling.
-      self.__pre_marshal  = ''
-      self.__post_marshal = ''
+      self.__pre_marshal  = []
+      self.__post_marshal = []
       self.__must_marshal = False
 
       # Data members needed for parameter holder objects.
@@ -331,11 +329,11 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
          # returns, then we need to assign the result to the original
          # std::string reference.
          if self.decl.suffix == '&' and not self.decl.const:
-            self.__pre_marshal  = 'char* %s = (char*) malloc(sizeof(char) * 256);' % marshal_param
+            self.__pre_marshal  = ['char* %s = (char*) malloc(sizeof(char) * 256);' % marshal_param]
             self.__param_name   = '&' + self.__param_name
-            self.__post_marshal = '%s = %s; free(%s);' % \
-                                     (self.__orig_param_name, marshal_param,
-                                      marshal_param)
+            self.__post_marshal = ['%s = %s;' % (self.__orig_param_name,
+                                                 marshal_param)]
+            self.__post_marshal += ['free(%s);' % marshal_param]
 
          # Otherwise, we make a copy of the std::string object in a char* and
          # pass that to the CIL universe.
@@ -344,10 +342,10 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
                deref_op = '->'
             else:
                deref_op = '.'
-            self.__pre_marshal  = 'char* %s = strdup(%s%sc_str());' % \
-                                     (marshal_param, self.__orig_param_name,
-                                      deref_op)
-            self.__post_marshal = 'free(%s);' % marshal_param
+            self.__pre_marshal  = ['char* %s = strdup(%s%sc_str());' % \
+                                      (marshal_param, self.__orig_param_name,
+                                       deref_op)]
+            self.__post_marshal = ['free(%s);' % marshal_param]
 
       elif typeID == SHARED_PTR:
          self.__needs_param_holder = True
@@ -360,12 +358,11 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
 
          self.__must_marshal = True
          self.__param_name   = 'h_%s' % self.__orig_param_name
-         self.__pre_marshal  = '%s* %s = new %s; %s->mPtr = %s;' % \
+         self.__pre_marshal  = ['%s* %s = new %s;' % \
                                   (self.__param_holder_type, self.__param_name,
-                                   self.__param_holder_type, self.__param_name,
-                                   self.__orig_param_name)
-         # Let the code in the CIL universe handle deletion in this case.
-         self.__post_marshal = ''
+                                   self.__param_holder_type)]
+         self.__pre_marshal += ['%s->mPtr = %s;' % \
+                                   (self.__param_name, self.__orig_param_name)]
 
    def mustMarshal(self):
       return self.__must_marshal
@@ -381,12 +378,10 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
       self.__param_name = 'marshal_' + paramName
       self.__orig_param_name = paramName
 
-   def getPreCallMarshal(self):
-      assert(self.mustMarshal())
+   def getPreCallMarshalList(self):
       return self.__pre_marshal
 
-   def getPostCallMarshal(self):
-      assert(self.mustMarshal())
+   def getPostCallMarshalList(self):
       return self.__post_marshal
 
    def needsParamHolder(self):
@@ -484,14 +479,8 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
          param_type = param_visitor.getUsage()
 
          if param_visitor.mustMarshal():
-            pre_marshal  = param_visitor.getPreCallMarshal()
-            post_marshal = param_visitor.getPostCallMarshal()
-
-            if pre_marshal != '':
-               self.__pre_call_marshal.append(param_visitor.getPreCallMarshal())
-            if post_marshal != '':
-               self.__post_call_marshal.append(param_visitor.getPostCallMarshal())
-
+            self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
+            self.__post_call_marshal += param_visitor.getPostCallMarshalList()
             self.__param_list.append(param_visitor.getMarshalParamName())
          else:
             self.__param_list.append(p[1])
@@ -533,8 +522,8 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
 
          # XXX: This is a mess.  CPlusPlusReturnVisitor needs a lot of work.
          if result_visitor.mustMarshal():
-            self.__pre_call_marshal  += result_visitor.getPreCallMarshal()
-            self.__post_call_marshal += result_visitor.getPostCallMarshal()
+            self.__pre_call_marshal  += result_visitor.getPreCallMarshalList()
+            self.__post_call_marshal += result_visitor.getPostCallMarshalList()
 
             if result_visitor.getMarshaledCall():
                method_call[1] = result_visitor.getMarshaledCall() % method_call[1]
@@ -649,8 +638,8 @@ class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
             callback_param_type = '%s*' % param_visitor.getParamHolderType()
 
          if param_visitor.mustMarshal():
-            self.__pre_call_marshal.append(param_visitor.getPreCallMarshal())
-            self.__post_call_marshal.append(param_visitor.getPostCallMarshal())
+            self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
+            self.__post_call_marshal += param_visitor.getPostCallMarshalList()
             self.__param_list.append(param_visitor.getMarshalParamName())
          else:
             self.__param_list.append(p[1])
@@ -919,8 +908,8 @@ class CSharpParamVisitor(CSharpVisitor):
       self.__orig_param_name = ''
 
    def __initialize(self):
-      self.__pre_marshal  = ''
-      self.__post_marshal = ''
+      self.__pre_marshal  = []
+      self.__post_marshal = []
       self.__must_marshal = False
       self.__needs_unsafe = False
 
@@ -967,12 +956,10 @@ class CSharpParamVisitor(CSharpVisitor):
       self.__orig_param_name = paramName
       self.__param_name = 'marshal_' + paramName
 
-   def getPreCallMarshal(self):
-      assert(self.mustMarshal())
+   def getPreCallMarshalList(self):
       return self.__pre_marshal
 
-   def getPostCallMarshal(self):
-      assert(self.mustMarshal())
+   def getPostCallMarshalList(self):
       return self.__post_marshal
 
    def _processProblemType(self, typeID):
@@ -1121,14 +1108,8 @@ class CSharpMethodVisitor(CSharpVisitor):
          param_type = param_visitor.getUsage()
 
          if param_visitor.mustMarshal():
-            pre_marshal  = param_visitor.getPreCallMarshal()
-            post_marshal = param_visitor.getPostCallMarshal()
-
-            if pre_marshal != '':
-               self.__pre_call_marshal.append(param_visitor.getPreCallMarshal())
-            if post_marshal != '':
-               self.__post_call_marshal.append(param_visitor.getPostCallMarshal())
-
+            self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
+            self.__post_call_marshal += param_visitor.getPostCallMarshalList()
             self.__param_list.append(param_visitor.getMarshalParamName())
          else:
             self.__param_list.append(p[1])

@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.61 2004-02-25 17:55:54 patrick Exp $
-// Generated from \$Revision: 1.61 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.62 2004-02-25 21:04:38 patrick Exp $
+// Generated from \$Revision: 1.62 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -111,8 +111,10 @@ extern "C"
 #for $param in $c.parameters
 #silent $param_visitor.setParamName($param[1])
 #silent $param[0].accept($param_visitor)
+#for $pre_marshal in $param_visitor.getPreCallMarshalList()
+      $pre_marshal
+#end for
 #if $param_visitor.mustMarshal()
-      $param_visitor.getPreCallMarshal() // Pre-call marshaling for $param[1]
 #silent $all_args.append($param_visitor.getMarshalParamName())
 #else
 #silent $all_args.append($param[1])
@@ -145,9 +147,9 @@ extern "C"
 ## Post-call parameter marshaling.
 #for $param in $c.parameters
 #silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal() // Post-call marshaling for $param[1]
-#end if
+#for $post_marshal in $param_visitor.getPostCallMarshalList()
+      $post_marshal
+#end for
 #end for
 ## All constructors return the same thing.
       return obj;

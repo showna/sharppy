@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.73 2004-02-23 17:05:24 patrick Exp $
-// Generated from \$Revision: 1.73 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.74 2004-02-25 21:04:38 patrick Exp $
+// Generated from \$Revision: 1.74 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -186,8 +186,10 @@ class $class_visitor.getRawName(False)
 #for $param in $c.parameters
 #silent $param_visitor.setParamName($param[1])
 #silent $param[0].accept($param_visitor)
+#for $pre_marshal in $param_visitor.getPreCallMarshalList()
+      $pre_marshal
+#end for
 #if $param_visitor.mustMarshal()
-      $param_visitor.getPreCallMarshal()
 #silent $cons_args.append($param_visitor.getMarshalParamName())
 #else
 #silent $cons_args.append($param[1])
@@ -200,9 +202,9 @@ class $class_visitor.getRawName(False)
 ## Post-call parameter marshaling.
 #for $param in $c.parameters
 #silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal()
-#end if
+#for $post_marshal in $param_visitor.getPostCallMarshalList()
+      $post_marshal
+#end for
 #end for
    }
 
@@ -293,11 +295,13 @@ class $class_visitor.getRawName(False)
 #if len($o.parameters) > 0
 #silent $param_visitor.setParamName('rhs')
 #silent $o.parameters[0][0].accept($param_visitor)
+#for $pre_marshal in $param_visitor.getPreCallMarshalList()
+      $pre_marshal
+#end for
 #if $param_visitor.mustMarshal()
 #if not $unsafe and $param_visitor.needsUnsafe()
 #set $unsafe = True
 #end if
-      $param_visitor.getPreCallMarshal()
 #silent $pi_call_args.append($param_visitor.getMarshalParamName())
 #else
 #silent $pi_call_args.append('rhs')
@@ -321,9 +325,9 @@ class $class_visitor.getRawName(False)
 ## Post-call parameter marshaling.
 #for $param in $o.parameters
 #silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal()
-#end if
+#for $post_marshal in $param_visitor.getPostCallMarshalList()
+      $post_marshal
+#end for
 #end for
 #if $returns
       return result;
