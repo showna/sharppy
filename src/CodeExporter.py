@@ -18,7 +18,3 @@ class CodeExporter(Exporter):
 
     def Export(self, codeunit, exported_names):
         codeunit.Write(self.info.section, self.info.code)        
-
-
-    def WriteInclude(self, codeunit):
-        pass

@@ -13,12 +13,8 @@ where options are:
                             the extension.
     -I <path>               Add an include path    
     -D <symbol>             Define symbol    
-    --multiple              Create various cpps, instead of only one 
-                            (useful during development)                        
-    --out-cxx=<name>        Specify C++ output filename (default: <module>.cpp)
-                            in --multiple mode, this will be a directory
-    --out-csharp=<name>     Specify C# output filename (default: <module>.cs)
-                            in --multiple mode, this will be a directory
+    --out-cxx=<name>        Specify C++ output directory (default: <module>_cpp)
+    --out-csharp=<name>     Specify C# output directory (default: <module>_cs)
     --sharppy-ns=<name>     Set the namespace where new types will be declared;
                             default is the empty namespace
     --debug                 Writes the xml for each file parsed in the current
@@ -33,8 +29,6 @@ import sys
 import os
 import getopt
 import exporters
-import SingleCodeUnit
-import MultipleCodeUnit
 import infos
 import exporterutils
 import settings
@@ -84,8 +78,8 @@ def ParseArguments():
         options, files = getopt.getopt(
             sys.argv[1:], 
             'R:I:D:vh', 
-            ['module=', 'multiple', 'out-cxx=', 'out-csharp=', 'sharppy-ns=',
-             'debug', 'cache-dir=', 'only-create-cache', 'version', 'help'])
+            ['module=', 'out-cxx=', 'out-csharp=', 'sharppy-ns=', 'debug',
+             'cache-dir=', 'only-create-cache', 'version', 'help'])
     except getopt.GetoptError, e:
         print
         print 'ERROR:', e
@@ -96,7 +90,6 @@ def ParseArguments():
     module = None
     out_cxx = None
     out_csharp = None
-    multiple = False
     cache_dir = None
     create_cache = False
 
@@ -117,8 +110,6 @@ def ParseArguments():
             settings.namespaces.sharppy = value + '::'
         elif opt == '--debug':
             settings.DEBUG = True
-        elif opt == '--multiple':
-            multiple = True
         elif opt == '--cache-dir':
             cache_dir = value
         elif opt == '--only-create-cache':
@@ -137,13 +128,9 @@ def ParseArguments():
     if not module:
         module = os.path.splitext(files[0])[0]
     if not out_cxx:
-        out_cxx = module
-        if not multiple:
-            out_cxx += '.cpp'
+        out_cxx = module + '_cpp'
     if not out_csharp:
-        out_csharp = module
-        if not multiple:
-            out_csharp += '.cs'
+        out_csharp = module + '_cs'
     for file in files:
         d = os.path.dirname(os.path.abspath(file))
         if d not in sys.path:
@@ -155,7 +142,7 @@ def ParseArguments():
         sys.exit(3)
 
     ProcessIncludes(includes)
-    return includes, defines, module, out_cxx, out_csharp, files, multiple, cache_dir, create_cache
+    return includes, defines, module, out_cxx, out_csharp, files, cache_dir, create_cache
 
     
 def CreateContext():
@@ -200,7 +187,7 @@ def CreateContext():
     
 def Begin():
     # parse arguments
-    includes, defines, module, out_cxx, out_csharp, interfaces, multiple, cache_dir, create_cache = ParseArguments()
+    includes, defines, module, out_cxx, out_csharp, interfaces, cache_dir, create_cache = ParseArguments()
     # run sharppy scripts
     for interface in interfaces:
         ExecuteInterface(interface)
@@ -208,8 +195,7 @@ def Begin():
     parser = CppParser(includes, defines, cache_dir, declarations.version)
     try:
         if not create_cache:
-            return GenerateCode(parser, module, out_cxx, out_csharp,
-                                interfaces, multiple)
+            return GenerateCode(parser, module, out_cxx, out_csharp, interfaces)
         else:
             return CreateCaches(parser)
     finally:
@@ -278,12 +264,7 @@ def OrderInterfaces(interfaces):
     return [x for _, x in interfaces_order]
 
 
-def GenerateCode(parser, module, out_cxx, out_csharp, interfaces, multiple):    
-    # prepare to generate the wrapper code
-    if multiple:
-        codeunit = MultipleCodeUnit.MultipleCodeUnit(module, out_cxx, out_csharp)
-    else:
-        codeunit = SingleCodeUnit.SingleCodeUnit(module, out_cxx, out_csharp)
+def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):    
     # stop referencing the exporters here
     exports = exporters.exporters
     exporters.exporters = None 
@@ -312,6 +293,7 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces, multiple):
         header = export.Header()
         if header:
             tail = tails[(interface, header)]
+            # declarations contains everything read in from parsing header.
             declarations, parsed_header = parser.Parse(header, interface, tail)
         else:
             declarations = []
@@ -319,18 +301,14 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces, multiple):
         ExpandTypedefs(declarations, exported_names)
         export.SetDeclarations(declarations)
         export.SetParsedHeader(parsed_header)
-        if multiple:
-            codeunit.SetCurrent(export.interface_file, export.Name())
-        export.GenerateCode(codeunit, exported_names)
+        export.GenerateCode(exported_names)
         # force collect of cyclic references
         exports[i] = None
         del declarations
         del export
         gc.collect()
-    # finally save the code unit
-    codeunit.Save()
-    if not multiple:
-        print 'Module %s generated' % module
+
+    print 'Module %s generated' % module
     return 0
 
 def ExpandTypedefs(decls, exported_names):

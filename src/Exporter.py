@@ -16,7 +16,7 @@ class Exporter(object):
         self.parser_tail = parser_tail
         self.interface_file = None
         self.declarations = []
-    
+        self.includes = []
 
     def Name(self):
         raise NotImplementedError(self.__class__.__name__)
@@ -42,20 +42,13 @@ class Exporter(object):
     def SetDeclarations(self, declarations):
         self.declarations = declarations
 
-        
-    def GenerateCode(self, codeunit, exported_names):
-        self.WriteInclude(codeunit)
-        self.Export(codeunit, exported_names)        
+    def GenerateCode(self, exported_names):
+        self.Export(exported_names)        
 
-    def WriteInclude(self, codeunit):
-        codeunit.WriteCPlusPlus('include', '#include <%s>\n' % self.info.include)
-        
-        
-    def Export(self, codeunit, exported_names):
+    def Export(self, exported_names):
         'subclasses must override this to do the real work'
         pass
     
-                    
     def GetDeclarations(self, fullname):
         decls = []
         for decl in self.declarations:
