@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.40 2003-11-20 05:50:16 patrick Exp $
-// Generated from \$Revision: 1.40 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.41 2003-11-20 06:07:42 patrick Exp $
+// Generated from \$Revision: 1.41 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 
@@ -171,19 +171,19 @@ class $class_visitor.getRawName(False) : $b
 ## as smart pointer.
 #if not $classObj.info.only_smart_ptr
 #set $delegate_args = []
-#if $classObj.hasVirtualMethods()
+#set $has_virtuals = $classObj.hasVirtualMethods()
+#if $has_virtuals
    private void allocDelegates()
    {
 #for $m in $classObj.virtual_methods
-## We only have to initialize delegate members for virtual functions that we
-## declare.  Those that are overridden are initialized in the base class.
-#if not $m.override
-#set $delegate_name = getDelegateName($m)
-      m_$delegate_name = new ${delegate_name}($m.name[0]);
-#silent $delegate_args.append('m_' + $delegate_name)
+#set $callback_name = $m.name[0]
+#if $m.result.must_marshal
+#set $callback_name = $callback_name + 'Adapter'
 #end if
-#silent $delegate_args.append('m_' + $getDelegateName($m))
-#end for
+#set $delegate_type = getDelegateName($m)
+      m_$delegate_type = new ${delegate_type}($callback_name);
+#silent $delegate_args.append('m_' + $delegate_type)
+#end if
    }
 #end if
 
@@ -192,8 +192,11 @@ class $class_visitor.getRawName(False) : $b
 ## delegate data members--if there are any.  This is critical in making
 ## inheritance from C++ work correctly.
    protected ${class_visitor.getRawName(False)}(NoInitTag doInit)
+#if $has_base
+      : base(doInit)
+#end if
    {
-#if $classObj.hasVirtualMethods()
+#if $has_virtuals
       allocDelegates();
 #end if
    }
@@ -221,7 +224,7 @@ class $class_visitor.getRawName(False) : $b
       : base(new NoInitTag())   // Do not initialize mRawObject in base class
 #end if
    {
-#if $classObj.hasVirtualMethods()
+#if $has_virtuals
       allocDelegates();
 #end if
 ## XXX: This does not handle the case when the parent class has delegates.
@@ -235,26 +238,12 @@ class $class_visitor.getRawName(False) : $b
 #end for
    // Internal constructor needed for marshaling purposes.
    internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)
+#if $has_base
+      : base(new NoInitTag())
+#end if
    {
       mRawObject   = instPtr;
       mWeOwnMemory = ownMemory;
-   }
-
-## Handle the case where an abstract (base) class has virtual methods.  We
-## initialize the delegate members in the base class so that sub-classes do
-## not have to do it over and over.
-#elif $classObj.hasVirtualMethods()
-   // Simple constructor for initializing the virtual method callbacks.
-   protected ${class_visitor.getRawName(False)}()
-   {
-#for $m in $classObj.virtual_methods
-#set $callback_name = $m.name[0]
-#if $m.result.must_marshal
-#set $callback_name = $callback_name + 'Adapter'
-#end if
-#set $delegate_type = getDelegateName($m)
-      m_$delegate_type = new ${delegate_type}($callback_name);
-#end if
    }
 
 #end if
@@ -266,7 +255,7 @@ class $class_visitor.getRawName(False) : $b
       delete();
    }
 
-#if $classObj.hasVirtualMethods()
+#if $has_virtuals
 #set $bridge_name = getBridgeName($class_visitor)
 #else
 #set $bridge_name = $class_visitor.getGenericName()
@@ -300,7 +289,7 @@ $generateMethod($m)
    // End of non-virtual methods.
 #end if
 ## ------------------------------ Virtual methods -----------------------------
-#if $classObj.hasVirtualMethods()
+#if $has_virtuals
 
    // Start of virtual methods.
 #for $m in $classObj.virtual_methods
@@ -400,7 +389,7 @@ public class $marshaler_name : ICustomMarshaler
 #set $dummy_name = 'Dummy' + $class_visitor.getRawName(False)
    private class $dummy_name : $class_visitor.getRawName()
    {
-      public ${dummy_name}(IntPtr rawObject)
+      public ${dummy_name}(IntPtr rawObject) : base(new NoInitTag())
       {
          mRawObject   = rawObject;
          mWeOwnMemory = false;
@@ -553,7 +542,7 @@ public interface $class_visitor.getRawName(False)
 #end if
 {
 ## ------------------------------ Virtual methods -----------------------------
-#if $classObj.hasVirtualMethods()
+#if $has_virtuals
 #set $method_visitor = visitors.CSharpVisitor()
 #set $result_visitor = visitors.CSharpVisitor()
 #for $m in $classObj.virtual_methods
