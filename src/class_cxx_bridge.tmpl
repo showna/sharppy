@@ -1,0 +1,63 @@
+## $Id: class_cxx_bridge.tmpl,v 1.1 2003-11-19 21:48:03 patrick Exp $
+// Generated from \$Revision: 1.1 $ of \$RCSfile: class_cxx_bridge.tmpl,v $
+
+#from TemplateHelpers import getBridgeName
+#import visitors
+#set $class_visitor = visitors.CPlusPlusVisitor()
+#silent $exp_class.class_.accept($class_visitor)
+#set $class_name = getBridgeName($class_visitor)
+#set $wrapper_sym = '__%s__' % $class_name.upper()
+\#ifndef $wrapper_sym
+\#define $wrapper_sym
+
+#for $i in $includes
+\#include <$i>
+#end for
+
+#set $generic_visitor = visitors.CPlusPlusVisitor()
+#set $class_id   = $class_name
+## Get the list of base classes (there will be at least one) for the bridge.
+#set $base_list = ['public ' + $class_visitor.getRawName()]
+#for $x in $exp_class.bridge_bases
+#silent $x.accept($generic_visitor)
+#silent $base_list.append('public %s' % getBridgeName($generic_visitor))
+#end for
+class $class_name : #echo ', '.join($base_list)
+{
+public:
+#for $c in $exp_class.constructors
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
+#set $arg_list = ', '.join([x[1] for x in $c.parameters])
+   ${class_name}($p)
+      : ${class_visitor.getRawName()}($arg_list)
+   {;}
+
+#end for
+   virtual ~${class_name}()
+   {;}
+
+#set $return_visitor = visitors.CPlusPlusReturnVisitor()
+#for $m in $exp_class.virtual_methods
+#if not $m.abstract
+#set $callback_name = getCallbackName($m)
+   $makeCPlusPlusTypedef($m);
+   ${callback_name}_t $callback_name;
+
+#silent $m.result.accept($return_visitor)
+#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+   virtual $return_visitor.getRawName() ${m.name[0]}($p)
+   {
+#set $returns = $return_visitor.getRawName() != 'void'
+#set $call = '%s(%s)' % ($getCallbackName($m), $arg_list)
+#if $return_visitor.mustMarshal()
+#set $call = '*(%s);' % $call
+#end if
+      #if $returns then 'return ' else ''#$call;
+   }
+
+#end if
+#end for
+}; // class $class_name
+
+\#endif

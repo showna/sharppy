@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.35 2003-11-19 21:41:09 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.36 2003-11-19 21:48:03 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -26,13 +26,15 @@ from Cheetah.Template import Template
 class ReferenceTypeExporter(Exporter.Exporter):
    'Generates C# P/Invoke bridging code to export a class declaration.'
 
-   cxx_template_file    = os.path.dirname(__file__) + '/class_cxx.tmpl'
-   csharp_template_file = os.path.dirname(__file__) + '/class_cs.tmpl'
+   cxx_bridge_template_file = os.path.dirname(__file__) + '/class_cxx_bridge.tmpl'
+   c_wrapper_template_file  = os.path.dirname(__file__) + '/class_cxx.tmpl'
+   csharp_template_file     = os.path.dirname(__file__) + '/class_cs.tmpl'
  
    def __init__(self, info, parser_tail=None, module = 'Unknown'):
       Exporter.Exporter.__init__(self, info, parser_tail, module)
 
-      self.cxx_template = Template(file = self.cxx_template_file)
+      self.cxx_bridge_template = Template(file = self.cxx_bridge_template_file)
+      self.c_wrapper_template = Template(file = self.c_wrapper_template_file)
       self.csharp_template = Template(file = self.csharp_template_file)
 
       # Abstract data information for the reference type to be exported.
@@ -89,11 +91,12 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          # Set up the Cheetah template file names.
          base_fname = '_'.join(self.class_.getFullNameAbstract())
-         self.cxx_output_file = base_fname + '.cpp'
+         self.cxx_bridge_output_file = base_fname + '_Bridge.h'
+         self.c_wrapper_output_file = base_fname + '.cpp'
          self.csharp_output_file = base_fname + '.cs'
       else:
          self.class_ = None
-         self.cxx_output_file = 'yikes.cpp'
+         self.c_wrapper_output_file = 'yikes.cpp'
          self.csharp_output_file = 'yikes.cs'
 
    def getAllClassBases(self):
@@ -153,28 +156,50 @@ class ReferenceTypeExporter(Exporter.Exporter):
    def Write(self):
       if not self.info.exclude:
          # Set up the mapping information for the templates.
-         self.cxx_template.exp_class     = self
-         self.cxx_template.module        = self.module
-         self.csharp_template.exp_class  = self
-         self.csharp_template.module     = self.module
+         self.c_wrapper_template.exp_class = self
+         self.c_wrapper_template.module    = self.module
+         self.csharp_template.exp_class    = self
+         self.csharp_template.module       = self.module
 
-         # Execute the templates.
-         cxx_out    = os.path.join(self.cxx_dir, self.cxx_output_file)
+         c_wrapper_out = os.path.join(self.cxx_dir, self.c_wrapper_output_file)
          csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
 
+         # Execute the templates.
+         if self.hasVirtualMethods():
+            self.includes.append(self.cxx_bridge_output_file)
+
+            self.cxx_bridge_template.exp_class = self
+            self.cxx_bridge_template.module    = self.module
+            self.cxx_bridge_template.includes  = self.includes
+            cxx_bridge_out = os.path.join(self.cxx_dir, self.cxx_bridge_output_file)
+
+            try:
+               print "\t[C++ Bridge]",
+               sys.__stdout__.flush()
+               cxx_file = open(cxx_bridge_out, 'w')
+               print ".",
+               sys.__stdout__.flush()
+               cxx_file.write(str(self.cxx_bridge_template))
+               print ".",
+               sys.__stdout__.flush()
+               cxx_file.close()
+               print "Done"
+            except IOError, (errno, strerror):
+               print "I/O error (%s) [%s]: %s" % (errno, cxx_bridge_out, strerror)
+
          try:
-            print "\t[C++]",
+            print "\t[C Wrappers]",
             sys.__stdout__.flush()
-            cxx_file = open(cxx_out, 'w')
+            cxx_file = open(c_wrapper_out, 'w')
             print ".",
             sys.__stdout__.flush()
-            cxx_file.write(str(self.cxx_template))
+            cxx_file.write(str(self.c_wrapper_template))
             print ".",
             sys.__stdout__.flush()
             cxx_file.close()
             print "Done"
          except IOError, (errno, strerror):
-            print "I/O error (%s) [%s]: %s" % (errno, cxx_out, strerror)
+            print "I/O error (%s) [%s]: %s" % (errno, c_wrapper_out, strerror)
 
          try:
             print "\t[C#]",
