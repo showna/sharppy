@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.49 2003-12-02 22:43:06 patrick Exp $
-// Generated from \$Revision: 1.49 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.50 2003-12-02 23:18:34 patrick Exp $
+// Generated from \$Revision: 1.50 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -16,10 +16,10 @@ using System.Reflection;
 #silent $methodDecl.result.accept($result_visitor)
 #set $method_name = $methodDecl.name[0]
 #set $method_params = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters])
-## If this method is virtual and either not an override of a non-abstract
-## method, then we need a delegate and member variable to hold the delegate.
+## If this method is virtual and not an override of a non-abstract method,
+## then we need a delegate and member variable to hold the delegate.
 ## XXX: Can this expression be simplified?
-#if ($methodDecl.virtual and $methodDecl.override) or ($methodDecl.virtual and not $hasBase)
+#if ($methodDecl.virtual and not $methodDecl.override) or ($methodDecl.virtual and not $hasBase)
 #set $delegate_name = getDelegateName($methodDecl)
    // Delegate for the ${method_name}() callback.
 ## If the reutrn value on the delegate must be marshaled, define an adapter
