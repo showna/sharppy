@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.60 2004-01-12 22:31:34 patrick Exp $
-// Generated from \$Revision: 1.60 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.61 2004-01-13 22:58:31 patrick Exp $
+// Generated from \$Revision: 1.61 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -254,13 +254,31 @@ class $class_visitor.getRawName(False)
 #if $has_virtuals and not $c.IsCopy()
       allocDelegates();
 #end if
-#set $cons_args = [x[1] for x in $c.parameters]
+#set $cons_args = []
+## Pre-call parameter marshaling.
+#for $param in $c.parameters
+#silent $param_visitor.setParamName($param[1])
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+      $param_visitor.getPreCallMarshal()
+#silent $cons_args.append($param_visitor.getMarshalParamName())
+#else
+#silent $cons_args.append($param[1])
+#end if
+#end for
 #if not $c.IsCopy()
 #silent $cons_args += $delegate_args
 #end if
 #set $arg_list = ', '.join($cons_args)
       mRawObject   = ${cons_name}($arg_list);
       mWeOwnMemory = true;
+## Post-call parameter marshaling.
+#for $param in $c.parameters
+#silent $param[0].accept($param_visitor)
+#if $param_visitor.mustMarshal()
+      $param_visitor.getPostCallMarshal()
+#end if
+#end for
    }
 
 #end for
