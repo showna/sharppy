@@ -1,35 +1,29 @@
-# $Id: TemplateHelpers.py,v 1.1 2003-10-01 22:48:52 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.2 2003-10-09 19:06:10 patrick Exp $
 
-def getCPlusPlusName(decl, translateProblemTypes = True):
-   if not translateProblemTypes:
-      return decl.FullName()
-   else:
-      name = []
-      for n in decl.getFullNameAbstract():
-         if n.startswith("basic_string"):
-            if decl.const:
-               name = ['const char*']
-            else:
-               name = ['char*']
-            break
-         else:
-            name.append(n)
+def getCPlusPlusName(decl):
+   return decl.FullName()
+#   full_name = decl.getFullNameAbstract()
+#   if 'basic_string' in full_name:
+#      if decl.const:
+#         const = 'const '
+#      return const + 'char*' + decl.suffix
+#   else:
+#      return decl.FullName()
 
-      return '::'.join(name)
-
-def getCSharpName(decl, translateProblemTypes = True):
-   if not translateProblemTypes:
-      return '.'.join(decl.getFullNameAbstract())
-   else:
-      name = []
-      for n in decl.getFullNameAbstract():
-         if n.startswith("basic_string"):
-            name = ['String']
-            break
-         else:
-            name.append(n)
-
-      return '.'.join(name)
+def getCSharpName(decl):
+   return '.'.join(decl.getFullNameAbstract())
+#   if not translateProblemTypes:
+#      return '.'.join(decl.getFullNameAbstract())
+#   else:
+#      name = []
+#      for n in decl.getFullNameAbstract():
+#         if n.startswith("basic_string"):
+#            name = ['String']
+#            break
+#         else:
+#            name.append(n)
+#
+#      return '.'.join(name)
 
 def getCallbackTypedefName(funcHolder, scoped = False):
    if scoped:
