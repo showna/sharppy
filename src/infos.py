@@ -329,5 +329,5 @@ def add_method(info, name, rename=None):
     else:
         added.append((name, rename))
 
-def final(info):
-    info._Attribute('no_override', True)
+def sealed(info):
+    info._Attribute('sealed', True)

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.64 2004-01-16 20:50:54 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.65 2004-01-17 16:45:54 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -48,6 +48,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.non_virtual_methods = []
       self.static_methods      = []
       self.virtual_methods     = []
+      self.sealed_methods      = []
       self.converter_operators = []
       self.member_operators    = []
       self.global_operators    = []
@@ -150,7 +151,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
    def Export(self, exported_names):
       self.InheritMethods(exported_names)
-      self.MakeNonVirtual()
+
       if not self.info.exclude:
          self.ExportBasics()
          self.ExportBases(exported_names)
@@ -332,6 +333,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
                    declarations.Destructor)
          method_info = self.info[m.name[0]]
 
+         # If this class is sealed, we can only export members that are public.
+         if self.info.sealed and m.visibility != declarations.Scope.public:
+            return False
+
          # A member can be exported as a method if all of the following are
          # true:
          #
@@ -387,9 +392,12 @@ class ReferenceTypeExporter(Exporter.Exporter):
                break
 
          if member.virtual:
-            self.virtual_methods.append(member)
-            if member.visibility == declarations.Scope.protected:
-               self.protected_virtual_methods.append(member)
+            if self.info.sealed:
+               self.sealed_methods.append(member)
+            else:
+               self.virtual_methods.append(member)
+               if member.visibility == declarations.Scope.protected:
+                  self.protected_virtual_methods.append(member)
          elif member.static:
             self.static_methods.append(member)
             if member.visibility == declarations.Scope.protected:
@@ -401,23 +409,17 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
       self.export_methods_run = True
 
-   def MakeNonVirtual(self):
-      '''
-      Make all methods that the user indicated to no_override no more
-      virtual, delegating their export to the ExportMethods routine.
-      '''
-      for member in self.class_:
-         if type(member) == declarations.Method and member.virtual:
-            member.virtual = not self.info[member.name[0]].no_override
-
    def needsAdapter(self):
-      exports_protected_methods = False
-      for m in self.non_virtual_methods + self.static_methods:
-         if m.visibility == declarations.Scope.protected:
-            exports_protected_methods = True
-            break
-
-      result = self.hasVirtualMethods() or exports_protected_methods
+      if self.info.sealed:
+         result = False
+      else:
+         exports_protected_methods = False
+         for m in self.non_virtual_methods + self.static_methods:
+            if m.visibility == declarations.Scope.protected:
+               exports_protected_methods = True
+               break
+   
+         result = self.hasVirtualMethods() or exports_protected_methods
 
       # The first time we determine that self needs an adapter, that condition
       # will not change.  We "optimize out" this method by storing the result

@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.55 2004-01-15 21:45:03 patrick Exp $
-// Generated from \$Revision: 1.55 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.56 2004-01-17 16:45:54 patrick Exp $
+// Generated from \$Revision: 1.56 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -232,6 +232,13 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #silent $m.accept($method_visitor)
 #set $method_call = 'self_->%s' + $method_visitor.getRawName()
 #end if
+$fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
+#end for
+
+## -------------------------- Sealed virtual methods --------------------------
+#for $m in $classObj.sealed_methods
+## For sealed virtual methods, the C wrapper needs to act like a non-virtual.
+#set $method_call = 'self_->%s' + $m.name[0]
 $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
 

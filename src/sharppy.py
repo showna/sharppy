@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.17 2004-01-13 21:14:58 patrick Exp $
+# $Id: sharppy.py,v 1.18 2004-01-17 16:45:54 patrick Exp $
 
 """
 Sharppy version %s
@@ -162,7 +162,7 @@ def CreateContext():
    context['no_smart_ptr'] = infos.no_smart_ptr
    context['holder'] = infos.holder
    context['add_method'] = infos.add_method
-   context['final'] = infos.final
+   context['sealed'] = infos.sealed
    # policies
    context['return_internal_reference'] = policies.return_internal_reference
    context['with_custodian_and_ward'] = policies.with_custodian_and_ward
