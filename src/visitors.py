@@ -1,7 +1,20 @@
-# $Id: visitors.py,v 1.13 2003-11-13 20:46:25 patrick Exp $
+# $Id: visitors.py,v 1.14 2003-11-13 21:07:46 patrick Exp $
 
 import re
 from declarations import Class, Function
+
+UNKNOWN            = -1
+STD_STRING         = 0
+CHAR               = 1
+UNSIGNED_CHAR      = 2
+SHORT              = 3
+UNSIGNED_SHORT     = 4
+INT                = 5
+UNSIGNED_INT       = 6
+LONG               = 7
+UNSIGNED_LONG      = 8
+LONG_LONG          = 9
+UNSIGNED_LONG_LONG = 10
 
 class DeclarationVisitor:
    def __init__(self):
@@ -86,11 +99,11 @@ class CPlusPlusVisitor(DeclarationVisitor):
       full_name = self.decl.getFullNameAbstract()
       for s in full_name:
          if s.find('basic_string') != -1:
-            self._processProblemType(s)
+            self._processProblemType(STD_STRING)
             break
 
-   def _processProblemType(self, typeName):
-      if typeName.find('basic_string') != -1:
+   def _processProblemType(self, typeID):
+      if typeID == STD_STRING:
          const = ''
          if self.decl.const:
             const = 'const '
@@ -132,14 +145,14 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
 #            self.__post_marshal = '*%s = %s' % \
 #                                  (self.__orig_param_name, self.__param_name)
 
-   def _processProblemType(self, typeName):
+   def _processProblemType(self, typeID):
       # Perform default problem type processing first.
-      CPlusPlusVisitor._processProblemType(self, typeName)
+      CPlusPlusVisitor._processProblemType(self, typeID)
 
       if self.decl.suffix == '&' and not self.decl.const:
          self.usage += '*'
 
-      if typeName.find('basic_string') != -1:
+      if typeID == STD_STRING:
          if self.decl.suffix == '&' and not self.decl.const:
             self.__must_marshal = True
             self.__pre_marshal  = 'std::string %s = *%s' % \
@@ -233,11 +246,11 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    def getResultVarName(self):
       return self.__result_var
 
-   def _processProblemType(self, typeName):
+   def _processProblemType(self, typeID):
       # Perform default problem type processing first.
-      CPlusPlusVisitor._processProblemType(self, typeName)
+      CPlusPlusVisitor._processProblemType(self, typeID)
 
-      if typeName.find('basic_string') != -1:
+      if typeID == STD_STRING:
 #         if self.usage.find('const') == -1:
 #            self.usage = 'const ' + self.usage
          self.__must_marshal = True
@@ -274,41 +287,69 @@ class CSharpVisitor(DeclarationVisitor):
 
    def _checkForProblemType(self):
       full_name = self.decl.getFullNameAbstract()
+      type_id   = UNKNOWN
 
       # XXX: Figure out if there is a simpler way of dealing with unsigned
       # integers.  It depends largely on the order that the type information
       # is returned ("int unsigned" versus "unsigned int").
       for s in full_name:
          if s.find('basic_string') != -1:
-            self.usage = 'String'
-            self.problem_type = True
-            self.decl.must_marshal = False
+            type_id = STD_STRING
             break
-         # Using long long probably indicates a desire for a 64-bit integer.
          elif s.find('long long') != -1:
             if s.find('unsigned') != -1:
-               self.usage = 'ulong'
+               type_id = UNSIGNED_LONG_LONG
             else:
-               self.usage = 'long'
+               type_id = LONG_LONG
             break
          # Assume that a long (not a long long) is supposed to be a 32-bit
          # integer.
          elif s.find('long') != -1 or s.find('int') != -1:
             if s.find('unsigned') != -1:
-               self.usage = 'uint'
+               type_id = UNSIGNED_LONG
             else:
-               self.usage = 'int'
+               type_id = LONG
             break
          elif s.find('short') != -1:
             if s.find('unsigned') != -1:
-               self.usage = 'ushort'
+               type_id = UNSIGNED_SHORT
          # Translate char, which is 1 byte in C/C++, into byte.
          elif s.find('char') != -1:
             if s.find('unsigned') != -1:
-               self.usage = 'byte'
+               type_id = UNSIGNED_CHAR
             else:
-               self.usage = 'sbyte'
+               type_id = CHAR
             break
+
+      # Based on type_id, process the problem type.
+      if type_id != UNKNOWN:
+         self._processProblemType(type_id)
+
+   def _processProblemType(self, typeID):
+      if typeID == STD_STRING:
+         self.usage = 'String'
+         self.problem_type = True
+         self.decl.must_marshal = False
+      # Translate char, which is 1 byte in C/C++, into byte.
+      elif typeID == CHAR:
+         self.usage = 'sbyte'
+      elif typeID == UNSIGNED_CHAR:
+         self.usage = 'byte'
+      elif typeID == SHORT:
+         self.usage = 'short'
+      elif typeID == UNSIGNED_SHORT:
+         self.usage = 'ushort'
+      # Assume that a long (not a long long) is supposed to be a 32-bit
+      # integer.
+      elif typeID == LONG or typeID == INT:
+         self.usage = 'int'
+      elif typeID == UNSIGNED_LONG or typeID == UNSIGNED_INT:
+         self.usage = 'uint'
+      # Using long long probably indicates a desire for a 64-bit integer.
+      elif typeID == UNSIGNED_LONG_LONG:
+         self.usage = 'ulong'
+      elif typeID == LONG_LONG:
+         self.usage = 'long'
 
    def _isFundamentalType(self, decl):
       return self.usage in self.fundamental_types
@@ -398,9 +439,9 @@ class CSharpParamVisitor(CSharpVisitor):
       assert(self.mustMarshal())
       return self.__post_marshal
 
-   def _processProblemType(self, typeName):
+   def _processProblemType(self, typeID):
       # Perform default problem type processing first.
-      CSharpVisitor._processProblemType(self, typeName)
+      CSharpVisitor._processProblemType(self, typeID)
 
 class CSharpReturnVisitor(CSharpVisitor):
    '''
