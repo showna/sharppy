@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.27 2004-01-12 22:31:34 patrick Exp $
+# $Id: declarations.py,v 1.28 2004-01-13 05:16:08 patrick Exp $
 
 import copy
 import re
@@ -56,6 +56,9 @@ class Declaration(object):
         # is absolutely required to prevent parse errors.
         if cxxName.find('<') != -1:
             temp_cxx_name = self.ws_match.sub('', cxxName)
+            # This must be applied twice to catch cases where an odd number of
+            # '>' characters are adjacent.
+            temp_cxx_name = self.template_munge.sub('> >', temp_cxx_name)
             self.cxx_name = self.template_munge.sub('> >', temp_cxx_name)
         # If we do not have a template, keep the original name intact.
         else:

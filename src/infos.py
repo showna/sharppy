@@ -148,6 +148,9 @@ class ReferenceTypeTemplateInfo(DeclarationInfo):
 
         # Remove all but the most necessary whitespace from name.
         name = re.sub(r'\s+', '', name)
+        # This must be applied twice to catch cases where an odd number of
+        # '>' characters are adjacent.
+        name = re.sub(r'>>', '> >', name)
         name = re.sub(r'>>', '> >', name)
 
         # Create a ReferenceTypeInfo using the template instantiation we forced.
