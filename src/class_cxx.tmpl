@@ -1,70 +1,33 @@
-## $Id: class_cxx.tmpl,v 1.58 2004-01-20 04:42:46 patrick Exp $
-// Generated from \$Revision: 1.58 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.59 2004-02-20 23:39:20 patrick Exp $
+// Generated from \$Revision: 1.59 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
 #def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $className = None)
-#set $param_visitor  = visitors.CPlusPlusParamVisitor()
-#set $params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
-#if not $methodDecl.static
-#silent $params[0:0] = ["%s* self_" % $className]
-#if $classObj.info.smart_ptr
-#if $classObj.info[$methodDecl.name[0]].direct_call
-#set $methodCall = $methodCall % 'mPtr.'
-#else
-#set $methodCall = $methodCall % 'mPtr->'
-#end if
-#else
-#set $methodCall = $methodCall % ''
-#end if
-#end if
-#set $p = ', '.join($params)
-#set $method_visitor = visitors.CPlusPlusVisitor()
-#set $return_visitor = visitors.CPlusPlusReturnVisitor()
-#silent $methodDecl.result.accept($return_visitor)
+#set $method_visitor = visitors.CPlusPlusFunctionWrapperVisitor()
+#silent $method_visitor.setClassInfo($classObj, $className)
+#silent $method_visitor.setCall($methodCall)
 #silent $methodDecl.accept($method_visitor)
-#if $methodDecl.virtual
-#set $method_type = 'virtual'
-#elif $methodDecl.static
-#set $method_type = 'static'
-#else
-#set $method_type = 'non-virtual'
-#end if
-   // Wrapper for $method_type method ${method_visitor.getRawName()}()
-   SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
+#set $params = ', '.join($method_visitor.getParamTypeList())
+   // Wrapper for $method_visitor.getKind() method ${method_visitor.getRawName()}()
+   SHARPPY_API $method_visitor.getReturnType() ${method_visitor.getGenericName()}($params)
    {
 ## Pre-call parameter marshaling.
-#set $all_args = []
-#for $param in $methodDecl.parameters
-#silent $param_visitor.setParamName($param[1])
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPreCallMarshal(); // Pre-call marshaling for $param[1]
-#silent $all_args.append($param_visitor.getMarshalParamName())
-#else
-#silent $all_args.append($param[1])
-#end if
+#for $pre_marshal in $method_visitor.getPreCallMarshalList()
+      $pre_marshal;
 #end for
-#set $arg_list = ', '.join($all_args)
-#set $returns = $return_visitor.getRawName() != 'void'
-#set $method_call = $methodCall + '(' + $arg_list + ')'
-## Return value marshaling.
-#if $returns
-$return_visitor.getMethodCall($method_call, '      ')
-#else
-      $method_call;
-#end if
+#for $method_call_line in $method_visitor.getCallLines()
+      $method_call_line
+#end for
 ## Post-call parameter marshaling.
-#for $param in $methodDecl.parameters
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
-#end if
+#for $post_marshal in $method_visitor.getPostCallMarshalList()
+      $post_marshal;
 #end for
-#if $returns
-      return $return_visitor.getResultVarName();
+#if $method_visitor.returns()
+      $method_visitor.getReturnStatement();
 #end if
    }
+#del $method_visitor
 #end def
 
 #def exportClass($classObj)
@@ -201,7 +164,6 @@ extern "C"
 #set $method_call = 'self_->%s' + $m.name[0]
 $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
-
 ## ------------------------------ Virtual methods -----------------------------
 ## XXX: Come up with a way to eliminate the use of a visitor here so that all
 ## of that is handled by fillMethodWrapperBody().
@@ -219,20 +181,17 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end if
 $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
-
 ## -------------------------- Sealed virtual methods --------------------------
 #for $m in $classObj.sealed_methods
 ## For sealed virtual methods, the C wrapper needs to act like a non-virtual.
 #set $method_call = 'self_->%s' + $m.name[0]
 $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
-
 ## ------------------------------ Static methods ------------------------------
 #for $m in $classObj.static_methods
 #silent $m.accept($method_visitor)
 $fillMethodWrapperBody($m, $method_visitor.getRawName())
 #end for
-
 ## ---------------------------- Static data members ---------------------------
 #set $data_visitor = visitors.CPlusPlusVisitor()
 #set $data_type_visitor = visitors.CPlusPlusVisitor()
@@ -284,55 +243,10 @@ $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #set $method_call = 'self_->%soperator' + $o.name[0]
 $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #end for
-
-#set $param_visitor  = visitors.CPlusPlusParamVisitor()
-#set $func_visitor   = visitors.CPlusPlusVisitor()
-#set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $o in $classObj.global_operators
-#set $params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $o.parameters]
-#set $p = ', '.join($params)
-#silent $o.result.accept($return_visitor)
-#silent $o.accept($func_visitor)
-   // Wrapper for free operator$o.name[0]
-   SHARPPY_API $return_visitor.getUsage() ${func_visitor.getGenericName()}($p)
-   {
-## Pre-call parameter marshaling.
-#set $all_args = []
-#for $param in $o.parameters
-#silent $param_visitor.setParamName($param[1])
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPreCallMarshal(); // Pre-call marshaling for $param[1]
-#silent $all_args.append($param_visitor.getMarshalParamName())
-#else
-#silent $all_args.append($param[1])
-#end if
+#set $method_call = 'operator' + $o.name[0]
+$fillMethodWrapperBody($o, $method_call)
 #end for
-#set $arg_list = ', '.join($all_args)
-#set $returns = $return_visitor.getRawName() != 'void'
-#set $method_call = 'operator' + $o.name[0] + '(' + $arg_list + ')'
-## Return value marshaling.
-#if $returns
-$return_visitor.getMethodCall($method_call, '      ')
-#else
-      $method_call;
-#end if
-## Post-call parameter marshaling.
-#for $param in $o.parameters
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
-#end if
-#end for
-#if $returns
-      return $return_visitor.getResultVarName();
-#end if
-   }
-
-#end for
-#del $param_visitor
-#del $func_visitor
-#del $return_visitor
 } // extern "C" for $class_visitor.getRawName()
 
 #set $nested_visitor = visitors.CPlusPlusVisitor()

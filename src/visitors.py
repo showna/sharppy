@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.39 2004-02-20 21:08:01 patrick Exp $
+# $Id: visitors.py,v 1.40 2004-02-20 23:39:20 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -243,33 +243,20 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    def mustMarshal(self):
       return self.__must_marshal
 
-   def getMethodCall(self, callString, indent):
-      # Declare the variable that will be used to return the result of calling
-      # the method.
-      output = '%s%s %s;\n' % (indent, self.usage, self.__result_var)
-
-      # If we have to marshal the returned data, do that now.  This involves
-      # the use of a temporary variable.
-      if self.mustMarshal():
-         for line in self.__pre_marshal:
-            output += indent + line + "\n"
-         if self.__call_marshal:
-            output += indent
-            output += self.__call_marshal % callString
-            output += ';\n'
-         else:
-            output += '%s%s = %s;\n' % (indent, self.__temp_result_var,
-                                        callString)
-         for line in self.__post_marshal:
-            output += indent + line + "\n"
-      # If no marshaling is required, just assign the result of calling the
-      # method to the return storage variable.
-      else:
-         output += '%s%s = %s;\n' % (indent, self.__result_var, callString)
-      return output
-
    def getResultVarName(self):
       return self.__result_var
+
+   def getMarshalResultVarName(self):
+      return self.__temp_result_var
+
+   def getPreCallMarshal(self):
+      return self.__pre_marshal
+
+   def getPostCallMarshal(self):
+      return self.__post_marshal
+
+   def getMarshaledCall(self):
+      return self.__call_marshal
 
    def _processProblemType(self, typeID):
       # Perform default problem type processing first.
@@ -280,8 +267,8 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
 #            self.usage = 'const ' + self.usage
          self.__must_marshal = True
          self.__call_marshal = ''
-         self.__pre_marshal  = ['%s %s;' % (self.getRawName(), self.__temp_result_var)]
-         self.__post_marshal = ['%s = strdup(%s.c_str());' % (self.__result_var, self.__temp_result_var)]
+         self.__pre_marshal  = ['%s %s' % (self.getRawName(), self.__temp_result_var)]
+         self.__post_marshal = ['%s = strdup(%s.c_str())' % (self.__result_var, self.__temp_result_var)]
 
 class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
    '''
@@ -405,6 +392,162 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
    def getParamHolderType(self):
       assert(self.needsParamHolder())
       return self.__param_holder_type
+
+class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
+   def __init__(self):
+      CPlusPlusVisitor.__init__(self)
+      self.__initialize()
+
+   def __initialize(self):
+      self.__class_obj          = None
+      self.__class_name         = ''
+      self.__param_count        = -1
+      self.__method_kind        = ''
+      self.__orig_method_call   = ''
+      self.__method_call        = ''
+      self.__returns            = False
+      self.__return_type        = ''
+      self.__return_statement   = ''
+      self.__param_type_list    = []
+      self.__param_list         = []
+      self.__pre_call_marshal   = []
+      self.__post_call_marshal  = []
+
+   def setClassInfo(self, classObj, className):
+      self.__class_obj  = classObj
+      self.__class_name = className
+
+   def setCall(self, methodCall):
+      self.__orig_method_call = methodCall
+
+   def setParamCount(self, count):
+      self.__param_count = count
+
+   def visit(self, decl):
+#      self.__initialize()
+      CPlusPlusVisitor.visit(self, decl)
+
+      if self.__param_count == -1:
+         self.__param_count = len(decl.parameters)
+      else:
+         self.generic_name += str(self.__param_count)
+
+      method_call = self.__orig_method_call
+      self.__param_list = []
+
+      # Memeber functions may be of a variety of kinds.
+      if decl.member:
+         # Virtual method.
+         if decl.virtual:
+            self.__method_kind = 'virtual'
+         # Static method.
+         elif decl.static:
+            self.__method_kind = 'static'
+         # Non-virtual, non-static method.
+         else:
+            self.__method_kind = 'non-virtual'
+
+         # If this is a non-static class member function, then we need the
+         # "self" parameter for the function call.
+         if not decl.static:
+            self.__param_type_list = ['%s* self_' % self.__class_name]
+   
+            # We also have to deal with potential use of smart pointers.
+            if self.__class_obj and self.__class_obj.info.smart_ptr:
+               if self.__class_obj.info[decl.name[0]].direct_call:
+                  method_call = self.__orig_method_call % 'mPtr.'
+               else:
+                  method_call = self.__orig_method_call % 'mPtr->'
+            else:
+               method_call = self.__orig_method_call % ''
+
+      # Handle the result type before all the parameter stuff.
+      result_visitor = CPlusPlusReturnVisitor()
+      decl.result.accept(result_visitor)
+      self.__return_type = result_visitor.getUsage()
+      self.__returns = self.__return_type != 'void'
+
+      param_visitor = CPlusPlusParamVisitor()
+
+      for i in range(self.__param_count):
+         p = decl.parameters[i]
+         param_visitor.setParamName(p[1])
+         p[0].accept(param_visitor)
+
+         param_type = param_visitor.getUsage()
+
+         if param_visitor.mustMarshal():
+            pre_marshal  = param_visitor.getPreCallMarshal()
+            post_marshal = param_visitor.getPostCallMarshal()
+
+            if pre_marshal != '':
+               self.__pre_call_marshal.append(param_visitor.getPreCallMarshal())
+            if post_marshal != '':
+               self.__post_call_marshal.append(param_visitor.getPostCallMarshal())
+
+            self.__param_list.append(param_visitor.getMarshalParamName())
+         else:
+            self.__param_list.append(p[1])
+
+         self.__param_type_list.append(param_type + ' ' + p[1])
+
+      arg_list = ', '.join(self.__param_list)
+
+      # A semi-colon cannot go at the end of this statement yet because of
+      # the weird way that I wrote CPlusPlusReturnVisitor.getMarshaledCall().
+      method_call = ['%s(%s)' % (method_call, arg_list)]
+
+      # If the method returns, add that information.
+      if self.returns():
+         method_call.insert(0, '%s result;' % self.__return_type)
+
+         # XXX: This is a mess.  CPlusPlusReturnVisitor needs a lot of work.
+         if result_visitor.mustMarshal():
+            self.__pre_call_marshal  += result_visitor.getPreCallMarshal()
+            self.__post_call_marshal += result_visitor.getPostCallMarshal()
+
+            if result_visitor.getMarshaledCall():
+               method_call[1] = result_visitor.getMarshaledCall() % method_call[1]
+            else:
+               method_call[1] = '%s = %s' % (result_visitor.getMarshalResultVarName(),
+                                             method_call[1])
+         else:
+            method_call[1] = 'result = %s' % method_call[1]
+
+         method_call[1] += ';'
+         self.__return_statement = 'return result'
+      else:
+         method_call[0] += ';'
+
+      self.__method_call = method_call
+
+   def getKind(self):
+      return self.__method_kind
+
+   def returns(self):
+      return self.__returns
+
+   def getReturnType(self):
+      return self.__return_type
+
+   def getParamTypeList(self):
+      return self.__param_type_list
+
+   def getParamList(self):
+      return self.__param_list
+
+   def getPreCallMarshalList(self):
+      return self.__pre_call_marshal
+
+   def getCallLines(self):
+      return self.__method_call
+
+   def getPostCallMarshalList(self):
+      return self.__post_call_marshal
+
+   def getReturnStatement(self):
+      assert(self.returns())
+      return self.__return_statement
 
 class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
    '''

@@ -1,54 +1,31 @@
-## $Id: free_types_cxx.tmpl,v 1.1 2004-02-05 17:38:17 patrick Exp $
-// Generated from \$Revision: 1.1 $ of \$RCSfile: free_types_cxx.tmpl,v $
-#import TemplateHelpers
+## $Id: free_types_cxx.tmpl,v 1.2 2004-02-20 23:39:20 patrick Exp $
+// Generated from \$Revision: 1.2 $ of \$RCSfile: free_types_cxx.tmpl,v $
 #import visitors
 
 #def generateWrapper($func)
-#set $function_visitor = visitors.CPlusPlusVisitor()
+#set $function_visitor = visitors.CPlusPlusFunctionWrapperVisitor()
+#silent $function_visitor.setCall($func.getFullCPlusPlusName())
 #silent $func.accept($function_visitor)
-#set $param_visitor  = visitors.CPlusPlusParamVisitor()
-#set $params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $func.parameters]
-#set $p = ', '.join($params)
-#set $return_visitor = visitors.CPlusPlusReturnVisitor()
-#silent $func.result.accept($return_visitor)
+#set $params = ', '.join($function_visitor.getParamTypeList())
    // Wrapper for free function ${function_visitor.getRawName()}()
-   SHARPPY_API $return_visitor.getUsage() ${function_visitor.getGenericName()}($p)
+   SHARPPY_API $function_visitor.getReturnType() ${function_visitor.getGenericName()}($params)
    {
 ## Pre-call parameter marshaling.
-#set $all_args = []
-#for $param in $func.parameters
-#silent $param_visitor.setParamName($param[1])
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPreCallMarshal(); // Pre-call marshaling for $param[1]
-#silent $all_args.append($param_visitor.getMarshalParamName())
-#else
-#silent $all_args.append($param[1])
-#end if
+#for $pre_marshal in $function_visitor.getPreCallMarshalList()
+      $pre_marshal;
 #end for
-#set $arg_list = ', '.join($all_args)
-#set $returns = $return_visitor.getRawName() != 'void'
-#set $method_call = $function_visitor.getRawName() + '(' + $arg_list + ')'
-## Return value marshaling.
-#if $returns
-$return_visitor.getMethodCall($method_call, '      ')
-#else
-      $method_call;
-#end if
+#for $method_call_line in $function_visitor.getCallLines()
+      $method_call_line
+#end for
 ## Post-call parameter marshaling.
-#for $param in $func.parameters
-#silent $param[0].accept($param_visitor)
-#if $param_visitor.mustMarshal()
-      $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
-#end if
+#for $post_marshal in $function_visitor.getPostCallMarshalList()
+      $post_marshal;
 #end for
-#if $returns
-      return $return_visitor.getResultVarName();
+#if $function_visitor.returns()
+      $function_visitor.getReturnStatement();
 #end if
    }
 #del $function_visitor
-#del $param_visitor
-#del $return_visitor
 #end def
 
 \#include "sharppy.h"
