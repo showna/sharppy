@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.17 2003-11-24 20:11:11 patrick Exp $
+# $Id: declarations.py,v 1.18 2003-12-02 22:43:07 patrick Exp $
 
 import copy
 import re
@@ -118,7 +118,6 @@ class Class(Declaration):
         self.bases = ()
         self.hierarchy = ()
         self.operator = {}
-        self.interface = self.isInterface()
 
     def __iter__(self):
         '''iterates through the class' members.
@@ -191,7 +190,6 @@ class Class(Declaration):
         self.__members.append(member)
         if isinstance(member, ClassOperator):
             self.operator[member.FullName()] = member
-
 
     def ValidMemberTypes():
         return (NestedClass, Method, Constructor, Destructor, ClassVariable, 

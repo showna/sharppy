@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.48 2003-11-24 22:24:57 patrick Exp $
-// Generated from \$Revision: 1.48 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.49 2003-12-02 22:43:06 patrick Exp $
+// Generated from \$Revision: 1.49 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -152,7 +152,7 @@ using System.Reflection;
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
 #silent $bases.append($base_visitor.getRawName())
-#if not $has_base_class and not $b.class_decl.interface
+#if not $has_base_class and not $b.class_decl.isInterface()
 #set $has_base_class = True
 #end if
 #end for
