@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.53 2004-05-20 21:39:58 patrick Exp $
+# $Id: visitors.py,v 1.54 2004-05-21 21:42:37 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -156,7 +156,7 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
          if not self.problem_type and not self._isFundamentalType():
             self.usage = re.sub(r"&", "*", self.name)
 
-            self.__must_marshal = True
+            self.__setMustMarshal(True)
             self.__pre_marshal  = ['%s %s = *%s;' % \
                                       (self.getRawName(), self.__param_name,
                                        self.__orig_param_name)]
@@ -183,34 +183,33 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
          # char** into a std::string and pass it to the C++ code.  The result
          # will be stored in the memory pointed to by the char**.
          if self.decl.suffix == '&' and not self.decl.const:
-            self.__must_marshal = True
+            self.__setMustMarshal(True)
             self.__pre_marshal  = ['std::string %s = *%s;' % \
                                      (self.__param_name, self.__orig_param_name)]
             self.__post_marshal = ['*%s = strdup(%s.c_str());' % \
                                      (self.__orig_param_name, self.__param_name)]
       elif typeID == SHARED_PTR:
-         self.__must_marshal = True
-         # XXX: This introduces one more shared pointer copy than we actually
-         # need.  It would be best if we could just pass the dereferenced
-         # pointer directly to the method call, but the structure of the code
-         # does not really allow for such a thing to be done at this time.
-         self.__pre_marshal = ['%s %s = *%s;' % \
-                                  (self.usage, self.__param_name,
-                                   self.__orig_param_name)]
+         self.__param_name = '*' + self.__orig_param_name
          self.usage += '*'
+
+   def __setMustMarshal(self, mustMarshal):
+      self.__must_marshal = mustMarshal
+      if mustMarshal:
+         self.__param_name   = 'marshal_' + self.__orig_param_name
+      else:
+         self.__param_name   = self.__orig_param_name
 
    def mustMarshal(self):
       return self.__must_marshal
 
-   def getMarshalParamName(self):
-      assert(self.mustMarshal())
+   def getParamString(self):
       return self.__param_name
 
    def setFunctionName(self, funcName):
       self.__func_name = funcName
 
    def setParamName(self, paramName):
-      self.__param_name = 'marshal_' + paramName
+      self.__param_name      = paramName
       self.__orig_param_name = paramName
 
    def getPreCallMarshalList(self):
@@ -351,8 +350,8 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
          self.usage += '*'
 
       if typeID == STD_STRING:
-         self.__must_marshal = True
-         marshal_param = 'marshal_%s' % self.__orig_param_name
+         self.__setMustMarshal(True)
+         marshal_param = self.__param_name
 
          # If the std::string object is being passed by reference, we need to
          # pass a pointer to a fixed-size character array.  Once the call
@@ -378,34 +377,34 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
             self.__post_marshal = ['free(%s);' % marshal_param]
 
       elif typeID == SHARED_PTR:
-         self.__needs_param_holder = True
-         self.__param_holder_type  = 'holder_%s_%s' % \
-                                        (self.__orig_param_name,
-                                         self.__func_name)
-         self.__param_holder_decl  = 'struct %s { %s mPtr; };' % \
-                                        (self.__param_holder_type,
-                                         self.decl.getCPlusPlusName())
-
+         self.usage += '*'
          self.__must_marshal = True
-         self.__param_name   = 'h_%s' % self.__orig_param_name
-         self.__pre_marshal  = ['%s* %s = new %s;' % \
-                                  (self.__param_holder_type, self.__param_name,
-                                   self.__param_holder_type)]
-         self.__pre_marshal += ['%s->mPtr = %s;' % \
-                                   (self.__param_name, self.__orig_param_name)]
+         self.__param_name   = 'p_%s' % self.__orig_param_name
+         # XXX: Should this memory be deleted in a post-marshal statement, or
+         # does the managed run-time handle deletion?  This depends on how the
+         # C# marshaling works...
+         self.__pre_marshal  = ['%s* %s = new %s(%s);' % \
+                                  (self.name, self.__param_name, self.name,
+                                   self.__orig_param_name)]
+
+   def __setMustMarshal(self, mustMarhsal):
+      self.__must_marshal = mustMarhsal
+      if mustMarhsal:
+         self.__param_name   = 'marshal_' + self.__orig_param_name
+      else:
+         self.__param_name   = self.__orig_param_name
 
    def mustMarshal(self):
       return self.__must_marshal
 
-   def getMarshalParamName(self):
-      assert(self.mustMarshal())
+   def getParamString(self):
       return self.__param_name
 
    def setFunctionName(self, funcName):
       self.__func_name = funcName
 
    def setParamName(self, paramName):
-      self.__param_name = 'marshal_' + paramName
+      self.__param_name      = paramName
       self.__orig_param_name = paramName
 
    def getPreCallMarshalList(self):
@@ -482,16 +481,21 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
          # If this is a non-static class member function, then we need the
          # "self" parameter for the function call.
          if not decl.static:
-            self.__param_type_list = ['%s* self_' % self.__class_name]
-   
             # We also have to deal with potential use of smart pointers.
             if self.__class_obj and self.__class_obj.info.smart_ptr:
-               if self.__class_obj.info[decl.name[0]].direct_call:
-                  method_call = self.__orig_method_call % 'mPtr.'
+               if self.__class_obj.info.smart_ptr_decl is not None:
+                  smart_ptr = self.__class_obj.info.smart_ptr_decl % self.__class_name
                else:
-                  method_call = self.__orig_method_call % 'mPtr->'
+                  smart_ptr = self.__class_name
+
+               self.__param_type_list = ['%s* self_ptr' % smart_ptr]
+               if self.__class_obj.info[decl.name[0]].direct_call:
+                  method_call = '(*self_ptr).' + self.__orig_method_call
+               else:
+                  method_call = '(*self_ptr)->' + self.__orig_method_call
             else:
-               method_call = self.__orig_method_call % ''
+               self.__param_type_list = ['%s* self_' % self.__class_name]
+               method_call = 'self_->' + self.__orig_method_call
 
       # Handle the result type before all the parameter stuff.
       result_visitor = CPlusPlusReturnVisitor()
@@ -511,10 +515,8 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
          if param_visitor.mustMarshal():
             self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
             self.__post_call_marshal += param_visitor.getPostCallMarshalList()
-            self.__param_list.append(param_visitor.getMarshalParamName())
-         else:
-            self.__param_list.append(p[1])
 
+         self.__param_list.append(param_visitor.getParamString())
          self.__param_type_list.append(param_type + ' ' + p[1])
 
       assert(decl.info is not None)
@@ -648,25 +650,26 @@ class CPlusPlusConstructorWrapperVisitor(CPlusPlusVisitor):
          if param_visitor.mustMarshal():
             self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
             self.__post_call_marshal += param_visitor.getPostCallMarshalList()
-            self.__param_list.append(param_visitor.getMarshalParamName())
-         else:
-            self.__param_list.append(p[1])
 
+         self.__param_list.append(param_visitor.getParamString())
          self.__param_type_list.append(param_type + ' ' + p[1])
 
       arg_list = ', '.join(self.__param_list)
 
       if self.__class_obj.info.smart_ptr:
-         obj_ref = 'obj->mPtr'
-         method_call = ['%s* obj = new %s;' % (self.__class_name, self.__class_name)]
+         if self.__class_obj.info.smart_ptr_decl is not None:
+            smart_ptr = self.__class_obj.info.smart_ptr_decl % self.__raw_class_name
+         else:
+            smart_ptr = self.__raw_class_name
 
          if self.__class_obj.info.ref_counted:
-            cons_call = self.__class_obj.info.smart_ptr_decl % self.__raw_class_name
-            method_call.append('obj->mPtr = %s(new %s(%s));' % \
-                                  (cons_call, self.__raw_class_name, arg_list))
+            method_call = ['%s* obj = new %s(new %s(%s));' % \
+                              (smart_ptr, smart_ptr, self.__class_name, arg_list)]
          else:
-            method_call.append('obj->mPtr = %s(%s);' % \
-                                  (self.__raw_class_name, arg_list))
+            method_call = ['%s* obj = new %s(%s(%s));' % \
+                              (smart_ptr, smart_ptr, self.__class_name, arg_list)]
+
+         self.__return_type = smart_ptr + '*'
       else:
          obj_ref = 'obj'
          method_call = ['%s* obj = new %s(%s);' % \
@@ -789,10 +792,8 @@ class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
          if param_visitor.mustMarshal():
             self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
             self.__post_call_marshal += param_visitor.getPostCallMarshalList()
-            self.__param_list.append(param_visitor.getMarshalParamName())
-         else:
-            self.__param_list.append(p[1])
 
+         self.__param_list.append(param_visitor.getParamString())
          self.__param_type_list.append(param_type + ' ' + p[1])
          callback_param_types.append(callback_param_type)
 
@@ -1070,17 +1071,15 @@ class CSharpParamVisitor(CSharpVisitor):
          if not self.problem_type:
             if decl.type_decl.type_str == 'enumeration':
 #               self.usage = re.sub(r"[&*]", "", self.usage)
-               self.__must_marshal = False
-               self.__param_name   = self.__orig_param_name
+               self.__setMustMarshal(False)
             elif self._isFundamentalType(decl):
                self.usage = re.sub(r"[&*]", "", self.usage)
 
                # Do not bother with passing fundamental types by reference if
                # the native code expects a const reference.
                if decl.const:
-                  self.__must_marshal = False
+                  self.__setMustMarshal(False)
                   self.__needs_unsafe = False
-                  self.__param_name   = self.__orig_param_name
                else:
                   self.usage = 'ref ' + self.usage
                   self.__must_marshal = True
@@ -1090,20 +1089,26 @@ class CSharpParamVisitor(CSharpVisitor):
                self.__must_marshal = True
                self.__param_name = self.__orig_param_name
 
+   def __setMustMarshal(self, mustMarshal):
+      self.__must_marshal = mustMarshal
+      if mustMarshal:
+         self.__param_name   = 'marshal_' + self.__orig_param_name
+      else:
+         self.__param_name   = self.__orig_param_name
+
    def mustMarshal(self):
       return self.__must_marshal
 
    def needsUnsafe(self):
       return self.__needs_unsafe
 
-   def getMarshalParamName(self):
-      assert(self.mustMarshal())
+   def getParamString(self):
       return self.__param_name
 
    # XXX: This parameter name stuff sucks.
    def setParamName(self, paramName):
       self.__orig_param_name = paramName
-      self.__param_name = 'marshal_' + paramName
+      self.__param_name      = paramName
 
    def getPreCallMarshalList(self):
       return self.__pre_marshal
@@ -1259,9 +1264,8 @@ class CSharpMethodVisitor(CSharpVisitor):
          if param_visitor.mustMarshal():
             self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
             self.__post_call_marshal += param_visitor.getPostCallMarshalList()
-            self.__param_list.append(param_visitor.getMarshalParamName())
-         else:
-            self.__param_list.append(p[1])
+
+         self.__param_list.append(param_visitor.getParamString())
 
          if self.needsDelegate():
             p[0].accept(dlg_param_visitor)
@@ -1426,10 +1430,8 @@ class CSharpConstructorVisitor(CSharpVisitor):
          if param_visitor.mustMarshal():
             self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
             self.__post_call_marshal += param_visitor.getPostCallMarshalList()
-            self.__param_list.append(param_visitor.getMarshalParamName())
-         else:
-            self.__param_list.append(p[1])
 
+         self.__param_list.append(param_visitor.getParamString())
          self.__param_type_list.append(param_type + ' ' + p[1])
          self.__pi_param_type_list.append('%s %s' % (pi_param_visitor.getUsage(), p[1]))
 

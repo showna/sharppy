@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.63 2004-02-26 00:31:46 patrick Exp $
-// Generated from \$Revision: 1.63 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.64 2004-05-21 21:42:37 patrick Exp $
+// Generated from \$Revision: 1.64 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -45,42 +45,24 @@
 #else
 #set $class_name = $class_visitor.getRawName()
 #end if
-#if $classObj.smart_ptr
-struct $TemplateHelpers.getHolderName($class_visitor)
-{
-#if $classObj.info.smart_ptr_decl
-#set $smart_ptr_decl = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
-#else
-#set $smart_ptr_decl = $class_visitor.getRawName()
-#end if
-   $smart_ptr_decl mPtr;
-};
-
-#end if
 extern "C"
 {
 #set $method_visitor = visitors.CPlusPlusVisitor()
-## We have a class that only appears as a smart pointer.  We have at least one
-## constructor that copies the existing object.
-#if $classObj.info.smart_ptr
-#set $holder_name = $TemplateHelpers.getHolderName($class_visitor)
-   SHARPPY_API $holder_name* new_${holder_name}($smart_ptr_decl ptr)
-   {
-      $holder_name* h = new $holder_name;
-      h->mPtr = ptr;
-      return h;
-   }
-
-#set $class_name = $holder_name
+## Determine the object type that will be returned by the constructor(s).  This
+## is the type that must be passed into the destructor wrapper--if one will be
+## generated.
+#if len($classObj.constructors) > 0
+#set $cons_visitor = visitors.CPlusPlusConstructorWrapperVisitor()
+#set $c = $classObj.constructors[0]
+#silent $cons_visitor.setClassInfo($classObj, $class_visitor.getRawName(), $class_name)
+#silent $c.accept($cons_visitor)
+#set $obj_type = $cons_visitor.getReturnType()
+#del $cons_visitor
+#else
+#set $obj_type = $class_name + '*'
 #end if
-## We have a class that does not necessarily appear as a smart pointer.  The
-## handling of this case is much more complicated.
+## Iterate over the constructors and create wrapper functions for each.
 #for $c in $classObj.constructors
-## Skip the copy constructor for shared pointer types.  We have a special
-## constructor defined above for that sort of thing.
-#if $c.IsCopy() and $classObj.info.smart_ptr
-#continue
-#end if
 #for $i in range($c.MinArgs(), $c.MaxArgs() + 1)
 #set $cons_visitor = visitors.CPlusPlusConstructorWrapperVisitor()
 #silent $cons_visitor.setParamCount($i)
@@ -109,7 +91,7 @@ extern "C"
 #end for
 ## Simple destructor wrapper.
 #if $classObj.hasPublicDestructor()
-   SHARPPY_API void delete_${class_id}($class_name* self_)
+   SHARPPY_API void delete_${class_id}($obj_type self_)
    {
       delete self_;
    }
@@ -117,8 +99,7 @@ extern "C"
 #end if
 ## ---------------------------- Non-virtual methods ---------------------------
 #for $m in $classObj.non_virtual_methods
-#set $method_call = 'self_->%s' + $m.name[0]
-$fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
+$fillMethodWrapperBody($m, $m.name[0], $classObj, $class_name)
 #end for
 ## ------------------------------ Virtual methods -----------------------------
 ## XXX: Come up with a way to eliminate the use of a visitor here so that all
@@ -128,20 +109,19 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 ## For abstract methods and protected virtual methods, the C wrapper needs to
 ## act more like a non-virtual.
 #if $m.abstract
-#set $method_call = 'self_->%s' + $m.name[0]
+#set $method_call = $m.name[0]
 #elif $m in $classObj.protected_virtual_methods
-#set $method_call = 'self_->%s' + $m.name[0] + '_wrapper'
+#set $method_call = $m.name[0] + '_wrapper'
 #else
 #silent $m.accept($method_visitor)
-#set $method_call = 'self_->%s' + $method_visitor.getRawName()
+#set $method_call = $method_visitor.getRawName()
 #end if
 $fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
 #end for
 ## -------------------------- Sealed virtual methods --------------------------
 #for $m in $classObj.sealed_methods
 ## For sealed virtual methods, the C wrapper needs to act like a non-virtual.
-#set $method_call = 'self_->%s' + $m.name[0]
-$fillMethodWrapperBody($m, $method_call, $classObj, $class_name)
+$fillMethodWrapperBody($m, $m.name[0], $classObj, $class_name)
 #end for
 ## ------------------------------ Static methods ------------------------------
 #for $m in $classObj.static_methods
@@ -190,13 +170,13 @@ $fillMethodWrapperBody($m, $method_visitor.getRawName())
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $o in $classObj.converter_operators
 #silent $o.result.accept($return_visitor)
-#set $method_call = 'self_->%soperator ' + $return_visitor.getRawName()
+#set $method_call = 'operator ' + $return_visitor.getRawName()
 $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #end for
 #del $return_visitor
 ## ---------------------------- Operator overloads ----------------------------
 #for $o in $classObj.member_operators
-#set $method_call = 'self_->%soperator' + $o.name[0]
+#set $method_call = 'operator' + $o.name[0]
 $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
 #end for
 #for $o in $classObj.global_operators

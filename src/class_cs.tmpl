@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.75 2004-02-26 00:31:46 patrick Exp $
-// Generated from \$Revision: 1.75 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.76 2004-05-21 21:42:37 patrick Exp $
+// Generated from \$Revision: 1.76 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -279,7 +279,7 @@ class $class_visitor.getRawName(False)
 #if not $unsafe and $param_visitor.needsUnsafe()
 #set $unsafe = True
 #end if
-#silent $pi_call_args.append($param_visitor.getMarshalParamName())
+#silent $pi_call_args.append($param_visitor.getParamString())
 #else
 #silent $pi_call_args.append('rhs')
 #end if
