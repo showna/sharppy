@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.31 2004-02-05 17:12:34 patrick Exp $
+# $Id: declarations.py,v 1.32 2004-02-05 23:00:46 patrick Exp $
 
 import copy
 import re
@@ -14,7 +14,7 @@ Defines classes that represent declarations found in C++ header files.
 # version indicates the version of the declarations. Whenever a declaration
 # changes, this variable should be updated, so that the caches can be rebuilt
 # automatically
-version = '1.0'
+version = '1.1'
 
 rename_map = {}
 
@@ -53,6 +53,9 @@ class Declaration(object):
         @type namespace: string
         @param namespace: the full namespace where this declaration resides.
         '''
+
+        assert(type(cxxName) == str)
+
         # If we have a template, strip all whitespace from cxxName except what
         # is absolutely required to prevent parse errors.
         if cxxName.find('<') != -1:
@@ -595,13 +598,18 @@ class Type(Declaration):
 
     const_match_re = re.compile(r'^const (.*)$')
 
-    def __init__(self, cxxName, const = False, default = None, suffix = '',
-                 mustMarshal = True):
+    def __init__(self, cxxTypeDecl, cxxName, const = False, default = None,
+                 suffix = '', mustMarshal = True):
         Declaration.__init__(self, cxxName, None, mustMarshal)
 
-        # whatever the type is constant or not
+        self.type_decl = cxxTypeDecl
+        
+        if None != cxxTypeDecl:
+            self.must_marshal = cxxTypeDecl.must_marshal
+
         self.const = const
-        # used when the Type is a function argument
+
+        # Used when the Type is a function argument.
         self.default = default
         self.volatile = False
         self.restricted = False
@@ -613,6 +621,27 @@ class Type(Declaration):
             self.const    = 1
             self.cxx_name = match_obj.groups()[0]
             self.name     = self._toAbstractName(self.cxx_name)
+
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.type_decl, self.cxx_name)
+        memo[id(self)] = result
+
+        result.const        = self.const
+        result.volatile     = self.volatile
+        result.restricted   = self.restricted
+        result.incomplete   = self.incomplete
+        result.is_unique    = self.is_unique
+        result.must_marshal = self.must_marshal
+        result.cxx_name     = copy.deepcopy(self.cxx_name)
+        result.name         = copy.deepcopy(self.name)
+        result.namespace    = copy.deepcopy(self.namespace)
+        result.suffix       = copy.deepcopy(self.suffix)
+        result.location     = copy.deepcopy(self.location)
+
+        # Do not perform a deep copy of self.type_decl.
+        result.type_decl = self.type_decl
+
+        return result
 
     def __repr__(self):
         if self.const:
@@ -638,12 +667,29 @@ class ArrayType(Type):
     @ivar max: the upper bound of the array. Can be None.
     '''
 
-    def __init__(self, name, const, min, max):
+    def __init__(self, cxxTypeDecl, cxxName, const, min, max):
         'min and max can be None.'
-        Type.__init__(self, name, const)
+        Type.__init__(self, cxxTypeDecl, cxxName, const)
         self.min = min
         self.max = max
 
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.type_decl, self.cxx_name, self.const,
+                                self.min, self.max)
+        memo[id(self)] = result
+
+        result.volatile     = self.volatile
+        result.restricted   = self.restricted
+        result.incomplete   = self.incomplete
+        result.is_unique    = self.is_unique
+        result.must_marshal = self.must_marshal
+        result.cxx_name     = copy.deepcopy(self.cxx_name)
+        result.name         = copy.deepcopy(self.name)
+        result.namespace    = copy.deepcopy(self.namespace)
+        result.suffix       = copy.deepcopy(self.suffix)
+        result.location     = copy.deepcopy(self.location)
+
+        return result
 
 #==============================================================================
 # ReferenceType    
@@ -653,24 +699,23 @@ class ReferenceType(Type):
 
     def __init__(self, cxxTypeDecl, cxxName, const = False, default = None,
                  expandRef = True, suffix = ''):
-        Type.__init__(self, cxxName = cxxName, const = const, default = default,
-                      mustMarshal = False)
-        self.type_decl = cxxTypeDecl
-        self.must_marshal = cxxTypeDecl.must_marshal
+        Type.__init__(self, cxxTypeDecl = cxxTypeDecl, cxxName = cxxName,
+                      const = const, default = default)
         self.type_str = 'reference'
         if expandRef:
             self.suffix = suffix + '&'
 
     def __deepcopy__(self, memo):
-        result = self.__class__(self.type_decl, self.cxx_name)
+        result = self.__class__(self.type_decl, self.cxx_name, self.const,
+                                self.default)
         memo[id(self)] = result
 
-        result.const        = self.const
         result.volatile     = self.volatile
         result.restricted   = self.restricted
         result.incomplete   = self.incomplete
         result.is_unique    = self.is_unique
         result.must_marshal = self.must_marshal
+        result.type_str     = copy.deepcopy(self.type_str)
         result.cxx_name     = copy.deepcopy(self.cxx_name)
         result.name         = copy.deepcopy(self.name)
         result.namespace    = copy.deepcopy(self.namespace)
@@ -691,16 +736,47 @@ class PointerType(Type):
 
     def __init__(self, cxxTypeDecl, cxxName, const = False, default = None,
                  expandPointer = False, suffix = ''):
-        Type.__init__(self, cxxName = cxxName, const = const, default = default,
-                      mustMarshal = False)
-        self.type_decl = cxxTypeDecl
-        self.must_marshal = cxxTypeDecl.must_marshal
+        Type.__init__(self, cxxTypeDecl = cxxTypeDecl, cxxName = cxxName,
+                      const = const, default = default, mustMarshal = False)
         self.type_str = 'pointer'
         if expandPointer:
             self.suffix = suffix + '*'
 
     def __deepcopy__(self, memo):
-        result = self.__class__(self.type_decl, self.cxx_name)
+        result = self.__class__(self.type_decl, self.cxx_name, self.const,
+                                self.default)
+        memo[id(self)] = result
+
+        result.volatile     = self.volatile
+        result.restricted   = self.restricted
+        result.incomplete   = self.incomplete
+        result.is_unique    = self.is_unique
+        result.must_marshal = self.must_marshal
+        result.type_str     = copy.deepcopy(self.type_str)
+        result.cxx_name     = copy.deepcopy(self.cxx_name)
+        result.name         = copy.deepcopy(self.name)
+        result.namespace    = copy.deepcopy(self.namespace)
+        result.suffix       = copy.deepcopy(self.suffix)
+        result.location     = copy.deepcopy(self.location)
+
+        # Do not perform a deep copy of self.type_decl.
+        result.type_decl = self.type_decl
+
+        return result
+
+
+#==============================================================================
+# FundamentalType
+#==============================================================================
+class FundamentalType(Type): 
+    'One of the fundamental types, like int, void, etc.'
+
+    def __init__(self, cxxName, const = False, default = None): 
+        Type.__init__(self, cxxTypeDecl = None, cxxName = cxxName,
+                      const = const, default = default, mustMarshal = False)
+
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.cxx_name, self.const, self.default)
         memo[id(self)] = result
 
         result.const        = self.const
@@ -722,17 +798,6 @@ class PointerType(Type):
 
 
 #==============================================================================
-# FundamentalType
-#==============================================================================
-class FundamentalType(Type): 
-    'One of the fundamental types, like int, void, etc.'
-
-    def __init__(self, cxxName, const = False, default = None): 
-        Type.__init__(self, cxxName = cxxName, const = const, default = default,
-                      mustMarshal = False)
-
-
-#==============================================================================
 # FunctionType
 #==============================================================================
 class FunctionType(Type):
@@ -745,7 +810,7 @@ class FunctionType(Type):
     def __init__(self, result, parameters):  
         # The "name" for a function type is constructed from its result and
         # its parameters.  Its name member will always be an empty list.
-        Type.__init__(self, '', False, None, False)
+        Type.__init__(self, None, '', False, None, False)
         self.result = result
         self.parameters = parameters
 
@@ -755,6 +820,26 @@ class FunctionType(Type):
         full += '(%s)' % ', '.join(params)        
         return full
 
+    def __deepcopy__(self, memo):
+        result = self.__class__(self.result, self.parameters)
+        memo[id(self)] = result
+
+        result.const        = self.const
+        result.volatile     = self.volatile
+        result.restricted   = self.restricted
+        result.incomplete   = self.incomplete
+        result.is_unique    = self.is_unique
+        result.must_marshal = self.must_marshal
+        result.cxx_name     = copy.deepcopy(self.cxx_name)
+        result.name         = copy.deepcopy(self.name)
+        result.namespace    = copy.deepcopy(self.namespace)
+        result.suffix       = copy.deepcopy(self.suffix)
+        result.location     = copy.deepcopy(self.location)
+
+        # Do not perform a deep copy of self.type_decl.
+        result.type_decl = self.type_decl
+
+        return result
 
 #==============================================================================
 # MethodType

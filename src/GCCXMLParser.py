@@ -127,7 +127,7 @@ class GCCXMLParser(object):
             if restricted:
                 res.restricted = restricted
         else:
-            res = declarations.Type(decl.getFullCPlusPlusName(), const)
+            res = declarations.Type(decl, decl.getFullCPlusPlusName(), const)
             res.volatile = volatile
             res.restricted = restricted
         return res            
@@ -319,15 +319,23 @@ class GCCXMLParser(object):
         type_ = declarations.FundamentalType(name)
         self.Update(id, type_)
 
+    type_re = re.compile(r"(_\d+)")
 
     def ParseArrayType(self, id, element):
-        type = self.GetType(element.get('type'))
+        type_attr = element.get('type')
+        type = self.GetType(type_attr)
+
+        type_match = self.type_re.match(type_attr)
+        if None != type_match:
+            decl = self.GetDecl(type_match.group(1))
+        else:
+            assert(False)
+
         min = element.get('min')
         max = element.get('max')
-        array = declarations.ArrayType(type.getFullCPlusPlusName(), type.const, min, max)
+        array = declarations.ArrayType(decl, type.getFullCPlusPlusName(),
+                                       type.const, min, max)
         self.Update(id, array)
-
-    type_re = re.compile(r"(_\d+)")
 
     def ParseReferenceType(self, id, element):
         type_attr = element.get('type')
@@ -335,9 +343,7 @@ class GCCXMLParser(object):
 
         type_match = self.type_re.match(type_attr)
         if None != type_match:
-#            print "Looking up declaration for %s (id = %s)" % (type, type_match.group(1))
             decl = self.GetDecl(type_match.group(1))
-#            print "\t", decl
         else:
             assert(False)
 
