@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.29 2003-11-14 19:32:21 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.30 2003-11-14 20:29:45 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -12,7 +12,7 @@ from declarations import *
 from settings import *
 from policies import *
 from EnumExporter import EnumExporter
-from utils import makeid, enumerate, generateUniqueName, operatorToString, getClassBridgeName
+from utils import makeid, enumerate, generateUniqueName, operatorToString
 import copy
 import exporterutils
 import os
@@ -106,23 +106,23 @@ class ReferenceTypeExporter(Exporter):
       for level in self.class_.hierarchy:
          for base in level:
             all_bases.append(base)
-      return [self.GetDeclaration(x.name) for x in all_bases]
+      return all_bases
 
    def getImmediateClassBases(self, exportedNames):
       '''
       Returns only the immediate base classes (if any) of self that are
-      being exorted.
+      being exported.
       '''
       bases = []
       exported = False
       for level in self.class_.hierarchy:
          for b in level:
-            if b.visibility == Scope.public and b.name in exportedNames:
+            if b.visibility == Scope.public and b.FullName() in exportedNames:
                bases.append(b)
                exported = True
          if exported:
             break
-      return [self.GetDeclaration(x.name) for x in bases] 
+      return bases
 
    def Order(self):
       '''
@@ -195,7 +195,7 @@ class ReferenceTypeExporter(Exporter):
       for level in self.class_.hierarchy:
          level_exported = False
          for base in level:
-            base = self.GetDeclaration(base.name)
+            base = self.GetDeclaration(base.FullName())
             if base.FullName() not in exported_names:
                for member in base:
                   if type(member) in valid_members:
@@ -368,12 +368,12 @@ class ReferenceTypeExporter(Exporter):
       # XXX: This may not be the right place to do this.  This really only
       # matters for C++.
       if self.hasVirtualMethods():
-         self.bridge_bases = [self.class_.FullName()]
+         self.bridge_bases = []
 
          for level in self.class_.hierarchy:
             for b in level:
-               if b.visibility == Scope.public and b.name in exportedNames:
-                  base_decl = self.GetDeclaration(b.name)
+               if b.visibility == Scope.public and b.FullName() in exportedNames:
+                  base_decl = self.GetDeclaration(b.FullName())
 
                   # We only care about b as a base class if it has virtual
                   # methods.  In that case, we need to inherit from its bridge
@@ -382,7 +382,7 @@ class ReferenceTypeExporter(Exporter):
                      if type(member) == Method and member.virtual:
                         # Create a new base declaration using the bridge name
                         # for b.
-                        self.bridge_bases.append(getClassBridgeName(b))
+                        self.bridge_bases.append(b)
                         exported = True
                         break
             if exported:
@@ -390,8 +390,8 @@ class ReferenceTypeExporter(Exporter):
       else:
          for level in self.class_.hierarchy:
             for b in level:
-               if b.visibility == Scope.public and b.name in exportedNames:
-                  self.bridge_bases.exported.append(b.name)
+               if b.visibility == Scope.public and b.FullName() in exportedNames:
+                  self.bridge_bases.exported.append(b)
                   exported = True
             if exported:
                break

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.14 2003-11-10 23:04:14 patrick Exp $
+# $Id: declarations.py,v 1.15 2003-11-14 20:29:45 patrick Exp $
 
 from utils import makeid
 import copy
@@ -45,6 +45,7 @@ class Declaration(object):
         self.location = '', -1  # (filename, line)
         self.incomplete = False
         self.is_unique = True
+        # XXX: must_marshal is pretty much a failure.  It should be removed.
         self.must_marshal = mustMarshal
 
 
@@ -227,16 +228,20 @@ class Scope:
 #==============================================================================
 # Base    
 #==============================================================================
-class Base:
-    '''Represents a base class of another class.
-    @ivar _name: the full name of the base class.
+class Base(Declaration):
+    '''
+    Represents a base class of another class.
+    @ivar _decl: the full declaration (of type Class) of the base class
     @ivar _visibility: the visibility of the derivation.
     '''
 
-    def __init__(self, name, visibility=Scope.public):
-        self.name = name
+    def __init__(self, decl, visibility=Scope.public):
+        Declaration.__init__(self, decl.name, decl.namespace, decl.must_marshal)
+        self.class_decl = decl
         self.visibility = visibility
 
+    def getMembers(self):
+        return self.class_decl.getMembers()
     
 #==============================================================================
 # Function    

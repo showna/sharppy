@@ -259,7 +259,7 @@ class GCCXMLParser(object):
                 # "Unimplemented" tag, but we are not interested in this classes
                 # anyway
                 continue
-            base = Base(decl.FullName(), visib)
+            base = Base(decl, visib)
             this_level.append(base)
             # normalize with the other levels
             for index, level in enumerate(decl.hierarchy):

@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.32 2003-11-14 17:43:07 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.33 2003-11-14 20:29:45 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
@@ -77,16 +77,20 @@ $return_visitor.getMethodCall($method_call, '      ')
 #if $classObj.hasVirtualMethods()
 #set $class_name = getBridgeName($class_visitor)
 #set $class_id   = $class_name
-#set $base_list = ['public %s' % x for x in $classObj.bridge_bases]
-#set $bases = ', '.join($base_list)
-class $class_name : $bases
+## Get the list of base classes (there will be at least one) for the bridge.
+#set $base_list = ['public ' + $class_visitor.getRawName()]
+#for $x in $classObj.bridge_bases
+#silent $x.accept($generic_visitor)
+#silent $base_list.append('public %s' % getBridgeName($generic_visitor))
+#end for
+class $class_name : #echo ', '.join($base_list)
 {
 public:
 #for $c in $classObj.constructors
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
    ${class_name}($p)
-      : ${classObj.bridge_bases[0]}($arg_list)
+      : ${class_visitor.getRawName()}($arg_list)
    {;}
 
 #end for
