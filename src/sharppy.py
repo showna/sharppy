@@ -25,7 +25,6 @@ where options are:
                             directory
     --cache-dir=<dir>       Directory for cache files (speeds up future runs)
     --only-create-cache     Recreates all caches (doesn't generate code).
-    --generate-main         Generates the _main.cpp file (in multiple mode)
     -h, --help              Print this help and exit
     -v, --version           Print version information                         
 """
@@ -86,8 +85,7 @@ def ParseArguments():
             sys.argv[1:], 
             'R:I:D:vh', 
             ['module=', 'multiple', 'out-cxx=', 'out-csharp=', 'sharppy-ns=',
-             'debug', 'cache-dir=', 'only-create-cache', 'version',
-             'generate-main',  'help'])
+             'debug', 'cache-dir=', 'only-create-cache', 'version', 'help'])
     except getopt.GetoptError, e:
         print
         print 'ERROR:', e
@@ -101,8 +99,7 @@ def ParseArguments():
     multiple = False
     cache_dir = None
     create_cache = False
-    generate_main = False
-    
+
     for opt, value in options:
         if opt == '-I':
             includes.append(value)
@@ -131,8 +128,6 @@ def ParseArguments():
         elif opt in ['-v', '--version']:
             print 'Sharppy version %s' % __version__
             sys.exit(2)
-        elif opt == '--generate-main':
-            generate_main = True
         else:
             print 'Unknown option:', opt
             Usage()
@@ -159,13 +154,8 @@ def ParseArguments():
         Usage()
         sys.exit(3)
 
-    if generate_main and not multiple:
-        print 'Error: --generate-main only valid in multiple mode.'
-        Usage()
-        sys.exit(3)
-
     ProcessIncludes(includes)
-    return includes, defines, module, out_cxx, out_csharp, files, multiple, cache_dir, create_cache, generate_main
+    return includes, defines, module, out_cxx, out_csharp, files, multiple, cache_dir, create_cache
 
     
 def CreateContext():
@@ -210,7 +200,7 @@ def CreateContext():
     
 def Begin():
     # parse arguments
-    includes, defines, module, out_cxx, out_csharp, interfaces, multiple, cache_dir, create_cache, generate_main = ParseArguments()
+    includes, defines, module, out_cxx, out_csharp, interfaces, multiple, cache_dir, create_cache = ParseArguments()
     # run sharppy scripts
     for interface in interfaces:
         ExecuteInterface(interface)
@@ -218,12 +208,8 @@ def Begin():
     parser = CppParser(includes, defines, cache_dir, declarations.version)
     try:
         if not create_cache:
-            if not generate_main:
-                return GenerateCode(parser, module, out_cxx, out_csharp,
-                                    interfaces, multiple)
-            else:
-                return GenerateMain(module, out_cxx, out_csharp,
-                                    OrderInterfaces(interfaces))
+            return GenerateCode(parser, module, out_cxx, out_csharp,
+                                interfaces, multiple)
         else:
             return CreateCaches(parser)
     finally:
@@ -291,13 +277,6 @@ def OrderInterfaces(interfaces):
     interfaces_order.reverse()
     return [x for _, x in interfaces_order]
 
-
-
-def GenerateMain(module, out, interfaces):
-    codeunit = MultipleCodeUnit.MultipleCodeUnit(module, out)
-    codeunit.GenerateMain(interfaces)
-    return 0
-    
 
 def GenerateCode(parser, module, out_cxx, out_csharp, interfaces, multiple):    
     # prepare to generate the wrapper code

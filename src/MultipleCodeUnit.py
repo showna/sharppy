@@ -107,27 +107,3 @@ class MultipleCodeUnit(object):
                 codeunit.Save(append)
                 if not append:
                     append = True
-                    
-
-    def GenerateMain(self, interfaces):                    
-        # generate the main cpp
-        filename = os.path.join(self.outdir, '_main.cpp')
-        fout = SmartFile(filename, 'w')
-        fout.write(utils.left_equals('Include'))
-        fout.write('#include <boost/python/module.hpp>\n\n')
-        fout.write(utils.left_equals('Exports'))
-        functions = [self._FunctionName(x) for x in interfaces]
-        for function in functions:
-            fout.write('void %s();\n' % function)
-        fout.write('\n')
-        fout.write(utils.left_equals('Module'))
-        fout.write('BOOST_PYTHON_MODULE(%s)\n' % self.modulename)
-        fout.write('{\n')
-        indent = ' ' * 4
-        for function in functions:
-            fout.write(indent)
-            fout.write('%s();\n' % function)
-        fout.write('}\n')
-        
-    
-        
