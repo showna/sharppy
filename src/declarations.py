@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.18 2003-12-02 22:43:07 patrick Exp $
+# $Id: declarations.py,v 1.19 2003-12-22 02:26:15 patrick Exp $
 
 import copy
 import re
@@ -21,19 +21,34 @@ version = '1.0'
 #==============================================================================
 class Declaration(object):
     '''Base class for all declarations.
-    @ivar name: The name of the declaration.
+    @ivar cxxName: The C++ name of the declaration.
     @ivar namespace: The namespace of the declaration.
     '''
 
-    def __init__(self, name, namespace, mustMarshal = False):
+    template_search = re.compile(r'^([\w:]+)<')
+    template_match  = re.compile(r'^([^<]+)<\s*(.+)\s*>\s*[\*&]?\s*$')
+
+    def __init__(self, cxxName, namespace, mustMarshal = False):
         '''
         @type name: string
         @param name: The name of this declaration
         @type namespace: string
         @param namespace: the full namespace where this declaration resides.
         '''
-        assert(type(name) == list)
-        self.name = name
+        self.cxx_name = cxxName
+
+        # self.name is the language-agnostic name.  Subclasses should set this
+        # themselves if special handling is required for different syntactic
+        # issues.
+        match_obj = self.template_match.search(cxxName)
+        if None != match_obj:
+            name_part, template_part = match_obj.groups()
+            self.name = name_part.split('::')
+            cleaner = re.compile(r"[<:>,\s\*]")
+            clean_template_part = cleaner.sub("_", template_part)
+            self.name[len(self.name) - 1] += "_" + clean_template_part
+        else:
+            self.name = cxxName.split('::')
 
         if namespace is None:
            self.namespace = []
@@ -47,18 +62,22 @@ class Declaration(object):
         # XXX: must_marshal is pretty much a failure.  It should be removed.
         self.must_marshal = mustMarshal
 
-
     def FullName(self):
         '''
         Returns the full qualified name: "boost::inner::Test"
         @rtype: string
         @return: The full name of the declaration.
         '''
-#        namespace = self.namespace or ''
-#        if namespace and not namespace.endswith('::'):
-#            namespace += '::'
-#        return namespace + '::'.join(self.name)
-        return '::'.join(self.getFullNameAbstract())
+        if len(self.namespace) > 0:
+            ns = '::'.join(self.namespace)
+            if ns != '':
+                ns += '::'
+        else:
+            ns = ''
+        return '%s%s' % (ns, self.cxx_name)
+
+    def getCPlusPlusName(self):
+        return self.cxx_name
 
     def _getFullName(self):
         return self.name
@@ -66,7 +85,7 @@ class Declaration(object):
     def getFullNameAbstract(self):
         name = []
         name[0:0] = self._getFullName()
-        if self.namespace:
+        if self.namespace and self.namespace[0] != '':
             name[0:0] = self.namespace
         return name
 
@@ -74,11 +93,18 @@ class Declaration(object):
         name = self.getFullNameAbstract()
         cleaner = re.compile(r"[<:>,\s]")
         for i in xrange(len(name)):
+#            assert(name[i].find('<') == -1)
             name[i] = cleaner.sub("_", name[i])
         return '_'.join(name)
 
+    def getNamespace(self):
+        return self.namespace
+
+    def getName(self):
+        return self.name
+
     def getGenericName(self):
-      return '_'.join(self.getFullNameAbstract())
+        return self.getCleanName()
 
     def accept(self, visitor):
         visitor.visit(self)
@@ -110,8 +136,9 @@ class Class(Declaration):
     classes, and the other ones go up in the hierarchy.
     '''
 
-    def __init__(self, name, namespace, members, abstract):
-        Declaration.__init__(self, name, namespace, True)
+    def __init__(self, cxxName, namespace, members, abstract):
+        Declaration.__init__(self, cxxName, namespace, True)
+
         self.__members = members
         self.__member_names = {}
         self.abstract = abstract
@@ -210,11 +237,12 @@ class NestedClass(Class):
     @ivar visibility: the visibility of this class.
     '''
 
-    def __init__(self, name, class_, visib, members, abstract):
-        Class.__init__(self, name, None, members, abstract)
+    def __init__(self, cxxName, class_, visib, members, abstract):
+        Class.__init__(self, cxxName, None, members, abstract)
         assert(type(class_) == list)
         self.class_ = class_
         self.visibility = visib
+        self.cxx_name = '%s::%s' % ('::'.join(class_), cxxName)
 
     def _getFullName(self):
         name = []
@@ -222,12 +250,6 @@ class NestedClass(Class):
         name[0:0] = self.class_
         return name
 
-#    def FullName(self):
-#        '''The full name of this class, like ns::outer::inner.
-#        @rtype: string
-#        '''
-#        return '%s::%s' % (self.class_, self.name)
-    
 
 #==============================================================================
 # Scope    
@@ -241,8 +263,8 @@ class Scope:
     public = 'public'
     private = 'private'
     protected = 'protected'
-    
- 
+
+
 #==============================================================================
 # Base    
 #==============================================================================
@@ -254,7 +276,8 @@ class Base(Declaration):
     '''
 
     def __init__(self, decl, visibility=Scope.public):
-        Declaration.__init__(self, decl.name, decl.namespace, decl.must_marshal)
+        Declaration.__init__(self, decl.cxx_name, decl.namespace,
+                             decl.must_marshal)
         self.class_decl = decl
         self.visibility = visibility
 
@@ -363,17 +386,15 @@ class Method(Function):
         self.virtual = virtual
         self.abstract = abstract
         self.static = static
-        assert(type(class_) == list)
         self.class_ = class_
         self.const = const
         self.override = False
 
+    def FullName(self):
+        return '%s::%s' % (self.class_, self.cxx_name)
+
     def _getFullName(self):
-        name = []
-        name[0:0] = Function._getFullName(self)
-        assert(type(self.class_) is list)
-        name[0:0] = self.class_
-        return name
+        return self.class_.split('::') + Function._getFullName(self)
 
     def PointerDeclaration(self, force=False):
         '''Returns a declaration of a pointer to this member function.
@@ -394,6 +415,7 @@ class Method(Function):
             return '(%s (%s::*)(%s) %s%s)&%s' %\
                 (result, self.class_, params, const, self.Exceptions(), self.FullName())  
 
+
 #==============================================================================
 # Constructor
 #==============================================================================
@@ -402,13 +424,13 @@ class Constructor(Method):
     '''
 
     def __init__(self, name, class_, params, visib):
-        Method.__init__(self, name, class_, None, params, visib, False, False, False, False)
+        Method.__init__(self, name, class_, None, params, visib, False, False,
+                        False, False)
 
     def IsDefault(self):
         '''Returns True if this constructor is a default constructor.
         '''
         return len(self.parameters) == 0 and self.visibility == Scope.public
-
 
     def IsCopy(self):
         '''Returns True if this constructor is a copy constructor.
@@ -416,11 +438,10 @@ class Constructor(Method):
         if len(self.parameters) != 1:
             return False
         param = self.parameters[0][0]
-        class_as_param = param.name == self.class_
+        class_as_param = param.cxx_name == self.class_
         param_reference = isinstance(param, ReferenceType) 
         is_public = self.visibility == Scope.public
         return param_reference and class_as_param and param.const and is_public
-        
 
     def PointerDeclaration(self, force=False):
         return ''
@@ -442,7 +463,6 @@ class Destructor(Method):
         return ''
 
 
-
 #==============================================================================
 # ClassOperator
 #==============================================================================
@@ -451,7 +471,6 @@ class ClassOperator(Method):
     
     def FullName(self):
         return '::'.join(self.class_) + '::operator ' + self.name[0]
-
 
 
 #==============================================================================
@@ -468,7 +487,6 @@ class ConverterOperator(ClassOperator):
 #    def FullName(self):
 #        return self.class_ + '::operator ' + self.result.FullName()
 
-    
 
 #==============================================================================
 # Type
@@ -483,8 +501,12 @@ class Type(Declaration):
     example.
     '''
 
-    def __init__(self, name, const=False, default=None, suffix='', mustMarshal=True):
-        Declaration.__init__(self, name, None, mustMarshal)
+    const_match_re = re.compile(r'^const (.*)$')
+
+    def __init__(self, cxxName, const = False, default = None, suffix = '',
+                 mustMarshal = True):
+        Declaration.__init__(self, cxxName, None, mustMarshal)
+
         # whatever the type is constant or not
         self.const = const
         # used when the Type is a function argument
@@ -492,6 +514,13 @@ class Type(Declaration):
         self.volatile = False
         self.restricted = False
         self.suffix = suffix
+
+        # Ensure that the 'const' modifier does not appear in self.cxx_name.
+        match_obj = self.const_match_re.match(cxxName)
+        if None != match_obj:
+            self.const    = 1
+            self.cxx_name = match_obj.groups()[0]
+            self.name     = self.cxx_name.split('::')
 
     def __repr__(self):
         if self.const:
@@ -530,25 +559,27 @@ class ArrayType(Type):
 class ReferenceType(Type): 
     '''A reference type.'''
 
-    def __init__(self, name, const=False, default=None, expandRef=True, suffix=''):
-        Type.__init__(self, name = name, const = const, default = default,
+    def __init__(self, cxxName, const = False, default = None, expandRef = True,
+                 suffix=''):
+        Type.__init__(self, cxxName = cxxName, const = const, default = default,
                       mustMarshal = False)
         if expandRef:
             self.suffix = suffix + '&'
-        
-        
+
+
 #==============================================================================
 # PointerType
 #==============================================================================
 class PointerType(Type):
     'A pointer type.'
-    
-    def __init__(self, name, const=False, default=None, expandPointer=False, suffix=''):
-        Type.__init__(self, name = name, const = const, default = default,
+
+    def __init__(self, cxxName, const = False, default = None,
+                 expandPointer = False, suffix = ''):
+        Type.__init__(self, cxxName = cxxName, const = const, default = default,
                       mustMarshal = False)
         if expandPointer:
             self.suffix = suffix + '*'
-   
+
 
 #==============================================================================
 # FundamentalType
@@ -556,10 +587,9 @@ class PointerType(Type):
 class FundamentalType(Type): 
     'One of the fundamental types, like int, void, etc.'
 
-    def __init__(self, name, const=False, default=None): 
-        Type.__init__(self, name = name, const = const, default = default,
+    def __init__(self, cxxName, const = False, default = None): 
+        Type.__init__(self, cxxName = cxxName, const = const, default = default,
                       mustMarshal = False)
-
 
 
 #==============================================================================
@@ -575,7 +605,7 @@ class FunctionType(Type):
     def __init__(self, result, parameters):  
         # The "name" for a function type is constructed from its result and
         # its parameters.  Its name member will always be an empty list.
-        Type.__init__(self, [], False, None, False)
+        Type.__init__(self, '', False, None, False)
         self.result = result
         self.parameters = parameters
 
@@ -584,8 +614,8 @@ class FunctionType(Type):
         params = [x.FullName() for x in self.parameters]
         full += '(%s)' % ', '.join(params)        
         return full
-    
-    
+
+
 #==============================================================================
 # MethodType
 #==============================================================================
@@ -595,7 +625,6 @@ class MethodType(FunctionType):
     '''
 
     def __init__(self, result, parameters, class_):  
-        assert(type(class_) == list)
         self.class_ = class_
         FunctionType.__init__(self, result, parameters)
 
@@ -642,12 +671,12 @@ class ClassVariable(Variable):
         self.visibility = visib
         self.static = static
         self.class_ = class_
-    
+
+    def FullName(self):
+        return '%s::%s' % (self.class_, self.cxx_name)
+
     def _getFullName(self):
-        name = []
-        name[0:0] = Variable._getFullName(self)
-        name[0:0] = self.class_
-        return name
+        return self.class_.split('::') + Variable._getFullName(self)
 
 #    def FullName(self):
 #        return self.class_ + '::' + Variable.FullName(self)
@@ -690,15 +719,14 @@ class ClassEnumeration(Enumeration):
 
     def __init__(self, name, class_, visib):
         Enumeration.__init__(self, name, None)
-        assert(type(class_) == list)
         self.class_ = class_
         self.visibility = visib
 
+    def FullName(self):
+        return '%s::%s' % (self.class_, self.cxx_name)
+
     def _getFullName(self):
-       name = []
-       name[0:0] = Enumeration._getFullName(self)
-       name[0:0] = self.class_
-       return name
+       return self.class_.split('::') + Enumeration._getFullName(self)
 
 #    def FullName(self):
 #        return '%s::%s' % (self.class_, self.name)

@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.24 2003-11-24 21:42:09 patrick Exp $
+# $Id: visitors.py,v 1.25 2003-12-22 02:26:15 patrick Exp $
 
 import re
 
@@ -15,6 +15,8 @@ UNSIGNED_LONG      = 8
 LONG_LONG          = 9
 UNSIGNED_LONG_LONG = 10
 SHARED_PTR         = 11
+AUTO_PTR           = 12
+CUSTOM_SMART_PTR   = 13
 
 class DeclarationVisitor:
    def __init__(self):
@@ -90,8 +92,8 @@ class CPlusPlusVisitor(DeclarationVisitor):
       self._checkForProblemType()
 
    def _checkForProblemType(self):
-      full_name = self.decl.getFullNameAbstract()
-      if full_name[0] == 'std' and full_name[1].find('basic_string', 0) != -1:
+      cxx_name = self.decl.getCPlusPlusName()
+      if cxx_name.find('std::basic_string', 0) != -1:
          self._processProblemType(STD_STRING)
 
    def _processProblemType(self, typeID):
@@ -281,48 +283,50 @@ class CSharpVisitor(DeclarationVisitor):
       self._checkForProblemType()
 
    def _checkForProblemType(self):
-      full_name = self.decl.getFullNameAbstract()
-      type_id   = UNKNOWN
+      cxx_name = self.decl.getCPlusPlusName()
+      type_id  = UNKNOWN
 
-      if full_name[0] == 'std' and full_name[1].find('basic_string', 0) != -1:
+      if cxx_name.find('std::basic_string', 0) != -1:
          type_id = STD_STRING
-      elif full_name[0] == 'boost' and full_name[1].find('shared_ptr', 0) != 1:
+      elif cxx_name.find('boost::shared_ptr', 0) != -1:
          type_id = SHARED_PTR
       else:
          # XXX: Figure out if there is a simpler way of dealing with unsigned
          # integers.  It depends largely on the order that the type information
          # is returned ("int unsigned" versus "unsigned int").
-         for s in full_name:
-            if s.find('long long') != -1:
-               if s.find('unsigned') != -1:
-                  type_id = UNSIGNED_LONG_LONG
-               else:
-                  type_id = LONG_LONG
-               break
-            elif s.find('short') != -1:
-               if s.find('unsigned') != -1:
-                  type_id = UNSIGNED_SHORT
-               else:
-                  type_id = SHORT
-            # Assume that a long (not a long long) is supposed to be a 32-bit
-            # integer.
-            elif s.find('long') != -1 or s.find('int') != -1:
-               if s.find('unsigned') != -1:
-                  type_id = UNSIGNED_LONG
-               else:
-                  type_id = LONG
-               break
-            # Translate char, which is 1 byte in C/C++, into byte.
-            elif s.find('char') != -1:
-               if s.find('unsigned') != -1:
-                  type_id = UNSIGNED_CHAR
-               else:
-                  type_id = CHAR
-               break
+         if cxx_name.find('long long') != -1:
+            if cxx_name.find('unsigned') != -1:
+               type_id = UNSIGNED_LONG_LONG
+            else:
+               type_id = LONG_LONG
+         elif cxx_name.find('short') != -1:
+            if cxx_name.find('unsigned') != -1:
+               type_id = UNSIGNED_SHORT
+            else:
+               type_id = SHORT
+         # Assume that a long (not a long long) is supposed to be a 32-bit
+         # integer.
+         elif cxx_name.find('long') != -1 or cxx_name.find('int') != -1:
+            if cxx_name.find('unsigned') != -1:
+               type_id = UNSIGNED_LONG
+            else:
+               type_id = LONG
+         # Translate char, which is 1 byte in C/C++, into byte.
+         elif cxx_name.find('char') != -1:
+            if cxx_name.find('unsigned') != -1:
+               type_id = UNSIGNED_CHAR
+            else:
+               type_id = CHAR
 
       # Based on type_id, process the problem type.
       if type_id != UNKNOWN:
          self._processProblemType(type_id)
+
+   # Regular expression for extracting the real type from a shared pointer.
+   # It is declared here so that it is compiled only once.
+   # XXX: Note that this regular expression should be anchored at the
+   # beginning of the line, but cppdom_boost::shared_ptr<T> breaks that.  Grr...
+   real_type_re = re.compile(r"boost::shared_ptr<\s*(.*)\s*>$")
 
    def _processProblemType(self, typeID):
       if typeID == STD_STRING:
@@ -350,12 +354,13 @@ class CSharpVisitor(DeclarationVisitor):
       elif typeID == LONG_LONG:
          self.usage = 'long'
       elif typeID == SHARED_PTR:
-         real_type_re = re.compile(r"^boost.shared_ptr<(.*)>$")
-         match = real_type_re.match(self.usage)
+         match = self.real_type_re.search(self.decl.cxx_name)
          if None != match:
             # XXX: Once we have the type contained by the shared pointer, do
             # we need to do anything with it?
-            self.usage = match.groups()[0]
+            # XXX: This is a hack to deal with simple cases for the near term.
+            cxx_template_param = match.groups()[0]
+            self.usage = '.'.join(cxx_template_param.split('::'))
          else:
             assert(False)
 
