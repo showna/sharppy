@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.15 2003-11-06 16:37:10 patrick Exp $
+## $Id: class_cs.tmpl,v 1.16 2003-11-06 17:17:26 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -45,14 +45,29 @@ public class $class_visitor.getRawName(False) : $b
 #for $c in $classObj.constructors
 #set $cons_name = "new_" + $classObj.bridge_name + "_" + str($i)
 #set $i = $i + 1
-#set $pi_p = ',\n\t'.join(['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters])
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters]
+#set $p = ', '.join($pi_params)
+#if $classObj.hasVirtualMethods()
+#set $i = 0
+#for $m in $classObj.virtual_methods
+#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $m.name[0] + 'Delegate d' + str($i))
+#set $i = $i + 1
+#end for
+#end if
+#set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private static extern IntPtr ${cons_name}($pi_p);
+   private extern static IntPtr ${cons_name}($pi_p);
 
-#set $p = $pi_p
-#set $arg_list = ', '.join([x[1] for x in $c.parameters])
+#set $cons_args = [x[1] for x in $c.parameters]
    public ${class_visitor.getRawName(False)}($p)
    {
+#if $classObj.hasVirtualMethods()
+#for $m in $classObj.virtual_methods
+      m_${m.name[0]}Delegate = new ${m.name[0]}Delegate($m.name[0]);
+#silent $cons_args.append('m_' + $m.name[0] + 'Delegate')
+#end for
+#end if
+#set $arg_list = ', '.join($cons_args)
       mRawObject   = ${cons_name}($arg_list);
       mWeOwnMemory = true;
    }
@@ -93,6 +108,7 @@ public class $class_visitor.getRawName(False) : $b
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
 #set $name = $method_visitor.getGenericName()
+## XXX: More marshaling is necessary here.
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $pi_params[0:0] = ['IntPtr obj']
 #set $pi_p = ',\n\t'.join($pi_params)
@@ -104,6 +120,7 @@ public class $class_visitor.getRawName(False) : $b
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${name}($pi_p);
 
+## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']
@@ -118,14 +135,51 @@ public class $class_visitor.getRawName(False) : $b
    }
 
 #end for
-
    // Virtual methods.
+#for $m in $classObj.virtual_methods
+#silent $m.accept($method_visitor)
+#silent $m.result.accept($result_visitor)
+#set $name = $m.name[0]
+#set $pi_name = $method_visitor.getGenericName()
+## XXX: More marshaling is necessary here.
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $delegate_params = ', '.join($pi_params)
+   // Delegate for the ${name}() callback.
+## XXX: Filling in the parameter list here could be tricky... marshal, marshal, marshal!
+   public delegate $result_visitor.getUsage() ${name}Delegate($delegate_params);
+   protected ${name}Delegate m_${name}Delegate;
 
+#if $m.result.must_marshal
+#set $native_return_type = 'IntPtr'
+#else
+#set $native_return_type = $result_visitor.getUsage()
+#end if
+#silent $pi_params[0:0] = ['IntPtr obj']
+#set $pi_p = ',\n\t'.join($pi_params)
+   [DllImport("vpr_bridge", CharSet = CharSet.Ansi)]
+   private extern static $native_return_type ${pi_name}($pi_p);
+
+## XXX: More marshaling is necessary here.
+#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+#set $args = [x[1] for x in $m.parameters]
+#silent $args[0:0] = ['mRawObject']
+#set $arg_list = ', '.join($args)
+   public virtual $result_visitor.getUsage() ${name}($p)
+   {
+#if $m.result.must_marshal
+      return new ${result_visitor.getUsage()}(${pi_name}($arg_list), true);
+#else
+      #if $result_visitor.getRawName() != 'void' then 'return' else ''# ${pi_name}($arg_list);
+#end if
+   }
+
+#end for
    // Static methods.
 #for $m in $classObj.static_methods
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
 #set $name = $method_visitor.getGenericName()
+## XXX: More marshaling is necessary here.
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #set $pi_p = ',\n\t'.join($pi_params)
 #if $m.result.must_marshal
@@ -136,6 +190,7 @@ public class $class_visitor.getRawName(False) : $b
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${name}($pi_p);
 
+## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
 #set $arg_list = ', '.join($args)
@@ -149,7 +204,6 @@ public class $class_visitor.getRawName(False) : $b
    }
 
 #end for
-
    // Static data.
 #set $data_visitor = CSharpVisitor()
 #set $data_type_visitor = CSharpVisitor()
