@@ -1,12 +1,12 @@
-## $Id: class_cs.tmpl,v 1.36 2003-11-18 21:52:37 patrick Exp $
-
+## $Id: class_cs.tmpl,v 1.37 2003-11-18 22:25:05 patrick Exp $
+// Generated from \$Revision: 1.37 $ of \$File$
 using System;
 using System.Runtime.InteropServices;
 
 #from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName, getBridgeName, getHolderName
-#from visitors import CSharpVisitor, CSharpPInvokeParamVisitor, CSharpParamVisitor, CSharpReturnVisitor
+#import visitors
 
-#set $marsharler_visitor = CSharpVisitor()
+#set $marsharler_visitor = visitors.CSharpVisitor()
 #for $m, $c in $marshalers
 #silent $c.class_accept($marshaler_visitor)
 // Marshaler for $marshaler_visitor.getRawName().
@@ -16,15 +16,15 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #end for
 
 #def generateMethod($methodDecl)
-#set $method_visitor   = CSharpVisitor()
-#set $pi_param_visitor = CSharpPInvokeParamVisitor()
-#set $param_visitor    = CSharpParamVisitor()
-#set $result_visitor   = CSharpReturnVisitor()
+#set $method_visitor    = visitors.CSharpVisitor()
+#set $pi_param_visitor  = visitors.CSharpPInvokeParamVisitor()
+#set $param_visitor     = visitors.CSharpParamVisitor()
+#set $result_visitor    = visitors.CSharpReturnVisitor()
+#set $dlg_param_visitor = visitors.CSharpDelegateParamVisitor()
 #silent $methodDecl.accept($method_visitor)
 #silent $methodDecl.result.accept($result_visitor)
 #set $method_name = $methodDecl.name[0]
-## XXX: Need custom marshaling on delegate parameters.
-#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters])
+#set $method_params = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters])
 ## If this method is virtual and is not an override, declare the delegate type
 ## and member variable.
 #if $methodDecl.virtual and not $methodDecl.override
@@ -34,7 +34,7 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 ## callback that will wrap the actual virtual function.
 #if $methodDecl.result.must_marshal
 #set $adapter_params = ', '.join([x[1] for x in $methodDecl.parameters])
-   protected IntPtr ${method_name}Adapter($p)
+   protected IntPtr ${method_name}Adapter($method_params)
    {
 ## XXX: See if we can take advantage of custom marshalers here.
       return ${method_name}($adapter_params).mRawObject;
@@ -44,16 +44,30 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #else
 #set $return_type = $result_visitor.getUsage()
 #end if
-   public delegate $return_type ${delegate_name}($p);
+## Build up the parameter list for the delegate.
+#set $delegate_param_list = []
+#for $param in $methodDecl.parameters
+#silent $param[0].accept($dlg_param_visitor)
+#if $dlg_param_visitor.mustMarshal()
+#set $marshaler_name = $dlg_param_visitor.getRawName(False) + 'Marshaler'
+#set $param_decl = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%s))] %s %s' % ($marshaler_name, $dlg_param_visitor.getUsage(), $param[1])
+#else
+#set $param_decl = '%s %s' % ($dlg_param_visitor.getUsage(), $param[1])
+#end if
+#silent $delegate_param_list.append($param_decl)
+#end for
+#set $delegate_params = ',\n\t'.join($delegate_param_list)
+   public delegate $return_type ${delegate_name}($delegate_params);
    protected $delegate_name m_${delegate_name};
 
 #end if
 ## If this method is virtual and abstract, declare it as such.
 #if $methodDecl.virtual and $methodDecl.abstract
-   public abstract $result_visitor.getUsage() ${method_name}($p);
+   public abstract $result_visitor.getUsage() ${method_name}($method_params);
 ## Otherwise, set up the P/Invoke information and the method body.
 #else
 #set $unsafe = False
+## XXX: Need custom marshaling on P/Invoke parameters.
 #if $methodDecl.static
 #set $pi_params = []
 #set $pi_call_args = []
@@ -89,7 +103,7 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #else
 #set $method_type = ''
 #end if
-   public $method_type $result_visitor.getUsage() ${method_name}($p)
+   public $method_type $result_visitor.getUsage() ${method_name}($method_params)
    {
 ## Pre-call parameter marshaling.
 #for $param in $methodDecl.parameters
@@ -137,9 +151,9 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #def generateClass($classObj)
 #set $bases = []
 #set $has_base = False
-#set $class_visitor = CSharpVisitor()
-#set $base_visitor = CSharpVisitor()
-#set $generic_visitor = CSharpVisitor()
+#set $class_visitor = visitors.CSharpVisitor()
+#set $base_visitor = visitors.CSharpVisitor()
+#set $generic_visitor = visitors.CSharpVisitor()
 #silent $classObj.class_.accept($class_visitor)
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
@@ -162,12 +176,12 @@ class $class_visitor.getRawName(False) : $b
    protected bool mWeOwnMemory = false;
 #end if
 
-#set $method_visitor = CSharpVisitor()
+#set $method_visitor = visitors.CSharpVisitor()
 ## Do not define constructors if this class is abstract or it appears only as
 ## as smart pointer.
 #if not $classObj.class_.abstract and not $classObj.info.only_smart_ptr
    // Constructors.
-#set $cons_visitor = CSharpVisitor()
+#set $cons_visitor = visitors.CSharpVisitor()
 #for $c in $classObj.constructors
 #silent $c.accept($method_visitor)
 #set $cons_name = $method_visitor.getGenericName()
@@ -259,9 +273,9 @@ class $class_visitor.getRawName(False) : $b
 #end if
    // Overloads.
 
-#set $pi_param_visitor = CSharpPInvokeParamVisitor()
-#set $param_visitor    = CSharpParamVisitor()
-#set $result_visitor   = CSharpReturnVisitor()
+#set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
+#set $param_visitor    = visitors.CSharpParamVisitor()
+#set $result_visitor   = visitors.CSharpReturnVisitor()
 ## ---------------------------- Non-virtual methods ---------------------------
 #if $classObj.hasNonVirtualMethods()
 
@@ -293,8 +307,8 @@ $generateMethod($m)
 #if $classObj.hasStaticData()
 
    // Start of static data.
-#set $data_visitor = CSharpVisitor()
-#set $data_type_visitor = CSharpVisitor()
+#set $data_visitor = visitors.CSharpVisitor()
+#set $data_type_visitor = visitors.CSharpVisitor()
 #for $m in $classObj.static_members
 #silent $m.accept($data_visitor)
 #silent $m.type.accept($data_type_visitor)
@@ -337,7 +351,7 @@ $generateMethod($m)
 #end if
 
 ## ---------------------------- Nested enumerations ---------------------------
-#set $nested_visitor = CSharpVisitor()
+#set $nested_visitor = visitors.CSharpVisitor()
 #for $ne in $classObj.nested_enums
 #silent $ne.enum.accept($nested_visitor)
 #set $enum_values = ["%s = %d" % (v, $ne.enum.values[v]) for v in $ne.enum.values.keys()]
@@ -381,17 +395,17 @@ public class $marshaler_name : ICustomMarshaler
 ## Override abstract methods.
 #for $m in $classObj.virtual_methods
 #if $m.abstract
-#set $method_visitor   = CSharpVisitor()
-#set $pi_param_visitor = CSharpPInvokeParamVisitor()
-#set $param_visitor    = CSharpParamVisitor()
-#set $result_visitor   = CSharpReturnVisitor()
+#set $method_visitor   = visitors.CSharpVisitor()
+#set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
+#set $param_visitor    = visitors.CSharpParamVisitor()
+#set $result_visitor   = visitors.CSharpReturnVisitor()
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
 #set $method_name = $m.name[0]
-## XXX: Need custom marshaling on delegate parameters.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters])
 ## Set up the P/Invoke information and the method body.
 #set $unsafe = False
+## XXX: Need custom marshaling on P/Invoke parameters.
 #set $pi_params = ['IntPtr obj']
 #for $param in $m.parameters
 #silent $param[0].accept($pi_param_visitor)
@@ -510,9 +524,9 @@ public class $marshaler_name : ICustomMarshaler
 #def generateInterface($classObj)
 #set $bases = []
 #set $has_base = False
-#set $class_visitor = CSharpVisitor()
-#set $base_visitor = CSharpVisitor()
-#set $generic_visitor = CSharpVisitor()
+#set $class_visitor = visitors.CSharpVisitor()
+#set $base_visitor = visitors.CSharpVisitor()
+#set $generic_visitor = visitors.CSharpVisitor()
 #silent $classObj.class_.accept($class_visitor)
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
@@ -527,8 +541,8 @@ public interface $class_visitor.getRawName(False)
 {
 ## ------------------------------ Virtual methods -----------------------------
 #if $classObj.hasVirtualMethods()
-#set $method_visitor = CSharpVisitor()
-#set $result_visitor = CSharpVisitor()
+#set $method_visitor = visitors.CSharpVisitor()
+#set $result_visitor = visitors.CSharpVisitor()
 #for $m in $classObj.virtual_methods
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)

@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.18 2003-11-18 05:12:34 patrick Exp $
+# $Id: visitors.py,v 1.19 2003-11-18 22:25:05 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -455,6 +455,25 @@ class CSharpParamVisitor(CSharpVisitor):
    def _processProblemType(self, typeID):
       # Perform default problem type processing first.
       CSharpVisitor._processProblemType(self, typeID)
+
+class CSharpDelegateParamVisitor(CSharpVisitor):
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+      self.__must_marshal = False
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl)
+
+      if decl.suffix == '&' or decl.suffix == '*':
+         if not self.problem_type:
+            if self._isFundamentalType(decl):
+               self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
+               self.__must_marshal = False
+            else:
+               self.__must_marshal = True
+
+   def mustMarshal(self):
+      return self.__must_marshal
 
 class CSharpReturnVisitor(CSharpVisitor):
    '''
