@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.60 2004-01-13 16:47:22 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.61 2004-01-13 21:13:57 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -406,7 +406,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
       '''
       for member in self.class_:
          if type(member) == declarations.Method and member.virtual:
-            member.virtual = not self.info[member.getFullCPlusPlusName()].no_override 
+            member.virtual = not self.info[member.name[0]].no_override
 
    def needsAdapter(self):
       exports_protected_methods = False
