@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.42 2004-02-23 22:33:21 patrick Exp $
+# $Id: visitors.py,v 1.43 2004-02-24 04:47:35 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -151,6 +151,13 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
                                    self.__orig_param_name)
 #            self.__post_marshal = '*%s = %s' % \
 #                                  (self.__orig_param_name, self.__param_name)
+         # If we have a fundamental type being passed by const reference,
+         # change that to pass-by-value semantics.  The .NET code expects
+         # this (it's easier to pass value types by value in C#, and literal
+         # constants cannot be passed by reference).
+         elif decl.const and self._isFundamentalType():
+            self.usage = re.sub(r"&", "", self.name)
+            self.__must_marshal = False
 
    def _processProblemType(self, typeID):
       # Perform default problem type processing first.
