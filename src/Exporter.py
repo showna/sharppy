@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-import os.path
+import os
 
 #==============================================================================
 # Exporter
@@ -11,22 +11,22 @@ class Exporter(object):
 
     INDENT = ' ' * 3
     
-    def __init__(self, info, parser_tail=None):
+    def __init__(self, info, parser_tail=None, module = 'Unknown'):
         self.info = info
         self.parser_tail = parser_tail
         self.interface_file = None
         self.declarations = []
         self.includes = []
-        self.module = 'Unknown'
+        self.module = module
+        self.cxx_dir = self.module + '_cpp'
+        self.csharp_dir = self.module + '_cs'
 
     def Name(self):
         raise NotImplementedError(self.__class__.__name__)
 
-
     def Tail(self):
         return self.parser_tail
 
-        
     def Parse(self, parser):
         self.parser = parser
         header = self.info.include
@@ -35,13 +35,31 @@ class Exporter(object):
         self.parser_header = parser_header
         self.SetDeclarations(declarations)
 
-
     def SetParsedHeader(self, parsed_header):
         self.parser_header = parsed_header 
 
     def setModule(self, module):
         print "Setting module to", module
         self.module = module
+
+    def setOutputDirs(self, cxx, csharp):
+        if os.access(cxx, os.F_OK):
+            if not os.access(cxx, os.R_OK):
+                # XXX: Need to throw an exception here.
+                print 'C++ Crap'
+        else:
+            os.mkdir(cxx)
+
+        self.cxx_dir = cxx
+
+        if os.access(csharp, os.F_OK):
+            if not os.access(csharp, os.R_OK):
+                # XXX: Need to throw an exception here.
+                print 'C# Crap'
+        else:
+            os.mkdir(csharp)
+
+        self.csharp_dir = csharp
 
     def SetDeclarations(self, declarations):
         self.declarations = declarations

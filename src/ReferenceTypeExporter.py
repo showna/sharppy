@@ -13,7 +13,7 @@ from EnumExporter import EnumExporter
 from utils import makeid, enumerate, generateUniqueName, operatorToString
 import copy
 import exporterutils
-import re
+import os
 
 from Cheetah.Template import Template
 
@@ -27,8 +27,8 @@ class ReferenceTypeExporter(Exporter):
     cxx_template_file    = 'class_cxx.tmpl'
     csharp_template_file = 'class_cs.tmpl'
  
-    def __init__(self, info, parser_tail=None):
-        Exporter.__init__(self, info, parser_tail)
+    def __init__(self, info, parser_tail=None, module = 'Unknown'):
+        Exporter.__init__(self, info, parser_tail, module)
         self.marshalers = {}
 
         self.cxx_template = Template(file = self.cxx_template_file)
@@ -83,8 +83,12 @@ class ReferenceTypeExporter(Exporter):
             else:
                 self.class_ = decl
             self.class_ = copy.deepcopy(self.class_)
+            self.cxx_output_file = self.class_.getGenericName() + '.cpp'
+            self.csharp_output_file = self.class_.getGenericName() + '.cs'
         else:
             self.class_ = None
+            self.cxx_output_file = 'yikes.cpp'
+            self.csharp_output_file = 'yikes.cs'
 
     def ClassBases(self):
         all_bases = []       
@@ -111,7 +115,6 @@ class ReferenceTypeExporter(Exporter):
             self.ExportVirtualMethods()
             self.ExportMethods()
             self.ExportVirtualMethodWrappers()
-#            self.ExportMethodWrappers()
             self.ExportOperators()
             self.ExportNestedClasses(exported_names)
             self.ExportNestedEnums(exported_names)
@@ -126,8 +129,22 @@ class ReferenceTypeExporter(Exporter):
             self.csharp_template.module     = self.module
 
             # Execute the templates.
-            print self.cxx_template
-            print self.csharp_template
+            cxx_out    = os.path.join(self.cxx_dir, self.cxx_output_file)
+            csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
+
+            try:
+                cxx_file = open(cxx_out, 'w')
+                cxx_file.write(str(self.cxx_template))
+                cxx_file.close()
+            except IOError, (errno, strerror):
+                print "I/O error (%s) [%s]: %s" % (errno, cxx_out, strerror)
+
+            try:
+                csharp_file = open(csharp_out, 'w')
+                csharp_file.write(str(self.csharp_template))
+                csharp_file.close()
+            except IOError:
+                print "I/O error (%s) [%s]: %s" % (errno, csharp_out, strerror)
 
             exported_names[self.Name()] = 1
 
@@ -524,7 +541,7 @@ class ReferenceTypeExporter(Exporter):
             nested_info = self.info[nested_class.FullName()]
             nested_info.include = self.info.include
             nested_info.name = nested_class.FullName()
-            exporter = ReferenceTypeExporter(nested_info)
+            exporter = ReferenceTypeExporter(nested_info, module = self.module)
             exporter.SetDeclarations(self.declarations)
             exporter.Export(exported_names)
 
@@ -534,7 +551,7 @@ class ReferenceTypeExporter(Exporter):
             enum_info = self.info[enum.name]
             enum_info.include = self.info.include
             enum_info.name = enum.FullName()
-            exporter = EnumExporter(enum_info)
+            exporter = EnumExporter(enum_info, module = self.module)
             exporter.SetDeclarations(self.declarations)
             # XXX: This can't possibly be done yet...
             assert(False)

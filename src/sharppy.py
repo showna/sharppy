@@ -127,10 +127,6 @@ def ParseArguments():
         Usage() 
     if not module:
         module = os.path.splitext(files[0])[0]
-    if not out_cxx:
-        out_cxx = module + '_cpp'
-    if not out_csharp:
-        out_csharp = module + '_cs'
     for file in files:
         d = os.path.dirname(os.path.abspath(file))
         if d not in sys.path:
@@ -284,6 +280,13 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
     del order
     del interfaces_order
 
+    module += '_bridge'
+
+    if not out_cxx:
+        out_cxx = module + '_cpp'
+    if not out_csharp:
+        out_csharp = module + '_cs'
+
     # now generate the code in the correct order 
     #print exported_names
     tails = JoinTails(exports)
@@ -299,7 +302,8 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
             declarations = []
             parsed_header = None
         ExpandTypedefs(declarations, exported_names)
-        export.setModule(module + '_bridge')
+        export.setModule(module)
+        export.setOutputDirs(out_cxx, out_csharp)
         export.SetDeclarations(declarations)
         export.SetParsedHeader(parsed_header)
         export.GenerateCode(exported_names)
