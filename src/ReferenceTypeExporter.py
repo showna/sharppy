@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.36 2003-11-19 21:48:03 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.37 2003-11-19 22:03:36 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -166,12 +166,13 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
          # Execute the templates.
          if self.hasVirtualMethods():
-            self.includes.append(self.cxx_bridge_output_file)
-
             self.cxx_bridge_template.exp_class = self
             self.cxx_bridge_template.module    = self.module
-            self.cxx_bridge_template.includes  = self.includes
+            self.cxx_bridge_template.includes  = copy.copy(self.includes)
             cxx_bridge_out = os.path.join(self.cxx_dir, self.cxx_bridge_output_file)
+
+            # The C wrapper template will need to know about the bridge header.
+            self.includes.append(self.cxx_bridge_output_file)
 
             try:
                print "\t[C++ Bridge]",
