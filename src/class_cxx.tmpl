@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.42 2003-11-24 21:34:33 patrick Exp $
-// Generated from \$Revision: 1.42 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.43 2003-11-24 22:09:56 patrick Exp $
+// Generated from \$Revision: 1.43 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #import visitors
 
@@ -8,7 +8,7 @@
 #set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
 #if not $methodDecl.static
 #silent $params[0:0] = ["%s self_" % $getSelfType($classObj, $classVisitor)]
-#if $classObj.info.only_smart_ptr
+#if $classObj.info.smart_ptr
 #set $methodCall = $methodCall % 'mPtr->'
 #else
 #set $methodCall = $methodCall % ''
@@ -89,7 +89,7 @@ extern "C"
 #set $method_visitor = visitors.CPlusPlusVisitor()
 ## We have a class that only appears as a smart pointer.  We have at least one
 ## constructor that copies the existing object.
-#if $classObj.info.only_smart_ptr
+#if $classObj.info.smart_ptr
 #set $holder_name = $getHolderName($class_visitor)
    SHARPPY_API $holder_name* new_${holder_name}($smart_ptr_decl ptr)
    {
@@ -105,7 +105,7 @@ extern "C"
 #for $c in $classObj.constructors
 ## Skip the copy constructor for shared pointer types.  We have a special
 ## constructor defined above for that sort of thing.
-#if $c.IsCopy() and $classObj.info.only_smart_ptr
+#if $c.IsCopy() and $classObj.info.smart_ptr
 #continue
 #end if
 #silent $c.accept($method_visitor)
@@ -155,7 +155,7 @@ extern "C"
 #end for
 #set $arg_list = ', '.join($all_args)
 ## Smart pointer object construction.
-#if $classObj.info.only_smart_ptr
+#if $classObj.info.smart_ptr
       $class_name* obj = new ${class_name};
 #set $cons_call = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
       obj->mPtr = ${cons_call}(new ${class_visitor.getRawName()}($arg_list));

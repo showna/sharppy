@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.46 2003-11-24 21:56:03 patrick Exp $
-// Generated from \$Revision: 1.46 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.47 2003-11-24 22:09:56 patrick Exp $
+// Generated from \$Revision: 1.47 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -283,7 +283,8 @@ class $class_visitor.getRawName(False)
       }
    }
 
-   // Overloads.
+## ---------------------------- Operator overloads ----------------------------
+   // Operator overloads.
 
 #set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
 #set $param_visitor    = visitors.CSharpParamVisitor()
@@ -536,7 +537,7 @@ public class $marshaler_name : ICustomMarshaler
 #end if
    }
 
-#if $classObj.info.only_smart_ptr
+#if $classObj.info.smart_ptr
 #set $holder_name = $getHolderName($class_visitor)
    [DllImport("$module")]
    private extern static IntPtr new_${holder_name}(IntPtr obj);
@@ -548,7 +549,7 @@ public class $marshaler_name : ICustomMarshaler
 #if $isInterface or $classObj.class_.abstract
       return new ${dummy_name}(nativeObj);
 #else
-#if $classObj.info.only_smart_ptr
+#if $classObj.info.smart_ptr
 #set $ptr_str = 'new_' + $holder_name + '(nativeObj)'
 #else
 #set $ptr_str = 'nativeObj'
