@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.64 2004-01-16 20:18:05 patrick Exp $
-// Generated from \$Revision: 1.64 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.65 2004-01-16 20:52:22 patrick Exp $
+// Generated from \$Revision: 1.65 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -554,6 +554,11 @@ public class $custom_marshaler_name : ICustomMarshaler
    {
 #if $isInterface
       protected internal IntPtr mRawObject = IntPtr.Zero;
+
+      internal IntPtr RawObject
+      {
+         get { return mRawObject; }
+      }
 #end if
 
       public ${dummy_name}(IntPtr rawObject)
