@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.47 2003-12-22 23:26:25 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.48 2003-12-22 23:49:35 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -45,6 +45,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       self.non_virtual_methods = []
       self.static_methods      = []
       self.virtual_methods     = []
+
+      self.protected_static_methods      = []
+      self.protected_non_virtual_methods = []
 
       self.inherited_virtual_methods = []
       self.virtual_method_callbacks  = []
@@ -161,7 +164,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
 
          # Execute the templates.
-         if self.hasVirtualMethods():
+         if self.needsAdapter():
             self.cxx_adapter_template.exp_class = self
             self.cxx_adapter_template.module    = self.module_bridge
             self.cxx_adapter_template.includes  = copy.copy(self.includes)
@@ -480,21 +483,16 @@ class ReferenceTypeExporter(Exporter.Exporter):
             if found:
                break
 
-         # For virtual methods, we want to include those that are public or
-         # protected.
          if member.virtual:
             self.virtual_methods.append(member)
-         # For non-virtual instance methods and static methods, we only want
-         # those that are public.
-         # XXX: What if a C# subclass needs to call a protected member of its
-         # C++ base class that is not public?  We may need the C++ adapter
-         # class to include wrapper methods for non-virtual functions that
-         # have public visibility.
-         elif member.visibility == declarations.Scope.public:
-            if member.static:
-               self.static_methods.append(member)
-            else:
-               self.non_virtual_methods.append(member)
+         elif member.static:
+            self.static_methods.append(member)
+            if member.visibility == declarations.Scope.protected:
+               self.protected_static_methods.append(member)
+         else:
+            self.non_virtual_methods.append(member)
+            if member.visibility == declarations.Scope.protected:
+               self.protected_non_virtual_methods.append(member)
 
    def MakeNonVirtual(self):
       '''
@@ -504,6 +502,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       for member in self.class_:
          if type(member) == declarations.Method and member.virtual:
             member.virtual = not self.info[member.FullName()].no_override 
+
+   def needsAdapter(self):
+      return self.hasVirtualMethods()
 
    def hasVirtualMethods(self):
       # Check to see if this class has any virtual methods.
