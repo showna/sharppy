@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.57 2004-01-17 18:48:30 patrick Exp $
-// Generated from \$Revision: 1.57 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.58 2004-01-20 04:42:46 patrick Exp $
+// Generated from \$Revision: 1.58 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -119,10 +119,6 @@ extern "C"
 #set $cons_name = $method_visitor.getGenericName()
 ## Handle the copy constructor a little different since we know what the
 ## argument type will be.
-#if $c.IsCopy()
-   // Copy constructor wrapper.
-   SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
-#else
 ## For non-copy constructors, build up the parameter list.
 #set $param_list = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters]
 #for $j in range(len($classObj.virtual_methods))
@@ -136,23 +132,13 @@ extern "C"
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
    SHARPPY_API $class_name* ${cons_name}($p)
-## End of non-copy constructor signature output.
-#end if
    {
 #if $classObj.info.smart_ptr
 #set $obj_ref = 'obj->mPtr'
 #else
 #set $obj_ref = 'obj'
 #end if
-## Copy constructor body.
-#if $c.IsCopy()
-      $class_name* obj = new ${class_name}(*p);
-#for $m in $classObj.virtual_methods + $classObj.inherited_virtual_methods
-#set $callback_name = TemplateHelpers.getCallbackName($m)
-      $obj_ref->$callback_name = p->$callback_name;
-#end for
 ## Normal constructor body.
-#else
 ## Pre-call parameter marshaling.
 #set $all_args = []
 #for $param in $c.parameters
@@ -196,8 +182,6 @@ extern "C"
       $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
 #end if
 #end for
-## End of non-copy constructor body.
-#end if
 ## All constructors return the same thing.
       return obj;
    }
