@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.16 2003-11-18 04:54:50 patrick Exp $
+# $Id: visitors.py,v 1.17 2003-11-18 05:03:13 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -302,6 +302,11 @@ class CSharpVisitor(DeclarationVisitor):
             else:
                type_id = LONG_LONG
             break
+         elif s.find('short') != -1:
+            if s.find('unsigned') != -1:
+               type_id = UNSIGNED_SHORT
+            else:
+               type_id = SHORT
          # Assume that a long (not a long long) is supposed to be a 32-bit
          # integer.
          elif s.find('long') != -1 or s.find('int') != -1:
@@ -310,9 +315,6 @@ class CSharpVisitor(DeclarationVisitor):
             else:
                type_id = LONG
             break
-         elif s.find('short') != -1:
-            if s.find('unsigned') != -1:
-               type_id = UNSIGNED_SHORT
          # Translate char, which is 1 byte in C/C++, into byte.
          elif s.find('char') != -1:
             if s.find('unsigned') != -1:
