@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FreeTypesExporter.py,v 1.2 2004-02-18 23:40:09 patrick Exp $
+# $Id: FreeTypesExporter.py,v 1.3 2004-02-19 16:46:07 patrick Exp $
 
 import Exporter
 import os
@@ -52,6 +52,7 @@ class FreeTypesExporter(Exporter.Exporter):
       for c in self.info.constants:
          decl = self.GetDeclaration(c)
          if decl:
+            assert(decl.type.const)
             self.constants.append(decl)
             exportedNames[c] = 1
 

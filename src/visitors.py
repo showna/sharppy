@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.37 2004-02-18 23:41:39 patrick Exp $
+# $Id: visitors.py,v 1.38 2004-02-19 16:46:07 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -665,6 +665,28 @@ class CSharpVisitor(DeclarationVisitor):
 
    def _isFundamentalType(self, decl):
       return self.usage in self.fundamental_types
+
+class CSharpVariableVisitor(CSharpVisitor):
+   re_value_float = re.compile(r'f$')
+
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl.type)
+
+      self.variable_name = decl.name[0]
+
+      if self.getUsage() == 'float' and not self.re_value_float.search(decl.init_value):
+         self.init_value = decl.init_value + 'f'
+      else:
+         self.init_value = decl.init_value
+
+   def getName(self):
+      return self.variable_name
+
+   def getValue(self):
+      return self.init_value
 
 class CSharpPInvokeParamVisitor(CSharpVisitor):
    '''
