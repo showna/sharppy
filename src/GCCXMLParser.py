@@ -114,6 +114,7 @@ class GCCXMLParser(object):
                 return True, id
             else:
                 return False, id
+
         const, id = Check(id, 'c')
         volatile, id = Check(id, 'v')
         restricted, id = Check(id, 'r')
@@ -187,9 +188,9 @@ class GCCXMLParser(object):
         args = []
         for child in element:
             if child.tag == 'Argument':
-                type = self.GetType(child.get('type'))
-                type.default = child.get('default')                
-                args.append(type)
+                type_= self.GetType(child.get('type'))
+                type_.default = child.get('default')                
+                args.append(type_)
         return args
 
     
@@ -451,7 +452,7 @@ class GCCXMLParser(object):
 
     def ParseTypedef(self, id, element):
         name = element.get('name')
-        type = self.GetType(element.get('type'))        
+        type = self.GetType(element.get('type'))
         context = self.GetDecl(element.get('context'))
         if isinstance(context, declarations.Class):
             context = context.getFullCPlusPlusName()
