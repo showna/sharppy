@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.31 2004-01-27 18:07:04 patrick Exp $
+# $Id: visitors.py,v 1.32 2004-01-27 19:52:28 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -329,16 +329,30 @@ class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
 
       if typeID == STD_STRING:
          self.__must_marshal = True
-         marshal_param = 'marshal_%s' % self.__param_name
+         marshal_param = 'marshal_%s' % self.__orig_param_name
 
-         if self.decl.suffix == '*':
-            self.__pre_marshal  = 'char* %s = strdup(%s->c_str())' % \
-                                     (marshal_param, self.__orig_param_name)
+         # If the std::string object is being passed by reference, we need to
+         # pass a pointer to a fixed-size character array.  Once the call
+         # returns, then we need to assign the result to the original
+         # std::string reference.
+         if self.decl.suffix == '&' and not self.decl.const:
+            self.__pre_marshal  = 'char %s[256]' % marshal_param
+            self.__param_name   = '&' + self.__param_name
+            self.__post_marshal = '%s = %s' % \
+                                     (self.__orig_param_name, marshal_param)
+
+         # Otherwise, we make a copy of the std::string object in a char* and
+         # pass that to the CIL universe.
          else:
-            self.__pre_marshal  = 'char* %s = strdup(%s.c_str())' % \
-                                     (marshal_param, self.__orig_param_name)
+            if self.decl.suffix == '*':
+               deref_op = '->'
+            else:
+               deref_op = '.'
+            self.__pre_marshal  = 'char* %s = strdup(%s%sc_str())' % \
+                                     (marshal_param, self.__orig_param_name,
+                                      deref_op)
+            self.__post_marshal = 'free(%s)' % marshal_param
 
-         self.__post_marshal = 'free(%s)' % marshal_param
       elif typeID == SHARED_PTR:
          self.__needs_param_holder = True
          self.__param_holder_type  = 'holder_%s_%s' % \
