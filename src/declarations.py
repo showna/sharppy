@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.38 2004-02-20 22:47:52 patrick Exp $
+# $Id: declarations.py,v 1.39 2004-02-24 18:09:48 patrick Exp $
 
 import copy
 import re
@@ -378,11 +378,6 @@ class Function(Declaration):
         self.throws = throws
 
     def setInfo(self, info):
-        if info.returns_array:
-            self.returns_array = True
-        else:
-            self.returns_array = False
-
         self.info = info
 
     def getID(self):
