@@ -1,7 +1,7 @@
-# $Id: visitors.py,v 1.12 2003-11-12 23:46:01 patrick Exp $
+# $Id: visitors.py,v 1.13 2003-11-13 20:46:25 patrick Exp $
 
 import re
-from declarations import Function
+from declarations import Class, Function
 
 class DeclarationVisitor:
    def __init__(self):
@@ -172,20 +172,78 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''
    def __init__(self):
       CPlusPlusVisitor.__init__(self)
+      self.__initialize()
+      self.__result_var      = 'result'
+      self.__temp_result_var = 'temp_result'
+
+   def __initialize(self):
+      self.__pre_marshal  = []
+      self.__post_marshal = []
+      self.__call_marshal = ''
+      self.__must_marshal = False
 
    def visit(self, decl):
+      self.__initialize()
       CPlusPlusVisitor.visit(self, decl)
+
       if decl.must_marshal:
+         self.__must_marshal = True
          if decl.suffix == '&':
             self.usage = re.sub(r"&", "*", self.name)
          else:
             self.usage += '*'
+         self.__call_marshal = self.__result_var + ' = new ' + self.getRawName() + '(%s)'
+         self.__pre_marshal = []
+         self.__post_marshal = []
       # If we have a type that is being returned by reference but that does not
       # require marshaling, we'll just copy it.  Since the data has to cross
       # the language boundary, there is no point in trying to retain a
       # reference.
       elif decl.suffix == '&':
          self.usage = re.sub(r"(const|&)", "", self.name)
+
+   def mustMarshal(self):
+      return self.__must_marshal
+
+   def getMethodCall(self, callString, indent):
+      # Declare the variable that will be used to return the result of calling
+      # the method.
+      output = '%s%s %s;\n' % (indent, self.usage, self.__result_var)
+
+      # If we have to marshal the returned data, do that now.  This involves
+      # the use of a temporary variable.
+      if self.mustMarshal():
+         for line in self.__pre_marshal:
+            output += indent + line + "\n"
+         if self.__call_marshal:
+            output += indent
+            output += self.__call_marshal % callString
+            output += ';\n'
+         else:
+            output += '%s%s = %s;\n' % (indent, self.__temp_result_var,
+                                        callString)
+         for line in self.__post_marshal:
+            output += indent + line + "\n"
+      # If no marshaling is required, just assign the result of calling the
+      # method to the return storage variable.
+      else:
+         output += '%s%s = %s;\n' % (indent, self.__result_var, callString)
+      return output
+
+   def getResultVarName(self):
+      return self.__result_var
+
+   def _processProblemType(self, typeName):
+      # Perform default problem type processing first.
+      CPlusPlusVisitor._processProblemType(self, typeName)
+
+      if typeName.find('basic_string') != -1:
+#         if self.usage.find('const') == -1:
+#            self.usage = 'const ' + self.usage
+         self.__must_marshal = True
+         self.__call_marshal = ''
+         self.__pre_marshal  = ['%s %s;' % (self.getRawName(), self.__temp_result_var)]
+         self.__post_marshal = ['%s = strdup(%s.c_str());' % (self.__result_var, self.__temp_result_var)]
 
 class CSharpVisitor(DeclarationVisitor):
    '''
@@ -277,6 +335,8 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
                else:
                   self.usage += '*'
             else:
+#               self.usage = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
+#                            (self.usage, self.usage)
                self.usage = 'IntPtr'
 
    def needsUnsafe(self):
@@ -312,6 +372,7 @@ class CSharpParamVisitor(CSharpVisitor):
                self.__param_name   = '&' + self.__orig_param_name
             else:
                self.__must_marshal = True
+#               self.__param_name = self.__orig_param_name
                self.__param_name = self.__orig_param_name + '.mRawObject'
 
    def mustMarshal(self):

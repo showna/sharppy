@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.29 2003-11-12 20:22:28 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.30 2003-11-13 20:46:25 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
@@ -38,15 +38,12 @@
 #end for
 #set $arg_list = ', '.join($all_args)
 #set $returns = $return_visitor.getRawName() != 'void'
-#if $returns
-      $return_visitor.getUsage() result;
-#end if
 #set $method_call = $methodCall + '(' + $arg_list + ')'
 ## Return value marshaling.
-#if $methodDecl.result.must_marshal
-      result = new ${return_visitor.getRawName()}($method_call);
+#if $returns
+$return_visitor.getMethodCall($method_call, '      ')
 #else
-      #if $returns then 'result = ' else ''#$method_call;
+      $method_call;
 #end if
 ## Post-call parameter marshaling.
 #for $param in $methodDecl.parameters
@@ -56,7 +53,7 @@
 #end if
 #end for
 #if $returns
-      return result;
+      return $return_visitor.getResultVarName();
 #end if
    }
 #end def
