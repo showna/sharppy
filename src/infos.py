@@ -14,6 +14,7 @@ import CodeExporter
 import exporterutils
 import utils
 import declarations
+import policies
 
 
 #==============================================================================
@@ -288,6 +289,12 @@ def exclude(info):
 
 def property(info):
     info._Attribute('property', True)
+
+def readonly(info):
+    info._Attribute('readonly', True)
+
+def return_array(info, size):
+    info._Attribute('return_array', size)
 
 def set_policy(info, policy):
     info._Attribute('policy', policy)

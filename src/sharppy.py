@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.21 2004-02-05 17:47:11 patrick Exp $
+# $Id: sharppy.py,v 1.22 2004-02-24 18:15:44 patrick Exp $
 
 """
 Sharppy version %s
@@ -154,6 +154,7 @@ def CreateContext():
    context['set_policy'] = infos.set_policy
    context['exclude'] = infos.exclude
    context['property'] = infos.property
+   context['readonly'] = infos.readonly
    context['set_wrapper'] = infos.set_wrapper
    context['use_smart_ptr'] = infos.use_smart_ptr
    context['use_shared_ptr'] = infos.use_shared_ptr
@@ -162,6 +163,7 @@ def CreateContext():
    context['holder'] = infos.holder
    context['add_method'] = infos.add_method
    context['sealed'] = infos.sealed
+   context['return_array'] = infos.return_array
    # policies
    context['return_internal_reference'] = policies.return_internal_reference
    context['with_custodian_and_ward'] = policies.with_custodian_and_ward

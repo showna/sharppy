@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.43 2004-02-24 04:47:35 patrick Exp $
+# $Id: visitors.py,v 1.44 2004-02-24 18:15:44 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -498,6 +498,26 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
 
          self.__param_type_list.append(param_type + ' ' + p[1])
 
+      # If this method returns an array, we have to change the behavior of the
+      # C wrapper function significantly.  Instead of returning a pointer
+      # (array), the C wrapper returns nothing.  A new parameter is added to
+      # the wrapper's list of parameters that will be used to store a copy of
+      # the array returned by the C++ method/function we want to call.
+      if decl.info.return_array:
+         self.__return_type = 'void'
+         self.__returns = False
+
+         # Strip out constness from the array type.
+         temp_type = re.sub('const ', '', result_visitor.getRawName())
+         self.__param_type_list.append(temp_type + ' arrayHolder')
+         self.__param_list.append('arrayHolder')
+
+         declare_temp = '%s temp_array' % temp_type
+         self.__pre_call_marshal.append(declare_temp)
+         loop_decl = 'for ( int i = 0; i < %s; ++i )' % decl.info.return_array
+         self.__post_call_marshal.append(loop_decl)
+         self.__post_call_marshal.append('   arrayHolder[i] = temp_array[i]')
+
       arg_list = ', '.join(self.__param_list)
 
       # A semi-colon cannot go at the end of this statement yet because of
@@ -523,6 +543,8 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
 
          method_call[1] += ';'
          self.__return_statement = 'return result'
+      elif decl.info.return_array:
+         method_call[0] = 'temp_array = ' + method_call[0] + ';'
       else:
          method_call[0] += ';'
 
@@ -1135,11 +1157,31 @@ class CSharpMethodVisitor(CSharpVisitor):
       else:
          unsafe_str = ''
 
+      # If this method returns an array, we have to change the signature of the
+      # P/Invoke function.  Instead of returning a pointer, the call returns
+      # nothing.  A new parameter is added to the P/Invoke function's list of
+      # parameters that will be used to store a copy of the array returned by
+      # the C++ method/function we want to call.
+      if decl.info.return_array:
+         pinvoke_return = 'void'
+
+         # Strip out constness from the array type.
+         temp_type = re.sub('const ', '', result_visitor.getRawName())
+         temp_param_pi = '[In, Out] %s[] arrayHolder' % temp_type
+         self.__pi_param_type_list.append(temp_param_pi)
+         self.__param_list.append('array_holder')
+
+         declare_temp = '%s[] array_holder = new %s[%d]' % \
+                           (temp_type, temp_type, decl.info.return_array)
+         self.__pre_call_marshal.append(declare_temp)
+      else:
+         pinvoke_return = result_visitor.getUsage()
+
       pinvoke_name = self.getGenericName()
 
       pinvoke_decl_params = ',\n\t'.join(self.__pi_param_type_list)
       self.__pinvoke_decl = 'private %sextern static %s %s(%s)' % \
-                            (unsafe_str, result_visitor.getUsage(),
+                            (unsafe_str, pinvoke_return,
                              pinvoke_name, pinvoke_decl_params)
 
       arg_list = ', '.join(self.__param_list)
@@ -1147,8 +1189,11 @@ class CSharpMethodVisitor(CSharpVisitor):
       # Start method_call out by making it a call to the P/Invoke function.
       method_call = ['%s(%s);' % (pinvoke_name, arg_list)]
 
+      if decl.info.return_array:
+         self.__return_statement = 'return array_holder'
+         self.__return_type += '[]'
       # If the method returns, add that information.
-      if self.returns():
+      elif self.returns():
          method_call.insert(0, '%s result;' % self.__return_type)
          method_call[1] = 'result = %s' % method_call[1]
          self.__return_statement = 'return result'
