@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.66 2004-01-17 16:45:54 patrick Exp $
-// Generated from \$Revision: 1.66 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.67 2004-01-17 17:35:32 patrick Exp $
+// Generated from \$Revision: 1.67 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -90,6 +90,8 @@ using System.Reflection;
 ## virtual.
 #if $methodDecl.override and $hasBase
 #set $method_type = 'override'
+#elif $sealed
+#set $method_type = ''
 #else
 #set $method_type = 'virtual'
 #end if
