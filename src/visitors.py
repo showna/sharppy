@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.54 2004-05-21 21:42:37 patrick Exp $
+# $Id: visitors.py,v 1.55 2004-05-24 18:21:07 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -301,8 +301,10 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
 #            self.usage = 'const ' + self.usage
          self.__must_marshal = True
          self.__call_marshal = ''
-         self.__pre_marshal  = ['%s %s;' % (self.getRawName(), self.__temp_result_var)]
-         self.__post_marshal = ['%s = strdup(%s.c_str());' % (self.__result_var, self.__temp_result_var)]
+         self.__pre_marshal  = ['%s %s;' % (self.getRawName(),
+                                            self.__temp_result_var)]
+         self.__post_marshal = ['%s = strdup(%s.c_str());' % \
+                                   (self.__result_var, self.__temp_result_var)]
 
 class CPlusPlusMethodParamVisitor(CPlusPlusVisitor):
    '''
