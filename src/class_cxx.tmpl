@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.54 2004-01-13 21:14:58 patrick Exp $
-// Generated from \$Revision: 1.54 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.55 2004-01-15 21:45:03 patrick Exp $
+// Generated from \$Revision: 1.55 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -279,7 +279,15 @@ $fillMethodWrapperBody($m, $method_visitor.getRawName())
 #end if
 
 #end for
-## --------------------------------- Operators --------------------------------
+## --------------------------- Converter operators ----------------------------
+#set $return_visitor = visitors.CPlusPlusReturnVisitor()
+#for $o in $classObj.converter_operators
+#silent $o.result.accept($return_visitor)
+#set $method_call = 'self_->%soperator ' + $return_visitor.getRawName()
+$fillMethodWrapperBody($o, $method_call, $classObj, $class_name)
+#end for
+#del $return_visitor
+## ---------------------------- Operator overloads ----------------------------
 #for $o in $classObj.member_operators
 #set $method_call = 'self_->%soperator' + $o.name[0]
 $fillMethodWrapperBody($o, $method_call, $classObj, $class_name)

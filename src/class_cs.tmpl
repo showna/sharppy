@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.62 2004-01-15 03:53:02 patrick Exp $
-// Generated from \$Revision: 1.62 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.63 2004-01-15 21:45:03 patrick Exp $
+// Generated from \$Revision: 1.63 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -401,6 +401,34 @@ class $class_visitor.getRawName(False)
 #if $returns
       return result;
 #end if
+   }
+
+#end for
+#del $operator_visitor
+## ---------------------------- Converter operators ---------------------------
+   // Converter operators.
+#set $operator_visitor = visitors.CSharpVisitor()
+#set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
+#set $param_visitor    = visitors.CSharpParamVisitor()
+#set $result_visitor   = visitors.CSharpReturnVisitor()
+#for $o in $classObj.converter_operators
+#silent $o.accept($operator_visitor)
+#silent $o.result.accept($result_visitor)
+#set $pi_params = ['IntPtr selfObj']
+#set $pi_call_args = ['obj.mRawObject']
+#set $pi_name = $operator_visitor.getGenericName()
+#set $pi_p = ',\n\t'.join($pi_params)
+   [DllImport("$module", CharSet = CharSet.Ansi)]
+#if $o.result.must_marshal
+#set $marshaler_name = $result_visitor.getUsage() + 'Marshaler'
+   [return : MarshalAs(UnmanagedType.CustomMarshaler,
+                       MarshalTypeRef = typeof($marshaler_name))]
+#end if
+   private extern static $result_visitor.getUsage() ${pi_name}($pi_p);
+
+   $o.visibility #if $o.override then 'new ' else ''#static implicit operator ${result_visitor.getUsage()}($class_visitor.getRawName(False) obj)
+   {
+      return ${pi_name}(obj.mRawObject);
    }
 
 #end for
