@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.10 2003-11-24 21:56:43 patrick Exp $
+# $Id: Exporter.py,v 1.11 2003-11-24 22:17:06 patrick Exp $
 
 import os
 
@@ -22,6 +22,7 @@ class Exporter(object):
       self.module = info.module
       if self.module == None:
          self.module = ''
+      self.module_bridge = self.module + '_bridge'
 
       self.cxx_dir = self.module + '_bridge_cpp'
       self.csharp_dir = self.module + '_bridge_cs'

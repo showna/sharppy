@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.39 2003-11-24 20:20:04 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.40 2003-11-24 22:17:06 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -153,9 +153,9 @@ class ReferenceTypeExporter(Exporter.Exporter):
       if not self.info.exclude:
          # Set up the mapping information for the templates.
          self.c_wrapper_template.exp_class = self
-         self.c_wrapper_template.module    = self.module
+         self.c_wrapper_template.module    = self.module_bridge
          self.csharp_template.exp_class    = self
-         self.csharp_template.module       = self.module
+         self.csharp_template.module       = self.module_bridge
 
          c_wrapper_out = os.path.join(self.cxx_dir, self.c_wrapper_output_file)
          csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
@@ -163,7 +163,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          # Execute the templates.
          if self.hasVirtualMethods():
             self.cxx_bridge_template.exp_class = self
-            self.cxx_bridge_template.module    = self.module
+            self.cxx_bridge_template.module    = self.module_bridge
             self.cxx_bridge_template.includes  = copy.copy(self.includes)
             cxx_bridge_out = os.path.join(self.cxx_dir, self.cxx_bridge_output_file)
 
