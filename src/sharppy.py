@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.19 2004-02-03 21:22:14 patrick Exp $
+# $Id: sharppy.py,v 1.20 2004-02-05 17:38:17 patrick Exp $
 
 """
 Sharppy version %s
@@ -142,12 +142,11 @@ def CreateContext():
    context = {}
    context['Import'] = ExecuteInterface
    # infos
-   context['FunctionHolder'] = infos.FunctionHolderInfo
+   context['FreeTypesHolder'] = infos.FreeTypesHolderInfo
    context['ValueType'] = infos.ValueTypeInfo
    context['ReferenceType'] = infos.ReferenceTypeInfo
    context['ReferenceTemplate'] = infos.ReferenceTypeTemplateInfo
    context['ValueTemplate'] = infos.ValueTypeTemplateInfo
-   context['Enum'] = infos.EnumInfo
    context['AllFromHeader'] = infos.HeaderInfo
    context['Var'] = infos.VarInfo
    # functions
@@ -285,7 +284,7 @@ def GenerateCode(parser, out_cxx, out_csharp, interfaces):
    for i in xrange(len(exports)):
       export = exports[i]
       progress = float(i) / float(export_count)
-      print "Exporting %s (%d%%)" % (export.Name(), progress * 100)
+      print "Exporting %s (%3.2f%%)" % (export.Name(), progress * 100.0)
       interface = export.interface_file
       header = export.Header()
       if header:

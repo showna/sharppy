@@ -1,17 +1,29 @@
-## $Id: free_function_cs.tmpl,v 1.2 2004-02-04 17:08:11 patrick Exp $
-// Generated from \$Revision: 1.2 $ of \$RCSfile: free_function_cs.tmpl,v $
+## $Id: free_types_cs.tmpl,v 1.1 2004-02-05 17:38:17 patrick Exp $
+// Generated from \$Revision: 1.1 $ of \$RCSfile: free_types_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 #import TemplateHelpers
 #import visitors
-#def generateClass($className, $funcs)
+#def generateClass($className, $wrapperObj)
 public sealed abstract class $className
 {
+#set $enum_visitor = visitors.CSharpVisitor()
+#for $e in $wrapperObj.enums
+#silent $e.accept($enum_visitor)
+#set $enum_values = ["%s = %d" % (v, $e.values[v]) for v in $e.values.keys()]
+#set $body = ', '.join($enum_values)
+   public enum $enum_visitor.getRawName(False)
+   {
+      $body
+   }
+
+#end for
+#del $enum_visitor
 #set $function_visitor = visitors.CSharpVisitor()
 #set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
 #set $param_visitor    = visitors.CSharpParamVisitor()
 #set $result_visitor   = visitors.CSharpReturnVisitor()
-#for $f in $funcs
+#for $f in $wrapperObj.funcs
 #silent $f.accept($function_visitor)
 #silent $f.result.accept($result_visitor)
 #set $func_params = ', '.join(['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $f.parameters])
@@ -91,6 +103,6 @@ namespace $module
 {
 
 ## Begin the recursive process of exporting $exp_class.
-$generateClass($class_name, $funcs)
+$generateClass($class_name, $wrapper)
 
 } // namespace $module

@@ -7,8 +7,7 @@ import re
 import exporters 
 import ReferenceTypeExporter
 import ValueTypeExporter
-import FunctionHolderExporter
-import EnumExporter
+import FreeTypesExporter
 import HeaderExporter
 import VarExporter
 import CodeExporter
@@ -52,9 +51,9 @@ class DeclarationInfo:
             self.__attributes[name] = value
 
 #==============================================================================
-# FunctionHolderInfo
+# FreeTypesHolderInfo
 #==============================================================================
-class FunctionHolderInfo(DeclarationInfo):
+class FreeTypesHolderInfo(DeclarationInfo):
 
     def __init__(self, module, class_, include):
         DeclarationInfo.__init__(self)
@@ -62,13 +61,21 @@ class FunctionHolderInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('module', module)
         self._Attribute('funcs', [])
-        exporter = FunctionHolderExporter.FunctionHolderExporter(InfoWrapper(self))
+        self._Attribute('enums', [])
+        self._Attribute('constants', [])
+        exporter = FreeTypesExporter.FreeTypesExporter(InfoWrapper(self))
         if exporter not in exporters.exporters:
             exporters.exporters.append(exporter) 
         exporter.interface_file = exporters.current_interface 
 
     def addFunction(self, name):
         self._Attribute('funcs').append(name)
+
+    def addEnum(self, name):
+        self._Attribute('enums').append(name)
+
+    def addConstant(self, name):
+        self._Attribute('constants').append(name)
 
 
 #==============================================================================
@@ -196,21 +203,6 @@ class ValueTypeTemplateInfo(DeclarationInfo):
         if isinstance(types, str):
             types = types.split() 
         return self.Instantiate(types, headers, rename)
-
-#==============================================================================
-# EnumInfo
-#==============================================================================
-class EnumInfo(DeclarationInfo):
-    
-    def __init__(self, name, include):
-        DeclarationInfo.__init__(self)
-        self._Attribute('name', name)
-        self._Attribute('include', include)
-        self._Attribute('exclude', False)
-        exporter = EnumExporter.EnumExporter(InfoWrapper(self))
-        if exporter not in exporters.exporters: 
-            exporters.exporters.append(exporter)
-        exporter.interface_file = exporters.current_interface 
 
 
 #==============================================================================

@@ -1,5 +1,5 @@
-## $Id: free_function_cxx.tmpl,v 1.1 2004-02-03 21:22:14 patrick Exp $
-// Generated from \$Revision: 1.1 $ of \$RCSfile: free_function_cxx.tmpl,v $
+## $Id: free_types_cxx.tmpl,v 1.1 2004-02-05 17:38:17 patrick Exp $
+// Generated from \$Revision: 1.1 $ of \$RCSfile: free_types_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -59,7 +59,7 @@ $return_visitor.getMethodCall($method_call, '      ')
 extern "C"
 {
 
-#for $f in $funcs
+#for $f in $wrapper.funcs
 $generateWrapper($f)
 
 #end for

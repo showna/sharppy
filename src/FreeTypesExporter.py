@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FunctionHolderExporter.py,v 1.2 2004-02-04 17:08:11 patrick Exp $
+# $Id: FreeTypesExporter.py,v 1.1 2004-02-05 17:38:17 patrick Exp $
 
 import Exporter
 import os
@@ -11,19 +11,21 @@ import Cheetah.Template as ct
 
 
 #==============================================================================
-# FunctionExporter
+# FreeTypesExporter
 #==============================================================================
-class FunctionHolderExporter(Exporter.Exporter):
+class FreeTypesExporter(Exporter.Exporter):
    'Generates C# P/Invoke bridging code to one or more export free functions.'
 
-   c_wrapper_template_file = os.path.dirname(__file__) + '/free_function_cxx.tmpl'
-   csharp_template_file    = os.path.dirname(__file__) + '/free_function_cs.tmpl'
+   c_wrapper_template_file = os.path.dirname(__file__) + '/free_types_cxx.tmpl'
+   csharp_template_file    = os.path.dirname(__file__) + '/free_types_cs.tmpl'
  
    def __init__(self, info, tail = None):
       Exporter.Exporter.__init__(self, info, tail)
       self.c_wrapper_template = ct.Template(file = self.c_wrapper_template_file)
       self.csharp_template = ct.Template(file = self.csharp_template_file)
-      self.funcs = []
+      self.funcs     = []
+      self.enums     = []
+      self.constants = []
 
    def __printDot(self):
       print "\b.",
@@ -41,16 +43,26 @@ class FunctionHolderExporter(Exporter.Exporter):
             self.funcs += decls
             exportedNames[f] = 1
 
+      for e in self.info.enums:
+         decl = self.GetDeclaration(e)
+         if decl:
+            self.enums.append(decl)
+            exportedNames[e] = 1
+
+      for c in self.info.constants:
+         decl = self.GetDeclaration(c)
+         if decl:
+            self.enums.append(decl)
+            exportedNames[c] = 1
+
    def Write(self):
       # Set up the mapping information for the templates.
       self.c_wrapper_template.wrapper  = self
       self.c_wrapper_template.module   = self.module
-      self.c_wrapper_template.funcs    = self.funcs
       self.csharp_template.wrapper     = self
       self.csharp_template.module      = self.module
       self.csharp_template.bridge_name = self.module_bridge
       self.csharp_template.class_name  = self.info.holder_class
-      self.csharp_template.funcs       = self.funcs
 
       c_wrapper_out = os.path.join(self.cxx_dir, self.c_wrapper_output_file)
       csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
