@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.6 2003-10-31 17:23:12 patrick Exp $
+# $Id: sharppy.py,v 1.7 2003-10-31 17:24:56 patrick Exp $
 
 """
 Sharppy version %s
@@ -13,8 +13,8 @@ where options are:
     --module=<name>         The name of the module that will be generated;
                             defaults to the first interface filename, without
                             the extension.
-    -I <path>               Add an include path    
-    -D <symbol>             Define symbol    
+    -I <path>               Add an include path
+    -D <symbol>             Define symbol
     --out-cxx=<name>        Specify C++ output directory (default: <module>_cpp)
     --out-csharp=<name>     Specify C# output directory (default: <module>_cs)
     --sharppy-ns=<name>     Set the namespace where new types will be declared;
@@ -24,7 +24,7 @@ where options are:
     --cache-dir=<dir>       Directory for cache files (speeds up future runs)
     --only-create-cache     Recreates all caches (doesn't generate code).
     -h, --help              Print this help and exit
-    -v, --version           Print version information                         
+    -v, --version           Print version information
 """
 
 import sys
@@ -53,7 +53,7 @@ def RecursiveIncludes(include):
    os.path.walk(include, visit, None)
    return dirs
 
-    
+
 def GetDefaultIncludes():
    if 'INCLUDE' in os.environ:
       include = os.environ['INCLUDE']
@@ -74,9 +74,9 @@ def ParseArguments():
    def Usage():
       print __doc__ % __version__
       sys.exit(1)
-        
+
    try:
-      options, files = getopt.getopt(sys.argv[1:], 'R:I:D:vh', 
+      options, files = getopt.getopt(sys.argv[1:], 'R:I:D:vh',
                                      ['module=', 'out-cxx=', 'out-csharp=',
                                       'sharppy-ns=', 'debug', 'cache-dir=',
                                       'only-create-cache', 'version', 'help'])
@@ -84,7 +84,7 @@ def ParseArguments():
       print
       print 'ERROR:', e
       Usage()
-    
+
    includes = GetDefaultIncludes()
    defines = []
    module = None
@@ -103,9 +103,9 @@ def ParseArguments():
       elif opt == '--module':
          module = value
       elif opt == '--out-cxx':
-         out_cxx = value 
+         out_cxx = value
       elif opt == '--out-csharp':
-         out_csharp = value 
+         out_csharp = value
       elif opt == '--sharppy-ns':
          settings.namespaces.sharppy = value + '::'
       elif opt == '--debug':
@@ -124,13 +124,13 @@ def ParseArguments():
          Usage()
 
    if not files:
-      Usage() 
+      Usage()
    if not module:
       module = os.path.splitext(files[0])[0]
    for file in files:
       d = os.path.dirname(os.path.abspath(file))
       if d not in sys.path:
-         sys.path.append(d) 
+         sys.path.append(d)
 
    if create_cache and not cache_dir:
       print 'Error: Use --cache-dir to indicate where to create the cache files!'
@@ -140,7 +140,7 @@ def ParseArguments():
    ProcessIncludes(includes)
    return includes, defines, module, out_cxx, out_csharp, files, cache_dir, create_cache
 
-    
+
 def CreateContext():
    'create the context where a interface file will be executed'
    context = {}
@@ -178,9 +178,9 @@ def CreateContext():
    context['Wrapper'] = exporterutils.FunctionWrapper
    context['declaration_code'] = lambda code: infos.CodeInfo(code, 'declaration-outside')
    context['module_code'] = lambda code: infos.CodeInfo(code, 'module')
-   return context                                        
+   return context
 
-   
+
 def Begin():
    # parse arguments
    includes, defines, module, out_cxx, out_csharp, interfaces, cache_dir, create_cache = ParseArguments()
@@ -206,14 +206,14 @@ def CreateCaches(parser):
 
    # now for each interface file take each header, and using the tail
    # get the declarations and cache them.
-   for interface, header in tails:        
+   for interface, header in tails:
       tail = tails[(interface, header)]
       declarations = parser.ParseWithGCCXML(header, tail)
       cachefile = parser.CreateCache(header, interface, tail, declarations)
       print 'Cached', cachefile
-    
+
    return 0
-        
+
 
 _imported_count = {}  # interface => count
 
@@ -225,17 +225,17 @@ def ExecuteInterface(interface):
          interface = os.path.join(d, interface)
    if not os.path.exists(interface):
       raise IOError, "Cannot find interface file %s."%interface
-    
+
    _imported_count[interface] = _imported_count.get(interface, 0) + 1
    exporters.current_interface = interface
    context = CreateContext()
    execfile(interface, context)
    exporters.current_interface = old_interface
 
-    
+
 def JoinTails(exports):
    '''Returns a dict of {(interface, header): tail}, where tail is the
-   joining of all tails of all exports for the header.  
+   joining of all tails of all exports for the header.
    '''
    tails = {}
    for export in exports:
@@ -247,7 +247,7 @@ def JoinTails(exports):
          all_tails += '\n' + tail
          tails[(interface, header)] = all_tails
       else:
-         tails[(interface, header)] = tail         
+         tails[(interface, header)] = tail
 
    return tails
 
@@ -259,10 +259,10 @@ def OrderInterfaces(interfaces):
    return [x for _, x in interfaces_order]
 
 
-def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):    
+def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
    # stop referencing the exporters here
    exports = exporters.exporters
-   exporters.exporters = None 
+   exporters.exporters = None
    exported_names = dict([(x.Name(), None) for x in exports])
 
    # order the exports
@@ -286,7 +286,7 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
    if not out_csharp:
       out_csharp = module + '_cs'
 
-   # now generate the code in the correct order 
+   # now generate the code in the correct order
    #print exported_names
    tails = JoinTails(exports)
    for i in xrange(len(exports)):
@@ -329,7 +329,7 @@ def UsePsyco():
    try:
       import psyco
       psyco.profile()
-   except: pass         
+   except: pass
 
 
 def main():
@@ -337,8 +337,8 @@ def main():
    UsePsyco()
    status = Begin()
    print '%0.2f seconds' % (time.clock()-start)
-   sys.exit(status) 
+   sys.exit(status)
 
-    
+
 if __name__ == '__main__':
    main()
