@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.67 2004-01-17 18:48:30 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.68 2004-01-18 05:18:05 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -443,7 +443,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
 
    def hasPublicDestructor(self):
       'Determines whether the wrapped C++ class has a public destructor.'
-      result = False
+      # Assume that our class does have a destructor.  If we find a destructor
+      # that is not public, result will be set to False.
+      result = True
+
       for member in self.class_:
          if type(member) == declarations.Destructor:
             result = member.visibility == declarations.Scope.public
