@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.40 2004-02-20 23:39:20 patrick Exp $
+# $Id: visitors.py,v 1.41 2004-02-22 22:21:55 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -1006,42 +1006,46 @@ class CSharpMethodVisitor(CSharpVisitor):
       else:
          self.generic_name += str(self.__param_count)
 
-      # Determine if we need a delegate right away so that code below can take
-      # advantage of that knowledge.
-      # If our class is sealed, we do not need to declare a delegate.
-      # If this method is virtual and not an override of a non-abstract method,
-      # then we need a delegate and member variable to hold the delegate.
-      # XXX: Can this expression be simplified?
-      if not self.__sealed_class and \
-         ((decl.virtual and not decl.override) or \
-          (decl.virtual and not self.__has_base_class)):
-         self.__needs_delegate = True
-         self.__delegate_name  = th.getDelegateName(self.decl)
+      self.__pi_param_type_list = []
+      self.__param_list         = []
 
-      # Virtual method.
-      if decl.virtual:
-         if decl.override and self.__has_base_class:
-            self.__method_kind = 'override'
-         elif self.__sealed_class:
-            self.__method_kind =  ''
+      if decl.member:
+         # Determine if we need a delegate right away so that code below can
+         # take advantage of that knowledge.
+         # If our class is sealed, we do not need to declare a delegate.
+         # If this method is virtual and not an override of a non-abstract
+         # method, then we need a delegate and member variable to hold the
+         # delegate.
+         # XXX: Can this expression be simplified?
+         if not self.__sealed_class and \
+            ((decl.virtual and not decl.override) or \
+             (decl.virtual and not self.__has_base_class)):
+            self.__needs_delegate = True
+            self.__delegate_name  = th.getDelegateName(self.decl)
+
+         # Virtual method.
+         if decl.virtual:
+            if decl.override and self.__has_base_class:
+               self.__method_kind = 'override'
+            elif self.__sealed_class:
+               self.__method_kind =  ''
+            else:
+               self.__method_kind = 'virtual'
+         # Static method.
+         elif decl.static:
+            self.__method_kind = 'static'
+            if decl.override:
+               self.__method_kind = 'new static'
+         # Non-virtual, non-static method.
          else:
-            self.__method_kind = 'virtual'
-      # Static method.
-      elif decl.static:
-         self.__method_kind = 'static'
-         if decl.override:
-            self.__method_kind = 'new static'
-      # Non-virtual, non-static method.
-      else:
-         if decl.override:
-            self.__method_kind = 'new'
+            if decl.override:
+               self.__method_kind = 'new'
 
-      if decl.static:
-         self.__pi_param_type_list = []
-         self.__param_list         = []
+         if not decl.static:
+            self.__pi_param_type_list = ['IntPtr obj']
+            self.__param_list         = ['mRawObject']
       else:
-         self.__pi_param_type_list = ['IntPtr obj']
-         self.__param_list         = ['mRawObject']
+         self.__method_kind = 'static'
 
       # Handle the result type before all the parameter stuff.
       result_visitor = CSharpReturnVisitor()
