@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.51 2004-05-19 18:42:55 patrick Exp $
+# $Id: visitors.py,v 1.52 2004-05-20 20:41:22 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -105,7 +105,7 @@ class CPlusPlusVisitor(DeclarationVisitor):
 
    def _checkForProblemType(self):
       cxx_name = self.decl.getCPlusPlusName()
-      if cxx_name == 'std::string' or cxx_name.find('std::basic_string', 0) != -1:
+      if cxx_name == 'std::string' or cxx_name.find('std::basic_string<', 0) != -1:
          self._processProblemType(STD_STRING)
       elif cxx_name.find('boost::shared_ptr', 0) != -1:
          self._processProblemType(SHARED_PTR)
@@ -125,7 +125,7 @@ class CPlusPlusVisitor(DeclarationVisitor):
       # their name will always occupy a list with exactly one element.
       # Furthermore, a user-defined namespace cannot have the same name as a
       # fundamental type because those types are reserved words.
-      return self.decl.name[0] in self.fundamental_types
+      return self.decl.real_type.name[0] in self.fundamental_types
 
 class CPlusPlusParamVisitor(CPlusPlusVisitor):
    '''
@@ -806,7 +806,7 @@ class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
                                        ', '.join(callback_param_types))
 
          method_call = self.__orig_method_call % (self.__callback_name, arg_list)
-   
+
          # Since we have a callback in place, we may need to marshal the return
          # type from the callback.
          if result_visitor.mustMarshal() and callback_return_type != 'char*':
@@ -894,9 +894,9 @@ class CSharpVisitor(DeclarationVisitor):
       cxx_name = self.decl.getCPlusPlusName()
       type_id  = UNKNOWN
 
-      if cxx_name == 'std::string' or cxx_name.find('std::basic_string', 0) != -1:
+      if cxx_name == 'std::string' or cxx_name.find('std::basic_string<', 0) != -1:
          type_id = STD_STRING
-      elif cxx_name.find('boost::shared_ptr', 0) != -1:
+      elif cxx_name.find('boost::shared_ptr<', 0) != -1:
          type_id = SHARED_PTR
       else:
          if cxx_name == 'long long unsigned int':
@@ -955,8 +955,8 @@ class CSharpVisitor(DeclarationVisitor):
       elif typeID == LONG_LONG:
          self.usage = 'long'
       elif typeID == SHARED_PTR:
-         match = self.real_type_re.search(self.decl.cxx_name)
-         if None != match:
+         match = self.real_type_re.search(self.decl.getCPlusPlusName())
+         if match is not None:
             # XXX: Once we have the type contained by the shared pointer, do
             # we need to do anything with it?
             # XXX: This is a hack to deal with simple cases for the near term.

@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.41 2004-05-18 20:35:50 patrick Exp $
+# $Id: declarations.py,v 1.42 2004-05-20 20:41:22 patrick Exp $
 
 import copy
 import re
@@ -689,7 +689,13 @@ class Type(Declaration):
         Declaration.__init__(self, cxxName, None, mustMarshal)
 
         self.type_decl = cxxTypeDecl
-        
+
+        real_type = self.type_decl
+        while ( type(real_type) == Typedef ):
+            real_type = real_type.type
+
+        self.real_type = real_type
+
         if None != cxxTypeDecl:
             self.must_marshal = cxxTypeDecl.must_marshal
 
@@ -703,10 +709,17 @@ class Type(Declaration):
 
         # Ensure that the 'const' modifier does not appear in self.cxx_name.
         match_obj = self.const_match_re.match(cxxName)
-        if None != match_obj:
+        if match_obj is not None:
             self.const    = 1
             self.cxx_name = match_obj.groups()[0]
             self.name     = self._toAbstractName(self.cxx_name)
+
+        if self.real_type is not None:
+            self.real_cxx_name = self.real_type.getFullCPlusPlusName()
+            self.real_name     = self._toAbstractName(self.real_cxx_name)
+        else:
+            self.real_cxx_name = self.cxx_name
+            self.real_name     = self.name
 
     def __deepcopy__(self, memo):
         result = self.__class__(self.type_decl, self.cxx_name)
@@ -735,6 +748,9 @@ class Type(Declaration):
         else:
             const = ''
         return '<Type ' + const + '::'.join(self.name) + '>'
+
+    def getCPlusPlusName(self):
+        return self.real_cxx_name
 
     def getFullCPlusPlusName(self):
         if self.const:
