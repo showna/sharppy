@@ -77,7 +77,7 @@ public class $classObj.getCSharpName(False) : $b
 
 #set $p = ', '.join(['%s %s' % (getCSharpName(x[0]), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
-#silent $args[0:0] = ['mRawObj']
+#silent $args[0:0] = ['mRawObject']
 #set $arg_list = ', '.join($args)
    public $getCSharpName($m.result) ${m.name[0]}($p)
    {
