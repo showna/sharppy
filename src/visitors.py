@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.5 2003-11-03 23:36:09 patrick Exp $
+# $Id: visitors.py,v 1.6 2003-11-06 21:30:47 patrick Exp $
 
 class DeclarationVisitor:
    def __init__(self):
@@ -109,6 +109,13 @@ class CSharpVisitor(DeclarationVisitor):
                self.usage = 'uint'
             else:
                self.usage = 'int'
+            break
+         # Translate char, which is 1 byte in C/C++, into byte.
+         elif s.find('char') != -1:
+            if s.find('unsigned') != -1:
+               self.usage = 'byte'
+            else:
+               self.usage = 'sbyte'
             break
 
 class CSharpReturnVisitor(CSharpVisitor):
