@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.15 2003-11-14 21:35:34 patrick Exp $
+# $Id: visitors.py,v 1.16 2003-11-18 04:54:50 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -370,11 +370,8 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
       if decl.suffix == '&' or decl.suffix == '*':
          if not self.problem_type:
             if self._isFundamentalType(decl):
-               self.__needs_unsafe = True
-               if self.usage.find("&") != -1:
-                  self.usage = re.sub(r"&", "*", self.usage)
-               else:
-                  self.usage += '*'
+               self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
+               self.__needs_unsafe = False
             else:
 #               self.usage = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
 #                            (self.usage, self.usage)
@@ -409,8 +406,8 @@ class CSharpParamVisitor(CSharpVisitor):
             if self._isFundamentalType(decl):
                self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
                self.__must_marshal = True
-               self.__needs_unsafe = True
-               self.__param_name   = '&' + self.__orig_param_name
+               self.__needs_unsafe = False
+               self.__param_name   = 'ref ' + self.__orig_param_name
             else:
                self.__must_marshal = True
 #               self.__param_name = self.__orig_param_name
