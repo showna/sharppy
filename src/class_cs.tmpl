@@ -1,10 +1,10 @@
-## $Id: class_cs.tmpl,v 1.23 2003-11-10 20:38:24 patrick Exp $
+## $Id: class_cs.tmpl,v 1.24 2003-11-10 20:57:05 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
 
 #from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName
-#from visitors import CSharpVisitor
+#from visitors import CSharpVisitor, CSharpParamVisitor, CSharpReturnVisitor
 
 #set $marsharler_visitor = CSharpVisitor()
 #for $m, $c in $marshalers
@@ -115,7 +115,8 @@ class $class_visitor.getRawName(False) : $b
    // Overloads.
 
 #set $method_visitor = CSharpVisitor()
-#set $result_visitor = CSharpVisitor()
+#set $param_visitor  = CSharpParamVisitor()
+#set $result_visitor = CSharpReturnVisitor()
 ## ---------------------------- Non-virtual methods ---------------------------
 #if $classObj.hasNonVirtualMethods()
 
@@ -124,8 +125,7 @@ class $class_visitor.getRawName(False) : $b
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
 #set $pi_name = $method_visitor.getGenericName()
-## XXX: More marshaling is necessary here.
-#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #silent $pi_params[0:0] = ['IntPtr obj']
 #set $pi_p = ',\n\t'.join($pi_params)
 #if $m.result.must_marshal
@@ -133,10 +133,10 @@ class $class_visitor.getRawName(False) : $b
 #else
 #set $native_return_type = $result_visitor.getUsage()
 #end if
+## XXX: Per-parameter P/Invoke marshaling stuff is necessary here.
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${pi_name}($pi_p);
 
-## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']
@@ -162,16 +162,13 @@ class $class_visitor.getRawName(False) : $b
 #silent $m.result.accept($result_visitor)
 #set $method_name = $m.name[0]
 #set $pi_name = $method_visitor.getGenericName()
-## XXX: More marshaling is necessary here.
-#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #set $delegate_name = getDelegateName($m)
 #set $delegate_params = ', '.join($pi_params)
    // Delegate for the ${method_name}() callback.
-## XXX: Filling in the parameter list here could be tricky... marshal, marshal, marshal!
    public delegate $result_visitor.getUsage() ${delegate_name}($delegate_params);
    protected $delegate_name m_${delegate_name};
 
-## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #if $m.abstract
    public abstract $result_visitor.getUsage() ${method_name}($p);
@@ -183,6 +180,7 @@ class $class_visitor.getRawName(False) : $b
 #end if
 #silent $pi_params[0:0] = ['IntPtr obj']
 #set $pi_p = ',\n\t'.join($pi_params)
+## XXX: Per-parameter P/Invoke marshaling stuff is necessary here.
    [DllImport("vpr_bridge", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${pi_name}($pi_p);
 
@@ -210,18 +208,17 @@ class $class_visitor.getRawName(False) : $b
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($result_visitor)
 #set $pi_name = $method_visitor.getGenericName()
-## XXX: More marshaling is necessary here.
-#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $m.parameters]
 #set $pi_p = ',\n\t'.join($pi_params)
 #if $m.result.must_marshal
 #set $native_return_type = 'IntPtr'
 #else
 #set $native_return_type = $result_visitor.getUsage()
 #end if
+## XXX: Per-parameter P/Invoke marshaling stuff is necessary here.
    [DllImport("$module", CharSet = CharSet.Ansi)]
    private extern static $native_return_type ${pi_name}($pi_p);
 
-## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
 #set $arg_list = ', '.join($args)

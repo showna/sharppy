@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.7 2003-11-10 20:38:24 patrick Exp $
+# $Id: visitors.py,v 1.8 2003-11-10 20:57:05 patrick Exp $
 
 from declarations import Function
 
@@ -75,6 +75,17 @@ class CPlusPlusVisitor(DeclarationVisitor):
             decl.must_marshal = False
             break
 
+class CPlusPlusParamVisitor(CPlusPlusVisitor):
+   '''
+   C++ visitor for function/method parameters.  This will handle the details
+   associated with parameter types when marshaling is in effect.
+   '''
+   def __init__(self):
+      CPlusPlusVisitor.__init__(self)
+
+   def visit(self, decl):
+      CPlusPlusVisitor.visit(self, decl)
+
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''
    C++ visitor for return type declarations.
@@ -137,6 +148,17 @@ class CSharpVisitor(DeclarationVisitor):
             else:
                self.usage = 'sbyte'
             break
+
+class CSharpParamVisitor(CSharpVisitor):
+   '''
+   C# visitor for function/method parameters.  This will handle the details
+   associated with parameter types when marshaling is in effect.
+   '''
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl)
 
 class CSharpReturnVisitor(CSharpVisitor):
    '''
