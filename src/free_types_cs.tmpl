@@ -1,5 +1,5 @@
-## $Id: free_types_cs.tmpl,v 1.5 2004-02-22 22:45:19 patrick Exp $
-// Generated from \$Revision: 1.5 $ of \$RCSfile: free_types_cs.tmpl,v $
+## $Id: free_types_cs.tmpl,v 1.6 2004-02-23 16:16:46 patrick Exp $
+// Generated from \$Revision: 1.6 $ of \$RCSfile: free_types_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 #import visitors
@@ -26,7 +26,9 @@ public sealed abstract class $className
 #end for
 #del $enum_visitor
 #for $f in $wrapperObj.funcs
+#for $i in range($f.MinArgs(), $f.MaxArgs() + 1)
 #set $function_visitor = visitors.CSharpMethodVisitor()
+#silent $function_visitor.setParamCount($i)
 #silent $f.accept($function_visitor)
 #set $func_params = ', '.join($function_visitor.getParamTypeList())
    [DllImport("$bridge_name", CharSet = CharSet.Ansi)]
@@ -55,6 +57,7 @@ public sealed abstract class $className
 #end if
    }
 
+#end for
 #end for
 }
 #end def

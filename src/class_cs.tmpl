@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.71 2004-02-18 23:41:38 patrick Exp $
-// Generated from \$Revision: 1.71 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.72 2004-02-23 16:16:46 patrick Exp $
+// Generated from \$Revision: 1.72 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -7,7 +7,9 @@ using System.Reflection;
 #import visitors
 
 #def generateMethod($methodDecl, $hasBase, $sealed = False)
+#for $i in range($methodDecl.MinArgs(), $methodDecl.MaxArgs() + 1)
 #set $method_visitor = visitors.CSharpMethodVisitor()
+#silent $method_visitor.setParamCount($i)
 #silent $method_visitor.setHasBaseClass($hasBase)
 #silent $method_visitor.setSealed($sealed)
 #silent $methodDecl.accept($method_visitor)
@@ -67,6 +69,8 @@ using System.Reflection;
    }
 #end if
 #del $method_visitor
+
+#end for
 #end def
 
 #def generateClass($classObj)

@@ -1,10 +1,12 @@
-## $Id: class_cxx.tmpl,v 1.59 2004-02-20 23:39:20 patrick Exp $
-// Generated from \$Revision: 1.59 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.60 2004-02-23 16:16:46 patrick Exp $
+// Generated from \$Revision: 1.60 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
 #def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $className = None)
+#for $i in range($methodDecl.MinArgs(), $methodDecl.MaxArgs() + 1)
 #set $method_visitor = visitors.CPlusPlusFunctionWrapperVisitor()
+#silent $method_visitor.setParamCount($i)
 #silent $method_visitor.setClassInfo($classObj, $className)
 #silent $method_visitor.setCall($methodCall)
 #silent $methodDecl.accept($method_visitor)
@@ -27,6 +29,8 @@
       $method_visitor.getReturnStatement();
 #end if
    }
+
+#end for
 #del $method_visitor
 #end def
 
