@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.24 2003-11-10 19:50:36 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.25 2003-11-10 21:10:49 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -522,7 +522,7 @@ class ReferenceTypeExporter(Exporter):
 
       return False
 
-   def ExportVirtualMethods(self):        
+   def ExportVirtualMethods(self):
       holder = self.info.holder
       self.virtual_methods = []
       if self.hasVirtualMethods():
@@ -533,7 +533,14 @@ class ReferenceTypeExporter(Exporter):
                # when a method is an override, this coode would be obsoleted.
                for b in self.all_bases:
                   for base_mem in b.getMembers():
-                     if member.name == base_mem.name:
+                     # The second clause of this conditional is needed for
+                     # those cases when a method is "inherited" from a base
+                     # class that is not being exported.
+                     if member.name == base_mem.name and \
+                        member.FullName() != base_mem.FullName():
+                        print "%s: Marking %s as override of %s" % \
+                              (self.class_.FullName(), member.FullName(),
+                               base_mem.FullName())
                         member.override = True
                self.virtual_methods.append(member)
       else:
