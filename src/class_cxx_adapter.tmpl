@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.10 2004-01-08 22:20:37 patrick Exp $
-// Generated from \$Revision: 1.10 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.11 2004-01-08 23:07:16 patrick Exp $
+// Generated from \$Revision: 1.11 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -15,7 +15,7 @@ class SHARPPY_API $class_name : #echo ', '.join($base_list)
 {
 public:
 #for $c in $classObj.constructors
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
+#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
    ${class_name}($p)
       : ${class_visitor.getRawName()}($arg_list)
@@ -28,18 +28,18 @@ public:
 #set $base_name = $class_visitor.getRawName()
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_method_callbacks
-#set $callback_name = getCallbackName($m)
-   $makeCPlusPlusTypedef($m);
+#set $callback_name = TemplateHelpers.getCallbackName($m)
+   $TemplateHelpers.makeCPlusPlusTypedef($m);
    ${callback_name}_t $callback_name;
 
 #silent $m.result.accept($return_visitor)
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    /// Override for virtual function $base_name::$m.name[0].
    virtual $return_visitor.getRawName() ${m.name[0]}($p)
    {
 #set $returns = $return_visitor.getRawName() != 'void'
-#set $call = '%s(%s)' % ($getCallbackName($m), $arg_list)
+#set $call = '%s(%s)' % ($TemplateHelpers.getCallbackName($m), $arg_list)
 #if $return_visitor.mustMarshal()
 #set $call = '*(%s)' % $call
 #end if
@@ -50,7 +50,7 @@ public:
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $m in $classObj.protected_non_virtual_methods
 #silent $m.result.accept($return_visitor)
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    /// Public wrapper for protected non-virtual function $base_name::$m.name[0].
    $return_visitor.getRawName() ${m.name[0]}($p)
@@ -63,7 +63,7 @@ public:
 #end for
 #for $m in $classObj.protected_static_methods
 #silent $m.result.accept($return_visitor)
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    /// Public wrapper for protected static function $base_name::$m.name[0].
    static $return_visitor.getRawName() ${m.name[0]}($p)
