@@ -4,15 +4,15 @@
 import os.path
 import copy
 import exporters 
-from ReferenceTypeExporter import ReferenceTypeExporter
-from ValueTypeExporter import ValueTypeExporter
-from FunctionExporter import FunctionExporter
-from EnumExporter import EnumExporter
-from HeaderExporter import HeaderExporter
-from VarExporter import VarExporter
-from CodeExporter import CodeExporter
-from exporterutils import FunctionWrapper
-from utils import makeid
+import ReferenceTypeExporter
+import ValueTypeExporter
+import FunctionExporter
+import EnumExporter
+import HeaderExporter
+import VarExporter
+import CodeExporter
+import exporterutils
+import utils
 
 
 #==============================================================================
@@ -61,7 +61,7 @@ class FunctionInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('exclude', False)
         # create a FunctionExporter
-        exporter = FunctionExporter(InfoWrapper(self), tail)
+        exporter = FunctionExporter.FunctionExporter(InfoWrapper(self), tail)
         if exporter not in exporters.exporters:
             exporters.exporters.append(exporter)
         exporter.interface_file = exporters.current_interface
@@ -78,7 +78,7 @@ class ReferenceTypeInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('exclude', False)
         # create a ReferenceTypeExporter
-        exporter = ReferenceTypeExporter(InfoWrapper(self), tail)
+        exporter = ReferenceTypeExporter.ReferenceTypeExporter(InfoWrapper(self), tail)
         if exporter not in exporters.exporters: 
             exporters.exporters.append(exporter) 
         exporter.interface_file = exporters.current_interface 
@@ -95,7 +95,7 @@ class ValueTypeInfo(DeclarationInfo):
         self._Attribute('include', include)
         self._Attribute('exclude', False)
         # create a ValueTypeExporter
-        exporter = ValueTypeExporter(InfoWrapper(self), tail)
+        exporter = ValueTypeExporter.ValueTypeExporter(InfoWrapper(self), tail)
         if exporter not in exporters.exporters: 
             exporters.exporters.append(exporter) 
         exporter.interface_file = exporters.current_interface 
@@ -107,7 +107,7 @@ class ValueTypeInfo(DeclarationInfo):
 def GenerateName(name, type_list):
     name = name.replace('::', '_')
     names = [name] + type_list
-    return makeid('_'.join(names))
+    return utils.makeid('_'.join(names))
 
     
 class ClassTemplateInfo(DeclarationInfo):
@@ -146,7 +146,7 @@ class EnumInfo(DeclarationInfo):
         self._Attribute('name', name)
         self._Attribute('include', include)
         self._Attribute('exclude', False)
-        exporter = EnumExporter(InfoWrapper(self))
+        exporter = EnumExporter.EnumExporter(InfoWrapper(self))
         if exporter not in exporters.exporters: 
             exporters.exporters.append(exporter)
         exporter.interface_file = exporters.current_interface 
@@ -160,7 +160,7 @@ class HeaderInfo(DeclarationInfo):
     def __init__(self, include):
         DeclarationInfo.__init__(self)
         self._Attribute('include', include)
-        exporter = HeaderExporter(InfoWrapper(self))
+        exporter = HeaderExporter.HeaderExporter(InfoWrapper(self))
         if exporter not in exporters.exporters: 
             exporters.exporters.append(exporter)
         exporter.interface_file = exporters.current_interface 
@@ -175,7 +175,7 @@ class VarInfo(DeclarationInfo):
         DeclarationInfo.__init__(self)
         self._Attribute('name', name)
         self._Attribute('include', include)
-        exporter = VarExporter(InfoWrapper(self))
+        exporter = VarExporter.VarExporter(InfoWrapper(self))
         if exporter not in exporters.exporters: 
             exporters.exporters.append(exporter)
         exporter.interface_file = exporters.current_interface 
@@ -190,7 +190,7 @@ class CodeInfo(DeclarationInfo):
         DeclarationInfo.__init__(self)
         self._Attribute('code', code)
         self._Attribute('section', section)
-        exporter = CodeExporter(InfoWrapper(self))
+        exporter = CodeExporter.CodeExporter(InfoWrapper(self))
         if exporter not in exporters.exporters:
             exporters.exporters.append(exporter)
         exporter.interface_file = exporters.current_interface
@@ -232,7 +232,7 @@ def rename(info, name):
 
 def set_wrapper(info, wrapper):
     if isinstance(wrapper, str):
-        wrapper = FunctionWrapper(wrapper)
+        wrapper = exporterUtils.FunctionWrapper(wrapper)
     info._Attribute('wrapper', wrapper)
 
 def instantiate(template, types, rename=None):

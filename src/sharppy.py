@@ -1,7 +1,9 @@
+#!/usr/bin/env python
+
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.9 2003-11-19 19:48:07 patrick Exp $
+# $Id: sharppy.py,v 1.10 2003-11-19 22:30:40 patrick Exp $
 
 """
 Sharppy version %s
@@ -36,8 +38,8 @@ import exporterutils
 import settings
 import gc
 import sys
-from policies import *
-from CppParser import CppParser, CppParserError
+import policies
+import CppParser
 import time
 import declarations
 
@@ -166,14 +168,14 @@ def CreateContext():
    context['add_method'] = infos.add_method
    context['final'] = infos.final
    # policies
-   context['return_internal_reference'] = return_internal_reference
-   context['with_custodian_and_ward'] = with_custodian_and_ward
-   context['return_value_policy'] = return_value_policy
-   context['reference_existing_object'] = reference_existing_object
-   context['copy_const_reference'] = copy_const_reference
-   context['copy_non_const_reference'] = copy_non_const_reference
-   context['return_opaque_pointer'] = return_opaque_pointer
-   context['manage_new_object'] = manage_new_object
+   context['return_internal_reference'] = policies.return_internal_reference
+   context['with_custodian_and_ward'] = policies.with_custodian_and_ward
+   context['return_value_policy'] = policies.return_value_policy
+   context['reference_existing_object'] = policies.reference_existing_object
+   context['copy_const_reference'] = policies.copy_const_reference
+   context['copy_non_const_reference'] = policies.copy_non_const_reference
+   context['return_opaque_pointer'] = policies.return_opaque_pointer
+   context['manage_new_object'] = policies.manage_new_object
    # utils
    context['Wrapper'] = exporterutils.FunctionWrapper
    context['declaration_code'] = lambda code: infos.CodeInfo(code, 'declaration-outside')
@@ -188,7 +190,8 @@ def Begin():
    for interface in interfaces:
       ExecuteInterface(interface)
    # create the parser
-   parser = CppParser(includes, defines, cache_dir, declarations.version)
+   parser = CppParser.CppParser(includes, defines, cache_dir,
+                                declarations.version)
    try:
       if not create_cache:
          return GenerateCode(parser, module, out_cxx, out_csharp, interfaces)

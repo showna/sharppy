@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of CppParser.py.
 # See http://www.boost.org/ for more information.
 
-from GCCXMLParser import ParseDeclarations
+import GCCXMLParser
 import tempfile
 import shutil
 import os
@@ -110,7 +110,7 @@ class CppParser:
             if status != 0 or not os.path.isfile(xmlfile):
                 raise CppParserError, 'Error executing gccxml'
             # parse the resulting xml
-            declarations = ParseDeclarations(xmlfile)
+            declarations = GCCXMLParser.ParseDeclarations(xmlfile)
             # make the declarations' location to point to the original file
             if tail:
                 for decl in declarations:
