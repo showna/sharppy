@@ -8,7 +8,7 @@ from settings import *
 from policies import *
 from SingleCodeUnit import SingleCodeUnit
 from EnumExporter import EnumExporter
-from utils import makeid, enumerate, generateUniqueName
+from utils import makeid, enumerate, generateUniqueName, operatorToString
 import copy
 import exporterutils
 import re
@@ -153,6 +153,128 @@ class ReferenceTypeExporter(Exporter):
         def IsValid(member):
             return isinstance(member, valid_members) and member.visibility == Scope.public
         self.public_members = [x for x in self.class_ if IsValid(x)] 
+    
+    def WriteOperatorsCPlusPlus(self, indent, wrapperClassName, wrapperClassType):
+        'Export all member operators and free operators related to this class'
+
+        def GetFreeOperators():
+            'Get all the free (global) operators related to this class'
+            operators = []
+            for decl in self.declarations:
+                if isinstance(decl, Operator):
+                    # check if one of the params is this class
+                    for param in decl.parameters:
+                        if param.name == self.class_.FullName():
+                            operators.append(decl)
+                            break
+            return operators
+
+        def GetOperand(param):
+            'Returns the operand of this parameter (either "self", or "other<type>")'
+            if param.name == self.class_.FullName():
+                return 'self'
+            else:
+                return ('other< %s >()' % param.name)
+
+        def HandleSpecialOperator(operator):
+            # gatter information about the operator and its parameters
+            result_name = operator.result.name                        
+            param1_name = ''
+            if operator.parameters:
+                param1_name = operator.parameters[0].name
+                
+            # check for str
+            ostream = 'basic_ostream'
+            is_str = result_name.find(ostream) != -1 and param1_name.find(ostream) != -1
+            if is_str:
+                namespace = 'self_ns::'
+                self_ = 'self'
+                return '.def(%sstr(%s))' % (namespace, self_)
+
+            # is not a special operator
+            return None
+
+        frees = GetFreeOperators()
+        members = [x for x in self.public_members if type(x) == ClassOperator]
+        all_operators = frees + members
+        operators = [x for x in all_operators if not self.info['operator'][x.name].exclude]
+        
+        code = ''
+
+        for operator in operators:
+            # gatter information about the operator, for use later
+            wrapper = self.info['operator'][operator.name].wrapper
+            if wrapper:
+                pointer = '&' + wrapper.FullName()
+                if wrapper.code:
+                    self.Add('declaration', wrapper.code)
+            else:
+                pointer = operator.PointerDeclaration()                 
+            rename = self.info['operator'][operator.name].rename
+
+            # Check if this operator will be exported as a method.
+#            export_as_method = wrapper or rename or operator.name in self.CSHARP_SUPPORTED_OPERATORS
+            export_as_method = False
+
+            # check if this operator has a special representation in boost
+            special_code = HandleSpecialOperator(operator)
+            has_special_representation = special_code is not None
+
+            if export_as_method:
+                # Export this operator as a normal method, renaming or using
+                # the given wrapper
+                if not rename:
+                    if wrapper:
+                        rename = wrapper.name
+#                    else:
+#                        rename = self.CSHARP_RENAME_OPERATORS[operator.name]
+                policy = ''
+                policy_obj = self.info['operator'][operator.name].policy
+                if policy_obj:
+                    policy = ', %s()' % policy_obj.Code() 
+                self.Add('inside', '.def("%s", %s%s)' % (rename, pointer, policy))
+            
+            elif has_special_representation:
+                self.Add('inside', special_code)
+                
+            elif operator.name in self.CSHARP_SUPPORTED_OPERATORS:
+                # export this operator using boost's facilities
+                op = operator
+                is_unary = isinstance(op, Operator) and len(op.parameters) == 1 or\
+                           isinstance(op, ClassOperator) and len(op.parameters) == 0
+
+                c_wrapper_name = "%s_%s" % \
+                                 (wrapperClassName, operatorToString(operator.name, is_unary))
+                return_type = 'bool'
+                param_list  = ''
+                op_call     = ''
+
+                # Unary operator.
+                if is_unary:
+                    param_list = "%s* p0" % wrapperClassType
+                    op_call    = "%s(*p0)" % op.name
+#                    self.Add('inside', '.def( %sself )' % \
+#                        (operator.name))
+                # Binary operator.
+                else:
+                    param_list = "%s* p0, %s* p1" % (wrapperClassType, wrapperClassType)
+                    op_call    = "*p0 %s *p1" % op.name
+#                    if len(operator.parameters) == 2:
+#                        left_operand = GetOperand(operator.parameters[0])
+#                        right_operand = GetOperand(operator.parameters[1])
+#                    else:
+#                        left_operand = 'self'
+#                        right_operand = GetOperand(operator.parameters[0])
+#                    self.Add('inside', '.def( %s %s %s )' % \
+#                        (left_operand, operator.name, right_operand))
+
+                code += 'SHARPPY_API %s %s(%s)\n' % \
+                        (return_type, c_wrapper_name, param_list)
+                code += '{\n'
+                code += indent + 'return %s;\n' % op_call
+                code += '}\n\n'
+
+        return code
 
     def Write(self, codeunit):
         self.WriteCPlusPlus(codeunit)
@@ -338,6 +460,11 @@ class ReferenceTypeExporter(Exporter):
                 code += "{\n"
                 code += indent + "%s%s = v;\n" % (self_use, var.name)
                 code += "}\n\n"
+
+        # XXX: Should the type parameter be the base class name or the
+        # bridge name?
+        code += self.WriteOperatorsCPlusPlus(indent, wrapper_class_name,
+                                             self.class_.FullName())
 
         # export the inside section
         in_indent = indent*2
@@ -582,9 +709,11 @@ class ReferenceTypeExporter(Exporter):
         if self.HasVirtualMethods():
             self.callback_typedefs = self.wrapper_generator.callback_typedefs
 
-    # Operators natively supported by C#.
-    CSHARP_SUPPORTED_OPERATORS = '+ - * / % ^ & ! ~ | < > == != <= >= << >>' \
-                                 '&& || += -= *= /= %= ^= &= |= <<= >>='.split()
+    # Operators natively supported by C#.  This list comes from page 46 of
+    # /C# Essentials/, Second Edition.
+    CSHARP_SUPPORTED_OPERATORS = '+ - ! ~ ++ -- * / % & | ^ << >>  != > < ' \
+                                 '>= <= =='.split()
+
     # Create a map for faster lookup.
     CSHARP_SUPPORTED_OPERATORS = dict(zip(CSHARP_SUPPORTED_OPERATORS,
                                       range(len(CSHARP_SUPPORTED_OPERATORS))))
@@ -607,108 +736,9 @@ class ReferenceTypeExporter(Exporter):
 #        re.compile(r'(const)?.*::basic_string<.*>\s*(\*|\&)?$') : '__str__',
 #    }
         
-    
     def ExportOperators(self):
         'Export all member operators and free operators related to this class'
         
-        def GetFreeOperators():
-            'Get all the free (global) operators related to this class'
-            operators = []
-            for decl in self.declarations:
-                if isinstance(decl, Operator):
-                    # check if one of the params is this class
-                    for param in decl.parameters:
-                        if param.name == self.class_.FullName():
-                            operators.append(decl)
-                            break
-            return operators
-
-        def GetOperand(param):
-            'Returns the operand of this parameter (either "self", or "other<type>")'
-            if param.name == self.class_.FullName():
-                return 'self'
-            else:
-                return ('other< %s >()' % param.name)
-
-
-        def HandleSpecialOperator(operator):
-            # gatter information about the operator and its parameters
-            result_name = operator.result.name                        
-            param1_name = ''
-            if operator.parameters:
-                param1_name = operator.parameters[0].name
-                
-            # check for str
-            ostream = 'basic_ostream'
-            is_str = result_name.find(ostream) != -1 and param1_name.find(ostream) != -1
-            if is_str:
-                namespace = 'self_ns::'
-                self_ = 'self'
-                return '.def(%sstr(%s))' % (namespace, self_)
-
-            # is not a special operator
-            return None
-                
-
-        
-        frees = GetFreeOperators()
-        members = [x for x in self.public_members if type(x) == ClassOperator]
-        all_operators = frees + members
-        operators = [x for x in all_operators if not self.info['operator'][x.name].exclude]
-        
-        for operator in operators:
-            # gatter information about the operator, for use later
-            wrapper = self.info['operator'][operator.name].wrapper
-            if wrapper:
-                pointer = '&' + wrapper.FullName()
-                if wrapper.code:
-                    self.Add('declaration', wrapper.code)
-            else:
-                pointer = operator.PointerDeclaration()                 
-            rename = self.info['operator'][operator.name].rename
-
-            # check if this operator will be exported as a method
-            export_as_method = wrapper or rename #or operator.name in self.BOOST_RENAME_OPERATORS
-            
-            # check if this operator has a special representation in boost
-            special_code = HandleSpecialOperator(operator)
-            has_special_representation = special_code is not None
-            
-            if export_as_method:
-                # export this operator as a normal method, renaming or using the given wrapper
-                if not rename:
-                    if wrapper:
-                        rename = wrapper.name
-#                    else:
-#                        rename = self.BOOST_RENAME_OPERATORS[operator.name]
-                policy = ''
-                policy_obj = self.info['operator'][operator.name].policy
-                if policy_obj:
-                    policy = ', %s()' % policy_obj.Code() 
-                self.Add('inside', '.def("%s", %s%s)' % (rename, pointer, policy))
-            
-            elif has_special_representation:
-                self.Add('inside', special_code)
-                
-            elif operator.name in self.CSHARP_SUPPORTED_OPERATORS:
-                # export this operator using boost's facilities
-                op = operator
-                is_unary = isinstance(op, Operator) and len(op.parameters) == 1 or\
-                           isinstance(op, ClassOperator) and len(op.parameters) == 0
-                if is_unary:
-                    self.Add('inside', '.def( %sself )' % \
-                        (operator.name))
-                else:
-                    # binary operator
-                    if len(operator.parameters) == 2:
-                        left_operand = GetOperand(operator.parameters[0])
-                        right_operand = GetOperand(operator.parameters[1])
-                    else:
-                        left_operand = 'self'
-                        right_operand = GetOperand(operator.parameters[0])
-                    self.Add('inside', '.def( %s %s %s )' % \
-                        (left_operand, operator.name, right_operand))
-
         # export the converters.
         # export them as simple functions with a pre-determined name
 
