@@ -130,6 +130,11 @@ extern "C"
 #end for
 *#
 }
+
+#for $nc in $classObj.nested_classes
+// Nested class $nc.getCPlusPlusName().
+$exportClass($nc)
+#end for
 #end def
 
 $exportClass($exp_class)
