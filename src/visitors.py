@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.23 2003-11-24 20:50:43 patrick Exp $
+# $Id: visitors.py,v 1.24 2003-11-24 21:42:09 patrick Exp $
 
 import re
 
@@ -372,6 +372,14 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
       CSharpVisitor.__init__(self)
       self.__needs_unsafe = False
 
+   def __toCustomMarshaler(self, usage):
+      '''
+      Returns a usage string for this P/Invoke parameter that includes custom
+      marshaling information.
+      '''
+      return '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
+             (usage, usage)
+
    def visit(self, decl):
       CSharpVisitor.visit(self, decl)
 
@@ -381,8 +389,13 @@ class CSharpPInvokeParamVisitor(CSharpVisitor):
                self.usage = 'ref ' + re.sub(r"[&*]", "", self.usage)
                self.__needs_unsafe = False
             else:
-               self.usage = '[MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(%sMarshaler))] %s' % \
-                            (self.usage, self.usage)
+               self.usage = self.__toCustomMarshaler(self.usage)
+
+   def _processProblemType(self, typeID):
+      CSharpVisitor._processProblemType(self, typeID)
+
+      if typeID == SHARED_PTR:
+         self.usage = self.__toCustomMarshaler(self.usage)
 
    def needsUnsafe(self):
       return self.__needs_unsafe
