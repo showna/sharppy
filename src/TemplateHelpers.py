@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.9 2003-11-18 17:50:06 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.10 2003-12-22 14:30:29 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -50,10 +50,3 @@ def getBridgeName(classVisitor):
 
 def getHolderName(classVisitor):
    return classVisitor.getGenericName() + '_Holder'
-
-def getSelfType(classObj, classVisitor):
-   if classObj.info.only_smart_ptr:
-      return getHolderName(classVisitor) + '*'
-   else:
-      return classVisitor.getRawName() + '*'
-      
