@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.35 2003-11-18 17:50:06 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.36 2003-11-18 21:47:36 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
@@ -228,11 +228,14 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 ## of that is handled by fillMethodWrapperBody().
 #set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.virtual_methods
-#if not $m.abstract
+## For abstract methods, the wrapper needs to act more like a non-virtual.
+#if $m.abstract
+#set $method_call = 'self_->%s' + $m.name[0]
+#else
 #silent $m.accept($method_visitor)
 #set $method_call = 'self_->%s' + $method_visitor.getRawName()
-$fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 #end if
+$fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 #end for
 
 ## ------------------------------ Static methods ------------------------------
