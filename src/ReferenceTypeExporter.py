@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.70 2004-02-24 23:51:42 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.71 2004-02-25 17:21:36 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -377,7 +377,6 @@ class ReferenceTypeExporter(Exporter.Exporter):
          # Do this here so that each method declaration has its information
          # (policies, etc.) for later use during the code generation phase.
          member.setInfo(self.info[member.name[0]])
-         print "Set info for", member.getFullCPlusPlusName()
 
          # XXX: This is a very slow way to figure out if a method is
          # overriding a base class method.  If gccxml would tell us
@@ -526,6 +525,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
             for member in base:
                member_info = self.info[member.name[0]]
                if not member_info.exclude and isInheritedVirtual(member, method_names):
+                  member.setInfo(member_info)
                   self.inherited_virtual_methods.append(member)
                   self.virtual_method_callbacks.append(member)
 
@@ -609,6 +609,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          if info.exclude:
             continue
 
+         converter.setInfo(info)
          self.converter_operators.append(converter)
 
       # Now handle free operators and member operators.
@@ -632,6 +633,8 @@ class ReferenceTypeExporter(Exporter.Exporter):
          # Gather information about the operator, for use later.
 #         wrapper = self.info['operator'][operator.name].wrapper
 #         rename = self.info['operator'][operator.getFullCPlusPlusName()].rename
+
+         operator.setInfo(info)
 
          # Check if this operator will be exported as a method.
          if isinstance(operator, declarations.ClassOperator):
