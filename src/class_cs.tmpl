@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.63 2004-01-15 21:45:03 patrick Exp $
-// Generated from \$Revision: 1.63 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.64 2004-01-16 20:18:05 patrick Exp $
+// Generated from \$Revision: 1.64 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -161,7 +161,7 @@ using System.Reflection;
 #end for
 #set $b = ', '.join($bases)
 public #slurp
-#if classObj.class_.abstract
+#if $classObj.class_.abstract
 abstract #slurp
 #end if
 #set $has_virtuals = $classObj.hasVirtualMethods()
@@ -538,13 +538,13 @@ $generateCustomMarshaler($classObj, False)
 #def generateCustomMarshaler($classObj, $isInterface)
 #set $class_visitor = visitors.CSharpVisitor()
 #silent $classObj.class_.accept($class_visitor)
-#set $marshaler_name = $class_visitor.getRawName(False) + 'Marshaler'
+#set $custom_marshaler_name = $class_visitor.getRawName(False) + 'Marshaler'
 /// <summary>
 /// Custom marshaler for $class_visitor.getRawName().  Use this with P/Invoke
 /// calls when a C# object of this type needs to be passed to native code or
 /// vice versa.  Essentially, this marshaler hides the existence of mRawObject.
 /// </summary>
-public class $marshaler_name : ICustomMarshaler
+public class $custom_marshaler_name : ICustomMarshaler
 {
 ## To allow marshaling of abstract base types, define a dummy class that
 ## allows the raw pointer passed to MarshalNativeToManaged() to be used.
@@ -718,7 +718,7 @@ public class $marshaler_name : ICustomMarshaler
       return mInstance;
    }
 
-   private static $marshaler_name mInstance = new ${marshaler_name}();
+   private static $custom_marshaler_name mInstance = new ${custom_marshaler_name}();
 }
 #end def
 
