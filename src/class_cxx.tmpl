@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.23 2003-11-10 23:04:14 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.24 2003-11-10 23:26:24 patrick Exp $
 
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
@@ -55,17 +55,16 @@ public:
 
 extern "C"
 {
-#set $i = 0
-#for $c in $classObj.constructors
+#for $i in range(len($classObj.constructors))
+#set $c = $classObj.constructors[$i]
 #set $cons_name = "new_" + $class_id + "_" + str($i)
-#set $i = $i + 1
 #if $c.IsCopy()
    // Copy constructor wrapper.
    SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
 #else
 #set $param_list = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters]
-#for $i in range(len($classObj.virtual_methods))
-#set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$i]), $i)
+#for $j in range(len($classObj.virtual_methods))
+#set $q = '%s::%s_t cb%s' % ($class_name, getCallbackName($classObj.virtual_methods[$j]), $j)
 #silent $param_list.append($q)
 #end for
 #set $p = ', '.join($param_list)
@@ -75,20 +74,16 @@ extern "C"
    {
 #if $c.IsCopy()
       $class_name* obj = new ${class_name}(*p);
-#set $count = 0
 #for $m in $classObj.virtual_methods
 #set $callback_name = getCallbackName($m)
       obj->$callback_name = p->$callback_name;
-#set $count = $count + 1
 #end for
 #else
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
       $class_name* obj = new ${class_name}($arg_list);
-#set $count = 0
-#for $m in $classObj.virtual_methods
-#set $callback_name = getCallbackName($m)
+#for $count in range(len($classObj.virtual_methods))
+#set $callback_name = getCallbackName($classObj.virtual_methods[$count])
       obj->$callback_name = cb$count;
-#set $count = $count + 1
 #end for
 #end if
       return ($class_visitor.getRawName()*) obj;

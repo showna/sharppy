@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.26 2003-11-10 21:11:36 patrick Exp $
+## $Id: class_cs.tmpl,v 1.27 2003-11-10 23:26:24 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -46,18 +46,16 @@ class $class_visitor.getRawName(False) : $b
 #if not $classObj.class_.abstract
    // Constructors.
 #set $cons_visitor = CSharpVisitor()
-#set $i = 0
-#for $c in $classObj.constructors
+#for $i in range(len($classObj.constructors))
+#set $c = $classObj.constructors[$i]
 #set $cons_name = "new_" + $classObj.bridge_name + "_" + str($i)
-#set $i = $i + 1
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $cons_visitor), x[1]) for x in $c.parameters]
 #set $p = ', '.join($pi_params)
 #if $classObj.hasVirtualMethods()
-#set $i = 0
-#for $m in $classObj.virtual_methods
+#for $j in range(len($classObj.virtual_methods))
+#set $m = $classObj.virtual_methods[$j]
 #set $delegate_name = getDelegateName($m)
-#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($i))
-#set $i = $i + 1
+#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j))
 #end for
 #end if
 #set $pi_p = ',\n\t'.join($pi_params)
