@@ -1,6 +1,8 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
+# $Id: declarations.py,v 1.10 2003-11-03 22:38:39 patrick Exp $
+
 from utils import makeid
 import copy
 
@@ -98,7 +100,7 @@ class Class(Declaration):
     '''
 
     def __init__(self, name, namespace, members, abstract):
-        Declaration.__init__(self, name, namespace)
+        Declaration.__init__(self, name, namespace, True)
         self.__members = members
         self.__member_names = {}
         self.abstract = abstract
@@ -460,8 +462,8 @@ class Type(Declaration):
     example.
     '''
 
-    def __init__(self, name, const=False, default=None, suffix=''):
-        Declaration.__init__(self, name, None)
+    def __init__(self, name, const=False, default=None, suffix='', mustMarshal=True):
+        Declaration.__init__(self, name, None, mustMarshal)
         # whatever the type is constant or not
         self.const = const
         # used when the Type is a function argument
@@ -508,7 +510,8 @@ class ReferenceType(Type):
     '''A reference type.'''
 
     def __init__(self, name, const=False, default=None, expandRef=True, suffix=''):
-        Type.__init__(self, name, const, default)
+        Type.__init__(self, name = name, const = const, default = default,
+                      mustMarshal = False)
         if expandRef:
             self.suffix = suffix + '&'
         
@@ -520,7 +523,8 @@ class PointerType(Type):
     'A pointer type.'
     
     def __init__(self, name, const=False, default=None, expandPointer=False, suffix=''):
-        Type.__init__(self, name, const, default)
+        Type.__init__(self, name = name, const = const, default = default,
+                      mustMarshal = False)
         if expandPointer:
             self.suffix = suffix + '*'
    
@@ -532,7 +536,8 @@ class FundamentalType(Type):
     'One of the fundamental types, like int, void, etc.'
 
     def __init__(self, name, const=False, default=None): 
-        Type.__init__(self, name, const, default)
+        Type.__init__(self, name = name, const = const, default = default,
+                      mustMarshal = False)
 
 
 
@@ -549,7 +554,7 @@ class FunctionType(Type):
     def __init__(self, result, parameters):  
         # The "name" for a function type is constructed from its result and
         # its parameters.  Its name member will always be an empty list.
-        Type.__init__(self, [], False)
+        Type.__init__(self, [], False, None, False)
         self.result = result
         self.parameters = parameters
 
