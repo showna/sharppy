@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.13 2003-11-01 23:24:42 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.14 2003-11-01 23:45:50 patrick Exp $
 
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
@@ -111,9 +111,9 @@ extern "C"
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${return_visitor.getRawName()}(self_->${generic_visitor.getGenericName()}($arg_list));
+      new ${return_visitor.getRawName()}(self_->${method_name}($arg_list));
 #else
-      self_->${generic_visitor.getGenericName()}($arg_list);
+      self_->${method_name}($arg_list);
 #end if
    }
 
@@ -136,9 +136,9 @@ extern "C"
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${return_visitor.getRawName()}(self_->${class_name}::${method_name}($arg_list));
+      new ${return_visitor.getRawName()}(self_->${method_visitor.getRawName()}($arg_list));
 #else
-      self_->${class_name}::${method_name}($arg_list);
+      self_->${method_visitor.getRawName()}($arg_list);
 #end if
    }
 
@@ -162,9 +162,9 @@ extern "C"
       return #slurp
 #end if
 #if $m.result.must_marshal
-      new ${return_visitor.getRawName()}(${class_name}::${method_name}($arg_list));
+      new ${return_visitor.getRawName()}(${method_visitor.getRawName()}($arg_list));
 #else
-      ${class_name}::${method_name}($arg_list);
+      ${method_visitor.getRawName()}($arg_list);
 #end if
    }
 
