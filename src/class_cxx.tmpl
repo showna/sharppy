@@ -1,10 +1,10 @@
-## $Id: class_cxx.tmpl,v 1.37 2003-11-19 16:47:03 patrick Exp $
-// Generated from \$Revision: 1.37 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.38 2003-11-19 21:37:32 patrick Exp $
+// Generated from \$Revision: 1.38 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
-#from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
+#import visitors
 
 #def fillMethodWrapperBody($methodDecl, $methodCall, $classObj = None, $classVisitor = None)
-#set $param_visitor  = CPlusPlusParamVisitor()
+#set $param_visitor  = visitors.CPlusPlusParamVisitor()
 #set $params = ['%s %s' % (getDeclUsage(x[0], $param_visitor), x[1]) for x in $methodDecl.parameters]
 #if not $methodDecl.static
 #silent $params[0:0] = ["%s self_" % $getSelfType($classObj, $classVisitor)]
@@ -15,8 +15,8 @@
 #end if
 #end if
 #set $p = ', '.join($params)
-#set $method_visitor = CPlusPlusVisitor()
-#set $return_visitor = CPlusPlusReturnVisitor()
+#set $method_visitor = visitors.CPlusPlusVisitor()
+#set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #silent $methodDecl.result.accept($return_visitor)
 #silent $methodDecl.accept($method_visitor)
 #if $methodDecl.virtual
@@ -64,9 +64,9 @@ $return_visitor.getMethodCall($method_call, '      ')
 #end def
 
 #def exportClass($classObj)
-#set $class_visitor = CPlusPlusVisitor()
-#set $generic_visitor = CPlusPlusVisitor()
-#set $param_visitor = CPlusPlusParamVisitor()
+#set $class_visitor = visitors.CPlusPlusVisitor()
+#set $generic_visitor = visitors.CPlusPlusVisitor()
+#set $param_visitor = visitors.CPlusPlusParamVisitor()
 #silent $classObj.class_.accept($class_visitor)
 #set $class_name = $class_visitor.getRawName()
 \#include "sharppy.h"
@@ -97,7 +97,7 @@ public:
    virtual ~${class_name}()
    {;}
 
-#set $return_visitor = CPlusPlusReturnVisitor()
+#set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
 #if not $m.abstract
 #set $callback_name = getCallbackName($m)
@@ -135,7 +135,7 @@ struct $getHolderName($class_visitor)
 
 extern "C"
 {
-#set $method_visitor = CPlusPlusVisitor()
+#set $method_visitor = visitors.CPlusPlusVisitor()
 ## We have a class that only appears as a smart pointer.  We only have one
 ## constructor that copies the existing object.
 #if $classObj.info.only_smart_ptr
@@ -226,7 +226,7 @@ $fillMethodWrapperBody($m, $method_call, $classObj, $class_visitor)
 ## ------------------------------ Virtual methods -----------------------------
 ## XXX: Come up with a way to eliminate the use of a visitor here so that all
 ## of that is handled by fillMethodWrapperBody().
-#set $method_visitor = CPlusPlusVisitor()
+#set $method_visitor = visitors.CPlusPlusVisitor()
 #for $m in $classObj.virtual_methods
 ## For abstract methods, the wrapper needs to act more like a non-virtual.
 #if $m.abstract
@@ -245,8 +245,8 @@ $fillMethodWrapperBody($m, $method_visitor.getRawName())
 #end for
 
 ## ---------------------------- Static data members ---------------------------
-#set $data_visitor = CPlusPlusVisitor()
-#set $data_type_visitor = CPlusPlusVisitor()
+#set $data_visitor = visitors.CPlusPlusVisitor()
+#set $data_type_visitor = visitors.CPlusPlusVisitor()
 #for $m in $classObj.static_members
 #silent $m.accept($data_visitor)
 #silent $m.type.accept($data_type_visitor)
@@ -284,7 +284,7 @@ $fillMethodWrapperBody($m, $method_visitor.getRawName())
 #end for
 } // extern "C" for $class_visitor.getRawName()
 
-#set $nested_visitor = CPlusPlusVisitor()
+#set $nested_visitor = visitors.CPlusPlusVisitor()
 #for $nc in $classObj.nested_classes
 #silent $nc.class_.accept($nested_visitor)
 // Nested class $nested_visitor.getRawName().
