@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.44 2003-11-24 20:50:43 patrick Exp $
-// Generated from \$Revision: 1.44 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.45 2003-11-24 21:34:33 patrick Exp $
+// Generated from \$Revision: 1.45 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -177,11 +177,10 @@ class $class_visitor.getRawName(False) : $b
    {
       get { return mRawObject; }
    }
-#end if
 
+#end if
 ## Do not define constructors if this class is abstract or it appears only as
 ## as smart pointer.
-#if not $classObj.info.only_smart_ptr
 #set $delegate_args = []
 #if $has_virtuals
    private void allocDelegates()
@@ -196,8 +195,8 @@ class $class_visitor.getRawName(False) : $b
 #silent $delegate_args.append('m_' + $delegate_type)
 #end for
    }
-#end if
 
+#end if
    // Constructors.
 ## Allocate a special protected constructor that will only allocate the
 ## delegate data members--if there are any.  This is critical in making
@@ -255,7 +254,6 @@ class $class_visitor.getRawName(False) : $b
    }
 
 #end for
-#end if
    // Internal constructor needed for marshaling purposes.
    internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)
 #if $has_base_class

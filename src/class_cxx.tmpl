@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.41 2003-11-23 16:43:34 patrick Exp $
-// Generated from \$Revision: 1.41 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.42 2003-11-24 21:34:33 patrick Exp $
+// Generated from \$Revision: 1.42 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #import visitors
 
@@ -87,7 +87,7 @@ struct $getHolderName($class_visitor)
 extern "C"
 {
 #set $method_visitor = visitors.CPlusPlusVisitor()
-## We have a class that only appears as a smart pointer.  We only have one
+## We have a class that only appears as a smart pointer.  We have at least one
 ## constructor that copies the existing object.
 #if $classObj.info.only_smart_ptr
 #set $holder_name = $getHolderName($class_visitor)
@@ -97,10 +97,17 @@ extern "C"
       h->mPtr = ptr;
       return h;
    }
+
+#set $class_name = $holder_name
+#end if
 ## We have a class that does not necessarily appear as a smart pointer.  The
 ## handling of this case is much more complicated.
-#else
 #for $c in $classObj.constructors
+## Skip the copy constructor for shared pointer types.  We have a special
+## constructor defined above for that sort of thing.
+#if $c.IsCopy() and $classObj.info.only_smart_ptr
+#continue
+#end if
 #silent $c.accept($method_visitor)
 #set $cons_name = $method_visitor.getGenericName()
 ## Handle the copy constructor a little different since we know what the
@@ -121,7 +128,8 @@ extern "C"
 #end for
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
-   SHARPPY_API $class_visitor.getRawName()* ${cons_name}($p)
+   SHARPPY_API $class_name* ${cons_name}($p)
+## End of non-copy constructor signature output.
 #end if
    {
 ## Copy constructor body.
@@ -146,6 +154,13 @@ extern "C"
 #end if
 #end for
 #set $arg_list = ', '.join($all_args)
+## Smart pointer object construction.
+#if $classObj.info.only_smart_ptr
+      $class_name* obj = new ${class_name};
+#set $cons_call = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
+      obj->mPtr = ${cons_call}(new ${class_visitor.getRawName()}($arg_list));
+## Normal object construction.
+#else
       $class_name* obj = new ${class_name}($arg_list);
 #for $count in range(len($classObj.virtual_methods))
 #set $callback_name = getCallbackName($classObj.virtual_methods[$count])
@@ -156,6 +171,8 @@ extern "C"
 #set $cb_param_name = 'cb' + str($count + len($classObj.virtual_methods))
       obj->$callback_name = $cb_param_name;
 #end for
+## End of normal object construction.
+#end if
 ## Post-call parameter marshaling.
 #for $param in $c.parameters
 #silent $param[0].accept($param_visitor)
@@ -163,13 +180,14 @@ extern "C"
       $param_visitor.getPostCallMarshal(); // Post-call marshaling for $param[1]
 #end if
 #end for
+## End of non-copy constructor body.
 #end if
-      return ($class_visitor.getRawName()*) obj;
+## All constructors return the same thing.
+      return obj;
    }
 
 ## End of constructor loop.
 #end for
-#end if
 ## Simple destructor wrapper.  All classes will have one.
 ## XXX: What about classes with non-public destructors?
    SHARPPY_API void delete_${class_id}($getSelfType($classObj, $class_visitor) self_)
