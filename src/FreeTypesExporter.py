@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FreeTypesExporter.py,v 1.5 2004-02-19 17:52:04 patrick Exp $
+# $Id: FreeTypesExporter.py,v 1.6 2004-02-24 18:10:48 patrick Exp $
 
 import Exporter
 import os
@@ -42,6 +42,12 @@ class FreeTypesExporter(Exporter.Exporter):
          if decls:
             self.funcs += decls
             exportedNames[f] = 1
+
+      # Do this here so that each function declaration has its
+      # information (policies, etc.) for later use during the code
+      # generation phase.
+      for func in self.funcs:
+         func.setInfo(self.info[f])
 
       for e in self.info.enums:
          decl = self.GetDeclaration(e)

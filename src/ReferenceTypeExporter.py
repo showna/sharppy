@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.68 2004-01-18 05:18:05 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.69 2004-02-24 18:10:48 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -375,6 +375,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
       for member in methods:
          found = False
 
+         # Do this here so that each method declaration has its information
+         # (policies, etc.) for later use during the code generation phase.
+         member.setInfo(self.info[member.name[0]])
+ 
          # XXX: This is a very slow way to figure out if a method is
          # overriding a base class method.  If gccxml would tell us
          # when a method is an override, this code would be obsoleted.
