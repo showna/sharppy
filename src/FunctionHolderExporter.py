@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FunctionHolderExporter.py,v 1.1 2004-02-03 21:22:14 patrick Exp $
+# $Id: FunctionHolderExporter.py,v 1.2 2004-02-04 17:08:11 patrick Exp $
 
 import Exporter
 import os
@@ -43,13 +43,14 @@ class FunctionHolderExporter(Exporter.Exporter):
 
    def Write(self):
       # Set up the mapping information for the templates.
-      self.c_wrapper_template.wrapper = self
-      self.c_wrapper_template.module  = self.module
-      self.c_wrapper_template.funcs   = self.funcs
-      self.csharp_template.wrapper    = self
-      self.csharp_template.module     = self.module
-      self.csharp_template.class_name = self.info.holder_class
-      self.csharp_template.funcs      = self.funcs
+      self.c_wrapper_template.wrapper  = self
+      self.c_wrapper_template.module   = self.module
+      self.c_wrapper_template.funcs    = self.funcs
+      self.csharp_template.wrapper     = self
+      self.csharp_template.module      = self.module
+      self.csharp_template.bridge_name = self.module_bridge
+      self.csharp_template.class_name  = self.info.holder_class
+      self.csharp_template.funcs       = self.funcs
 
       c_wrapper_out = os.path.join(self.cxx_dir, self.c_wrapper_output_file)
       csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)

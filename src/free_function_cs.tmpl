@@ -1,5 +1,5 @@
-## $Id: free_function_cs.tmpl,v 1.1 2004-02-03 21:22:14 patrick Exp $
-// Generated from \$Revision: 1.1 $ of \$RCSfile: free_function_cs.tmpl,v $
+## $Id: free_function_cs.tmpl,v 1.2 2004-02-04 17:08:11 patrick Exp $
+// Generated from \$Revision: 1.2 $ of \$RCSfile: free_function_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 #import TemplateHelpers
@@ -27,7 +27,7 @@ public sealed abstract class $className
 #end for
 #set $pi_name = $function_visitor.getGenericName()
 #set $pi_p = ',\n\t'.join($pi_params)
-   [DllImport("$module", CharSet = CharSet.Ansi)]
+   [DllImport("$bridge_name", CharSet = CharSet.Ansi)]
 #if $f.result.must_marshal
 #set $marshaler_name = $result_visitor.getUsage() + 'Marshaler'
    [return : MarshalAs(UnmanagedType.CustomMarshaler,
