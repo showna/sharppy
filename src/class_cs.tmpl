@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.61 2004-01-13 22:58:31 patrick Exp $
-// Generated from \$Revision: 1.61 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.62 2004-01-15 03:53:02 patrick Exp $
+// Generated from \$Revision: 1.62 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -636,18 +636,28 @@ public class $marshaler_name : ICustomMarshaler
    public IntPtr MarshalManagedToNative(Object obj)
    {
 #if $isInterface
+      // Try the fast return method first.  If it fails, catch the exception
+      // and use the slow technique instead.
+      try
+      {
+         return (($dummy_name) obj).mRawObject;
+      }
+      catch(System.InvalidCastException ex)
+      {
 ## XXX: I would prefer to simplify this to something that can query the field
 ## directly instead of requiring the existing of a property accessor.
 ## XXX: The performance of this could be horrible.
-      PropertyInfo raw_obj_prop =
-         obj.GetType().GetProperty("RawObject",
-                                   BindingFlags.NonPublic | BindingFlags.Instance);
-      if ( null != raw_obj_prop )
-      {
-         return (IntPtr) raw_obj_prop.GetValue(obj, null);
+         PropertyInfo raw_obj_prop =
+            obj.GetType().GetProperty("RawObject",
+                                      BindingFlags.NonPublic | BindingFlags.Instance);
+         if ( null != raw_obj_prop )
+         {
+            return (IntPtr) raw_obj_prop.GetValue(obj, null);
+         }
       }
 
 ## XXX: Turn this into an exception or something ...
+      // Marshaling failed.
       return IntPtr.Zero;
 #else
       return (($class_visitor.getRawName()) obj).mRawObject;
