@@ -1,9 +1,9 @@
-## $Id: class_cs.tmpl,v 1.31 2003-11-13 22:21:06 patrick Exp $
+## $Id: class_cs.tmpl,v 1.32 2003-11-13 22:50:32 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
 
-#from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName
+#from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName, getBridgeName
 #from visitors import CSharpVisitor, CSharpPInvokeParamVisitor, CSharpParamVisitor, CSharpReturnVisitor
 
 #set $marsharler_visitor = CSharpVisitor()
@@ -203,14 +203,19 @@ class $class_visitor.getRawName(False) : $b
       delete();
    }
 
+#if $classObj.hasVirtualMethods()
+#set $bridge_name = getBridgeName($class_visitor)
+#else
+#set $bridge_name = $class_visitor.getGenericName()
+#end if
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static void delete_${classObj.bridge_name}(IntPtr obj);
+   private extern static void delete_${bridge_name}(IntPtr obj);
 
    protected void delete()
    {
       if ( mWeOwnMemory && IntPtr.Zero != mRawObject )
       {
-         delete_${classObj.bridge_name}(mRawObject);
+         delete_${bridge_name}(mRawObject);
          mWeOwnMemory = false;
          mRawObject   = IntPtr.Zero;
       }
