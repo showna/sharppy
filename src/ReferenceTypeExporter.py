@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.56 2004-01-09 20:20:34 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.57 2004-01-09 21:19:40 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -505,6 +505,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
                if not member_info.exclude and isInheritedVirtual(member, method_names):
                   self.inherited_virtual_methods.append(member)
                   self.virtual_method_callbacks.append(member)
+
+                  # This is a little bit of a hack to avoid repeated inclusion
+                  # of methods overridden in multiple base classes.
+                  method_names.append(member.name[0])
 
             if base.FullName() in exportedNames:
                level_exported = True
