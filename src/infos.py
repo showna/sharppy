@@ -72,10 +72,12 @@ class FunctionInfo(DeclarationInfo):
 class ReferenceTypeInfo(DeclarationInfo):
 
     def __init__(self, module, name, include, tail = None, otherInfo = None,
-                 extraHeaders = []):
+                 extraHeaders = None):
         DeclarationInfo.__init__(self, otherInfo)
         self._Attribute('name', name)
         self._Attribute('include', include)
+        if None == extraHeaders:
+            extraHeaders = []
         self._Attribute('extra_headers', extraHeaders)
         self._Attribute('exclude', False)
         self._Attribute('module', module)
