@@ -34,7 +34,12 @@ def makeid(name):
     # avoid duplications of '_' chars
     names = [x for x in newname.split('_') if x]
     return '_'.join(names)
- 
+
+#==============================================================================
+# generateUniqueName
+#==============================================================================
+def generateUniqueName(declList):
+    return [makeid(x.FullName()) for x in declList]
 
 #==============================================================================
 # remove_duplicated_lines
