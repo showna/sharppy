@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.74 2004-02-25 21:04:38 patrick Exp $
-// Generated from \$Revision: 1.74 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.75 2004-02-26 00:31:46 patrick Exp $
+// Generated from \$Revision: 1.75 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -149,30 +149,18 @@ class $class_visitor.getRawName(False)
 #end if
    }
 
-#set $method_visitor   = visitors.CSharpVisitor()
-#set $pi_param_visitor = visitors.CSharpPInvokeParamVisitor()
-#set $param_visitor    = visitors.CSharpParamVisitor()
 #for $c in $classObj.constructors
-#silent $c.accept($method_visitor)
-#set $cons_name = $method_visitor.getGenericName()
-#set $pi_params = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $pi_param_visitor), x[1]) for x in $c.parameters]
-#set $cons_params = ', '.join(['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters])
-## Add the delegates to the P/Invoke function call parameter list.
-#for $j in range(len($classObj.virtual_methods))
-#set $m = $classObj.virtual_methods[$j]
-#set $delegate_name = TemplateHelpers.getDelegateName($m)
-#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j))
-#end for
-## Add the inherited delegates to the P/Invoke function call parameter list.
-#for $j in range(len($classObj.inherited_virtual_methods))
-#set $m = $classObj.inherited_virtual_methods[$j]
-#set $delegate_name = TemplateHelpers.getDelegateName($m)
-#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($j + len($classObj.virtual_methods)))
-#end for
-#set $pi_p = ',\n\t'.join($pi_params)
+#for $i in range($c.MinArgs(), $c.MaxArgs() + 1)
+#set $cons_visitor = visitors.CSharpConstructorVisitor()
+#silent $cons_visitor.setParamCount($i)
+#silent $cons_visitor.setClassInfo($classObj)
+#silent $c.accept($cons_visitor)
+#set $native_cons_name = $cons_visitor.getGenericName()
+#set $pi_params = ', '.join($cons_visitor.getPInvokeParamTypeList())
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static IntPtr ${cons_name}($pi_p);
+   private extern static IntPtr ${native_cons_name}($pi_params);
 
+#set $cons_params = ', '.join($cons_visitor.getParamTypeList())
    $c.visibility ${class_visitor.getRawName(False)}($cons_params)
 #if $has_base_class
       : base(new NoInitTag())   // Do not initialize mRawObject in base class
@@ -181,33 +169,22 @@ class $class_visitor.getRawName(False)
 #if $has_virtuals
       allocDelegates();
 #end if
-#set $cons_args = []
 ## Pre-call parameter marshaling.
-#for $param in $c.parameters
-#silent $param_visitor.setParamName($param[1])
-#silent $param[0].accept($param_visitor)
-#for $pre_marshal in $param_visitor.getPreCallMarshalList()
+#for $pre_marshal in $cons_visitor.getPreCallMarshalList()
       $pre_marshal
 #end for
-#if $param_visitor.mustMarshal()
-#silent $cons_args.append($param_visitor.getMarshalParamName())
-#else
-#silent $cons_args.append($param[1])
-#end if
-#end for
-#silent $cons_args += $delegate_args
-#set $arg_list = ', '.join($cons_args)
-      mRawObject   = ${cons_name}($arg_list);
+#set $cons_param_list = $cons_visitor.getParamList() + $delegate_args
+#set $arg_list = ', '.join($cons_param_list)
+      mRawObject   = ${native_cons_name}($arg_list);
       mWeOwnMemory = true;
 ## Post-call parameter marshaling.
-#for $param in $c.parameters
-#silent $param[0].accept($param_visitor)
-#for $post_marshal in $param_visitor.getPostCallMarshalList()
+#for $post_marshal in $cons_visitor.getPostCallMarshalList()
       $post_marshal
-#end for
 #end for
    }
 
+#del $cons_visitor
+#end for
 #end for
    // Internal constructor needed for marshaling purposes.
    internal ${class_visitor.getRawName(False)}(IntPtr instPtr, bool ownMemory)

@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.62 2004-02-25 21:04:38 patrick Exp $
-// Generated from \$Revision: 1.62 $ of \$RCSfile: class_cxx.tmpl,v $
+## $Id: class_cxx.tmpl,v 1.63 2004-02-26 00:31:46 patrick Exp $
+// Generated from \$Revision: 1.63 $ of \$RCSfile: class_cxx.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -45,7 +45,6 @@
 #else
 #set $class_name = $class_visitor.getRawName()
 #end if
-#set $adapter_name = $class_name
 #if $classObj.smart_ptr
 struct $TemplateHelpers.getHolderName($class_visitor)
 {
@@ -82,79 +81,30 @@ extern "C"
 #if $c.IsCopy() and $classObj.info.smart_ptr
 #continue
 #end if
-#silent $c.accept($method_visitor)
-#set $cons_name = $method_visitor.getGenericName()
-## Handle the copy constructor a little different since we know what the
-## argument type will be.
-## For non-copy constructors, build up the parameter list.
-#set $param_list = ['%s %s' % (TemplateHelpers.getDeclUsage(x[0], $param_visitor), x[1]) for x in $c.parameters]
-#for $j in range(len($classObj.virtual_methods))
-#set $q = '%s::%s_t cb%s' % ($adapter_name, TemplateHelpers.getCallbackName($classObj.virtual_methods[$j]), $j)
-#silent $param_list.append($q)
-#end for
-#for $j in range(len($classObj.inherited_virtual_methods))
-#set $q = '%s::%s_t cb%s' % ($adapter_name, TemplateHelpers.getCallbackName($classObj.inherited_virtual_methods[$j]), $j + len($classObj.virtual_methods))
-#silent $param_list.append($q)
-#end for
-#set $p = ', '.join($param_list)
+#for $i in range($c.MinArgs(), $c.MaxArgs() + 1)
+#set $cons_visitor = visitors.CPlusPlusConstructorWrapperVisitor()
+#silent $cons_visitor.setParamCount($i)
+#silent $cons_visitor.setClassInfo($classObj, $class_visitor.getRawName(), $class_name)
+#silent $c.accept($cons_visitor)
+#set $params = ', '.join($cons_visitor.getParamTypeList())
    // Constructor wrapper.
-   SHARPPY_API $class_name* ${cons_name}($p)
+   SHARPPY_API $cons_visitor.getReturnType() ${cons_visitor.getGenericName()}($params)
    {
-#if $classObj.info.smart_ptr
-#set $obj_ref = 'obj->mPtr'
-#else
-#set $obj_ref = 'obj'
-#end if
-## Normal constructor body.
-## Pre-call parameter marshaling.
-#set $all_args = []
-#for $param in $c.parameters
-#silent $param_visitor.setParamName($param[1])
-#silent $param[0].accept($param_visitor)
-#for $pre_marshal in $param_visitor.getPreCallMarshalList()
+#for $pre_marshal in $cons_visitor.getPreCallMarshalList()
       $pre_marshal
 #end for
-#if $param_visitor.mustMarshal()
-#silent $all_args.append($param_visitor.getMarshalParamName())
-#else
-#silent $all_args.append($param[1])
-#end if
+#for $method_call_line in $cons_visitor.getCallLines()
+      $method_call_line
 #end for
-#set $arg_list = ', '.join($all_args)
-## Smart pointer object construction.
-#if $classObj.info.smart_ptr
-      $class_name* obj = new ${class_name};
-#if $classObj.info.ref_counted
-#set $cons_call = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
-      obj->mPtr = ${cons_call}(new ${class_visitor.getRawName()}($arg_list));
-#else
-      obj->mPtr = ${class_visitor.getRawName()}($arg_list);
-#end if
-## Normal object construction.
-#else
-      $class_name* obj = new ${class_name}($arg_list);
-#for $count in range(len($classObj.virtual_methods))
-#set $callback_name = TemplateHelpers.getCallbackName($classObj.virtual_methods[$count])
-      $obj_ref->$callback_name = cb$count;
-#end for
-#for $count in range(len($classObj.inherited_virtual_methods))
-#set $callback_name = TemplateHelpers.getCallbackName($classObj.inherited_virtual_methods[$count])
-#set $cb_param_name = 'cb' + str($count + len($classObj.virtual_methods))
-      $obj_ref->$callback_name = $cb_param_name;
-#end for
-## End of normal object construction.
-#end if
-## Post-call parameter marshaling.
-#for $param in $c.parameters
-#silent $param[0].accept($param_visitor)
-#for $post_marshal in $param_visitor.getPostCallMarshalList()
+#for $post_marshal in $cons_visitor.getPostCallMarshalList()
       $post_marshal
-#end for
 #end for
 ## All constructors return the same thing.
       return obj;
    }
 
+#del $cons_visitor
+#end for
 ## End of constructor loop.
 #end for
 ## Simple destructor wrapper.

@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.14 2004-01-26 22:16:56 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.15 2004-02-26 00:31:46 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -7,17 +7,6 @@ def getDeclName(decl, visitor):
 def getDeclUsage(decl, visitor):
    decl.accept(visitor)
    return visitor.getUsage()
-
-def getCallbackName(methodDecl):
-   '''
-   Returns the name of the C callback that corresponds with the given method
-   declaration.
-   '''
-   name = methodDecl.name[0] + '_callback'
-   if len(methodDecl.parameters) > 0:
-      params = [x[0].getID() for x in methodDecl.parameters]
-      name = name + '_' + '_'.join(params)
-   return name
 
 def getDelegateName(methodDecl):
    '''

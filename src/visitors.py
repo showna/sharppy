@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.47 2004-02-25 21:56:15 patrick Exp $
+# $Id: visitors.py,v 1.48 2004-02-26 00:31:46 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -18,6 +18,17 @@ UNSIGNED_LONG_LONG = 10
 SHARED_PTR         = 11
 AUTO_PTR           = 12
 CUSTOM_SMART_PTR   = 13
+
+def getCallbackName(methodDecl):
+   '''
+   Returns the name of the C callback that corresponds with the given method
+   declaration.
+   '''
+   name = methodDecl.name[0] + '_callback'
+   if len(methodDecl.parameters) > 0:
+      params = [x[0].getID() for x in methodDecl.parameters]
+      name = name + '_' + '_'.join(params)
+   return name
 
 class DeclarationVisitor:
    def __init__(self):
@@ -569,6 +580,126 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
       assert(self.returns())
       return self.__return_statement
 
+class CPlusPlusConstructorWrapperVisitor(CPlusPlusVisitor):
+   def __init__(self):
+      CPlusPlusVisitor.__init__(self)
+      self.__initialize()
+
+   def __initialize(self):
+      self.__class_obj         = None
+      self.__raw_class_name    = ''
+      self.__class_name        = ''
+      self.__adapter_name      = ''
+      self.__param_count       = -1
+      self.__method_call       = []
+      self.__return_type       = ''
+      self.__param_type_list   = []
+      self.__param_list        = []
+      self.__pre_call_marshal  = []
+      self.__post_call_marshal = []
+
+   def setClassInfo(self, classObj, rawClassName, className):
+      self.__class_obj      = classObj
+      self.__raw_class_name = rawClassName
+      self.__class_name     = className
+
+      self.__return_type = self.__class_name + '*'
+
+   def setParamCount(self, count):
+      self.__param_count = count
+
+   def visit(self, decl):
+      CPlusPlusVisitor.visit(self, decl)
+
+      if self.__param_count == -1:
+         self.__param_count = len(decl.parameters)
+      else:
+         self.generic_name += str(self.__param_count)
+
+      self.__param_list = []
+
+      param_visitor = CPlusPlusParamVisitor()
+
+      for i in range(self.__param_count):
+         p = decl.parameters[i]
+         param_visitor.setParamName(p[1])
+         p[0].accept(param_visitor)
+
+         param_type = param_visitor.getUsage()
+
+         if param_visitor.mustMarshal():
+            self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
+            self.__post_call_marshal += param_visitor.getPostCallMarshalList()
+            self.__param_list.append(param_visitor.getMarshalParamName())
+         else:
+            self.__param_list.append(p[1])
+
+         self.__param_type_list.append(param_type + ' ' + p[1])
+
+      arg_list = ', '.join(self.__param_list)
+
+      if self.__class_obj.info.smart_ptr:
+         obj_ref = 'obj->mPtr'
+         method_call = ['%s* obj = new %s;' % (self.__class_name, self.__class_name)]
+
+         if self.__class_obj.info.ref_counted:
+            cons_call = self.__class_obj.info.smart_ptr_decl % self.__raw_class_name
+            method_call.append('obj->mPtr = %s(new %s(%s));' % \
+                                  (cons_call, self.__raw_class_name, arg_list))
+         else:
+            method_call.append('obj->mPtr = %s(%s);' % \
+                                  (self.__raw_class_name, arg_list))
+      else:
+         obj_ref = 'obj'
+         method_call = ['%s* obj = new %s(%s);' % \
+                           (self.__class_name, self.__class_name, arg_list)]
+
+      if self.__class_obj.needsAdapter():
+         class_visitor = CPlusPlusVisitor()
+         self.decl.accept(class_visitor)
+         adapter_name = class_visitor.getGenericName() + '_Adapter'
+         del class_visitor
+      else:
+         adapter_name = self.__raw_class_name
+
+      # Add the information relating to the virtual methods defined by this
+      # constructor's class.
+      for i in range(len(self.__class_obj.virtual_methods)):
+         cb_name = getCallbackName(self.__class_obj.virtual_methods[i])
+         cb_param_type = '%s::%s_t cb%d' % (self.__adapter_name, cb_name, i)
+         self.__param_type_list.append(cb_param_type)
+         method_call.append('%s->%s = cb%d;' % (obj_ref, cb_name, i))
+
+      # Add the information relating to the virtual methods inherited from this
+      # constructor's parent class(es).
+      for i in range(len(self.__class_obj.inherited_virtual_methods)):
+         cb_name = getCallbackName(self.__class_obj.inherited_virtual_methods[i])
+         cb_param_num = i + len(self.__class_obj.virtual_methods)
+         cb_param_type = '%s::%s_t cb%d' % \
+                            (self.__adapter_name, cb_name, cb_param_num)
+         self.__param_type_list.append(cb_param_type)
+         method_call.append('%s->%s = cb%d;' % (obj_ref, cb_name, cb_param_num))
+
+      self.__method_call = method_call
+
+   def getReturnType(self):
+      return self.__return_type
+
+   def getParamTypeList(self):
+      return self.__param_type_list
+
+   def getParamList(self):
+      return self.__param_list
+
+   def getPreCallMarshalList(self):
+      return self.__pre_call_marshal
+
+   def getCallLines(self):
+      return self.__method_call
+
+   def getPostCallMarshalList(self):
+      return self.__post_call_marshal
+
 class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
    '''
    Visitor for methods that appear in C++ adapter classes for those classes
@@ -660,7 +791,7 @@ class CPlusPlusAdapterMethodVisitor(CPlusPlusVisitor):
       # a callback.
       if self.needsCallback():
          callback_return_type = self.__getCallbackResultType()
-         self.__callback_name = th.getCallbackName(self.decl)
+         self.__callback_name = getCallbackName(self.decl)
          self.__callback_typedef = 'typedef %s (*%s_t)(%s);' % \
                                       (callback_return_type,
                                        self.__callback_name,
@@ -1231,3 +1362,83 @@ class CSharpMethodVisitor(CSharpVisitor):
    def getReturnStatement(self):
       assert(self.returns())
       return self.__return_statement
+
+class CSharpConstructorVisitor(CSharpVisitor):
+   def __init__(self):
+      CSharpVisitor.__init__(self)
+      self.__initialize()
+
+   def __initialize(self):
+      self.__param_count              = -1
+      self.__class_obj                = None
+      self.__pi_param_type_list       = []
+      self.__param_type_list          = []
+      self.__param_list               = []
+      self.__pre_call_marshal         = []
+      self.__post_call_marshal        = []
+
+   def setClassInfo(self, classObj):
+      self.__class_obj = classObj
+
+   def setParamCount(self, count):
+      self.__param_count = count
+
+   def visit(self, decl):
+      CSharpVisitor.visit(self, decl)
+
+      if self.__param_count == -1:
+         self.__param_count = len(decl.parameters)
+      else:
+         self.generic_name += str(self.__param_count)
+
+      self.__pi_param_type_list = []
+      self.__param_list         = []
+
+      param_visitor     = CSharpParamVisitor()
+      pi_param_visitor  = CSharpPInvokeParamVisitor()
+
+      for i in range(self.__param_count):
+         p = decl.parameters[i]
+         param_visitor.setParamName(p[1])
+         p[0].accept(param_visitor)
+         p[0].accept(pi_param_visitor)
+
+         param_type = param_visitor.getUsage()
+
+         if param_visitor.mustMarshal():
+            self.__pre_call_marshal  += param_visitor.getPreCallMarshalList()
+            self.__post_call_marshal += param_visitor.getPostCallMarshalList()
+            self.__param_list.append(param_visitor.getMarshalParamName())
+         else:
+            self.__param_list.append(p[1])
+
+         self.__param_type_list.append(param_type + ' ' + p[1])
+         self.__pi_param_type_list.append('%s %s' % (pi_param_visitor.getUsage(), p[1]))
+
+      for i in range(len(self.__class_obj.virtual_methods)):
+         method = self.__class_obj.virtual_methods[i]
+         delegate_name = th.getDelegateName(method)
+         param_decl = '[MarshalAs(UnmanagedType.FunctionPtr)] %s d%d' % (delegate_name, i)
+         self.__pi_param_type_list.append(param_decl)
+
+      for i in range(len(self.__class_obj.inherited_virtual_methods)):
+         method = self.__class_obj.inherited_virtual_methods[i]
+         delegate_name = th.getDelegateName(method)
+         param_num = i + len(self.__class_obj.virtual_methods)
+         param_decl = '[MarshalAs(UnmanagedType.FunctionPtr)] %s d%d' % (delegate_name, param_num)
+         self.__pi_param_type_list.append(param_decl)
+
+   def getParamTypeList(self):
+      return self.__param_type_list
+
+   def getParamList(self):
+      return self.__param_list
+   
+   def getPInvokeParamTypeList(self):
+      return self.__pi_param_type_list
+
+   def getPreCallMarshalList(self):
+      return self.__pre_call_marshal
+
+   def getPostCallMarshalList(self):
+      return self.__post_call_marshal
