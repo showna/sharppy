@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FreeTypesExporter.py,v 1.4 2004-02-19 16:51:06 patrick Exp $
+# $Id: FreeTypesExporter.py,v 1.5 2004-02-19 17:52:04 patrick Exp $
 
 import Exporter
 import os
@@ -68,17 +68,18 @@ class FreeTypesExporter(Exporter.Exporter):
       c_wrapper_out = os.path.join(self.cxx_dir, self.c_wrapper_output_file)
       csharp_out = os.path.join(self.csharp_dir, self.csharp_output_file)
 
-      try:
-         print "\t[C Wrappers] ",
-         sys.__stdout__.flush()
-         cxx_file = open(c_wrapper_out, 'w')
-         self.__printDot()
-         cxx_file.write(str(self.c_wrapper_template))
-         self.__printDot()
-         cxx_file.close()
-         print "Done"
-      except IOError, (errno, strerror):
-         print "I/O error (%s) [%s]: %s" % (errno, c_wrapper_out, strerror)
+      if len(self.funcs) > 0:
+         try:
+            print "\t[C Wrappers] ",
+            sys.__stdout__.flush()
+            cxx_file = open(c_wrapper_out, 'w')
+            self.__printDot()
+            cxx_file.write(str(self.c_wrapper_template))
+            self.__printDot()
+            cxx_file.close()
+            print "Done"
+         except IOError, (errno, strerror):
+            print "I/O error (%s) [%s]: %s" % (errno, c_wrapper_out, strerror)
 
       try:
          print "\t[C#] ",
