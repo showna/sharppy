@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.19 2003-11-06 21:10:33 patrick Exp $
+## $Id: class_cs.tmpl,v 1.20 2003-11-06 21:23:07 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -43,6 +43,7 @@ class $class_visitor.getRawName(False) : $b
    protected bool mWeOwnMemory = false;
 #end if
 
+#if not $classObj.class_.abstract
    // Constructors.
 #set $cons_visitor = CSharpVisitor()
 #set $i = 0
@@ -84,6 +85,7 @@ class $class_visitor.getRawName(False) : $b
       mWeOwnMemory = ownMemory;
    }
 
+#end if
    // Destructor.
    public void Dispose()
    {
