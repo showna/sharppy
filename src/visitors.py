@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.1 2003-10-31 23:41:23 patrick Exp $
+# $Id: visitors.py,v 1.2 2003-11-01 23:10:34 patrick Exp $
 
 class DeclarationVisitor:
    def __init__(self):
@@ -80,9 +80,10 @@ class CSharpVisitor(DeclarationVisitor):
       self.name = '.'.join(full_name)
       self.generic_name = '_'.join(full_name)
       self.no_ns_name = '.'.join(decl.name)
+      self.usage = self.name
 
       # Deal with types that need special handling.
-      if 'basic_string' in full_name:
-         self.usage = 'String'
-      else:
-         self.usage = self.name
+      for s in full_name:
+         if s.find('basic_string') != -1:
+            self.usage = 'String'
+            break

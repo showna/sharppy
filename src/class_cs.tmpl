@@ -1,3 +1,5 @@
+## $Id: class_cs.tmpl,v 1.10 2003-11-01 23:10:34 patrick Exp $
+
 using System;
 using System.Runtime.InteropServices;
 
@@ -18,6 +20,7 @@ class $marshaler_visitor.getRawName()_Marshaler : ICustomMarshaler
 #set $has_base = False
 #set $class_visitor = CSharpVisitor()
 #set $base_visitor = CSharpVisitor()
+#set $generic_visitor = CSharpVisitor()
 #silent $classObj.class_.accept($class_visitor)
 #for $b in $classObj.bases
 #silent $b.accept($base_visitor)
@@ -75,22 +78,25 @@ public class $class_visitor.getRawName(False) : $b
    // Overloads.
 
    // Non-virtual methods.
+#set $method_visitor = CSharpVisitor()
+#set $result_visitor = CSharpVisitor()
 #for $m in $classObj.non_virtual_methods
-#silent $m.accept($class_visitor)
-#set $name = $class_visitor.getGenericName()
-#set $pi_params = ['%s %s' % (getDeclName(x[0], $class_visitor), x[1]) for x in $m.parameters]
+#silent $m.accept($method_visitor)
+#silent $m.result.accept($result_visitor)
+#set $name = $method_visitor.getGenericName()
+#set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
 #silent $pi_params[0:0] = ['IntPtr obj']
 #set $pi_p = ',\n\t'.join($pi_params)
    [DllImport("$module", CharSet = CharSet.Ansi)]
-   private extern static $getDeclName($m.result, $class_visitor) ${name}($pi_p);
+   private extern static $result_visitor.getUsage() ${name}($pi_p);
 
-#set $p = ', '.join(['%s %s' % (getDeclName(x[0], $class_visitor), x[1]) for x in $m.parameters])
+#set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
 #set $args = [x[1] for x in $m.parameters]
 #silent $args[0:0] = ['mRawObject']
 #set $arg_list = ', '.join($args)
-   public $getDeclName($m.result, $class_visitor) ${m.name[0]}($p)
+   public $result_visitor.getUsage() ${m.name[0]}($p)
    {
-#if $getDeclName($m.result, $class_visitor) != 'void'
+#if $result_visitor.getRawName() != 'void'
       return ${name}($arg_list);
 #else
       ${name}($arg_list);
