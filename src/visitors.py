@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.17 2003-11-18 05:03:13 patrick Exp $
+# $Id: visitors.py,v 1.18 2003-11-18 05:12:34 patrick Exp $
 
 import re
 from declarations import Class, Function
@@ -76,6 +76,13 @@ class CPlusPlusVisitor(DeclarationVisitor):
    '''
    Basic, general-purpose C++ visitor.
    '''
+
+   fundamental_types = ['bool', 'char', 'unsigned char', 'short',
+                        'unsigned short', 'short unsigned int', 'int',
+                        'unsigned int', 'long', 'unsigned long',
+                        'long long int', 'long long unsigned int', 'float',
+                        'double']
+
    def __init__(self):
       DeclarationVisitor.__init__(self)
 
@@ -112,6 +119,13 @@ class CPlusPlusVisitor(DeclarationVisitor):
          self.problem_type = True
          self.decl.must_marshal = False
 
+   def _isFundamentalType(self):
+      # We can search for fundamental types using self.decl.name[0] because
+      # their name will always occupy a list with exactly one element.
+      # Furthermore, a user-defined namespace cannot have the same name as a
+      # fundamental type because those types are reserved words.
+      return self.decl.name[0] in self.fundamental_types
+
 class CPlusPlusParamVisitor(CPlusPlusVisitor):
    '''
    C++ visitor for function/method parameters.  This will handle the details
@@ -135,7 +149,7 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
       # If the parameter is passed by reference, we need to translate that into
       # being passed as a pointer instead.
       if decl.suffix == '&':
-         if not self.problem_type:
+         if not self.problem_type and not self._isFundamentalType():
             self.usage = re.sub(r"&", "*", self.name)
 
             self.__must_marshal = True
