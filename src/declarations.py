@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.37 2004-02-20 21:07:04 patrick Exp $
+# $Id: declarations.py,v 1.38 2004-02-20 22:47:52 patrick Exp $
 
 import copy
 import re
@@ -362,6 +362,7 @@ class Function(Declaration):
 
     def __init__(self, name, namespace, result, params, throws=None):
         Declaration.__init__(self, name, namespace)
+        self.member = False
         self.info = None
         # the result type: instance of Type, or None (constructors)            
         self.result = result
@@ -459,6 +460,7 @@ class Method(Function):
     def __init__(self, name, class_, result, params, visib, virtual, abstract,
                  static, const, throws = None):
         Function.__init__(self, name, None, result, params, throws)
+        self.member = True
         self.visibility = visib
         self.virtual = virtual
         self.abstract = abstract
