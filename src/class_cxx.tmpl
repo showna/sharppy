@@ -1,30 +1,31 @@
 \#include "sharppy.h"
-#for $i in $exp_class.includes
+#from TemplateHelpers import getCPlusPlusName, getCallbackTypedefName, makeCPlusPlusTypedef
+
+#def exportClass($classObj)
+#for $i in $classObj.includes
 \#include <$i>
 #end for
 
-#from TemplateHelpers import getCPlusPlusName, getCallbackTypedefName, makeCPlusPlusTypedef
-
-#if $exp_class.hasVirtualMethods()
-#set $base_list = ['public %s' % getCPlusPlusName(x) for x in $exp_class.bases]
+#if $classObj.hasVirtualMethods()
+#set $base_list = ['public %s' % getCPlusPlusName(x) for x in $classObj.bases]
 #set $bases = ', '.join($base_list)
-class SHARPPY_API $exp_class.bridge_name : $bases
+class SHARPPY_API $classObj.bridge_name : $bases
 {
 public:
-#for $c in $exp_class.constructors
+#for $c in $classObj.constructors
 
 #set $p = ', '.join(['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-#set $base_cons = getCPlusPlusName($exp_class.bases[0])
-   ${exp_class.bridge_name}($p)
+#set $base_cons = getCPlusPlusName($classObj.bases[0])
+   ${classObj.bridge_name}($p)
       : ${base_cons}($arg_list)
    {;}
 #end for
 
-   virtual ~${exp_class.bridge_name}()
+   virtual ~${classObj.bridge_name}()
    {;}
 
-#for $m in $exp_class.virtual_methods
+#for $m in $classObj.virtual_methods
 
    $makeCPlusPlusTypedef($m.callback);
    $getCallbackTypedefName($m.callback) ${m.name[0]}_callback;
@@ -42,38 +43,38 @@ public:
 
 extern "C"
 {
-#for $c in $exp_class.constructors
+#for $c in $classObj.constructors
 #set $p = ', '.join(['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters])
-   $exp_class.getCPlusPlusName()* new_${exp_class.bridge_name}($p
-#for $i in range(len($exp_class.virtual_methods))
-#set $q = '%s cb%s' % (getCallbackTypedefName($exp_class.virtual_methods[$i].callback, True), $i)
+   $classObj.getCPlusPlusName()* new_${classObj.bridge_name}($p
+#for $i in range(len($classObj.virtual_methods))
+#set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
       , $q
 #end for
       )
    {
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-      $exp_class.bridge_name* obj = new ${exp_class.bridge_name}($arg_list);
+      $classObj.bridge_name* obj = new ${classObj.bridge_name}($arg_list);
 #set $count = 0
-#for $m in $exp_class.virtual_methods
+#for $m in $classObj.virtual_methods
       obj->${m.name[0]}_callback = cb$count;
 #set $count = $count + 1
 #end for
-      return ($exp_class.getCPlusPlusName()*) obj;
+      return ($classObj.getCPlusPlusName()*) obj;
    }
 
 #end for
 
-#if $exp_class.hasDestructor() or $exp_class.hasVirtualMethods()
-   void delete_${exp_class.bridge_name}($exp_class.getCPlusPlusName()* self_)
+#if $classObj.hasDestructor() or $classObj.hasVirtualMethods()
+   void delete_${classObj.bridge_name}($classObj.getCPlusPlusName()* self_)
    {
       delete self_;
    }
 
 #end if
 
-#for $m in $exp_class.non_virtual_methods
+#for $m in $classObj.non_virtual_methods
 #set $params = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $exp_class.getCPlusPlusName()]
+#silent $params[0:0] = ["%s* self_" % $classObj.getCPlusPlusName()]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
    ## XXX: Need to handle marshaling the return type here.
@@ -93,39 +94,42 @@ extern "C"
 #end for
 
 #*
-#for $m in $exp_class.virtual_methods
-   $m.result.marshal_type ${exp_class.bridge_name}_${m.getGenericName()}($exp_class.type* self_,
+#for $m in $classObj.virtual_methods
+   $m.result.marshal_type ${classObj.bridge_name}_${m.getGenericName()}($classObj.type* self_,
       ', '.join($m.parameters))
    {
 #if $m.result != 'void'
 #set $p = ', '.join(['::'.join(x[0].name) for x in $m.parameters])
 #if $m.result.mustMarshal()
-      return new ${m.result}(self_->$exp_class.type::${m.getGenericName()}($p));
+      return new ${m.result}(self_->$classObj.type::${m.getGenericName()}($p));
 #else
-      return self_->$exp_class.type::${m.getGenericName()}(', '.join($p));
+      return self_->$classObj.type::${m.getGenericName()}(', '.join($p));
 #end if
 #else
-      self_->$exp_class.type::${m.getGenericName()}(', '.join($p));
+      self_->$classObj.type::${m.getGenericName()}(', '.join($p));
 #end if
    }
 
 #end for
 
-#for $m in $exp_class.static_methods
-   $m.result.marshal_type ${exp_class.getGenericName()}_${m.getGenericName()}(', '.join($m.parameters))
+#for $m in $classObj.static_methods
+   $m.result.marshal_type ${classObj.getGenericName()}_${m.getGenericName()}(', '.join($m.parameters))
    {
 #if $m.result != 'void'
 #set $p = ', '.join(['::'.join(x[0].name) for x in $m.parameters])
 #if $m.result.must_marshal
-      return new ${m.result}($exp_class.type::${m.getGenericName()}($p));
+      return new ${m.result}($classObj.type::${m.getGenericName()}($p));
 #else
-      return $exp_class.type::${m.getGenericName()}(', '.join($p));
+      return $classObj.type::${m.getGenericName()}(', '.join($p));
 #end if
 #else
-      $exp_class.type::${m.getGenericName()}(', '.join($p));
+      $classObj.type::${m.getGenericName()}(', '.join($p));
 #end if
    }
 
 #end for
 *#
 }
+#end def
+
+$exportClass($exp_class)
