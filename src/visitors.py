@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.46 2004-02-25 21:04:38 patrick Exp $
+# $Id: visitors.py,v 1.47 2004-02-25 21:56:15 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -502,7 +502,7 @@ class CPlusPlusFunctionWrapperVisitor(CPlusPlusVisitor):
          temp_type = re.sub('const ', '', result_visitor.getRawName())
          self.__param_type_list.append(temp_type + ' arrayHolder')
 
-         declare_temp = '%s temp_array;' % temp_type
+         declare_temp = '%s temp_array;' % result_visitor.getRawName()
          self.__pre_call_marshal.append(declare_temp)
          loop_decl = 'for ( int i = 0; i < %s; ++i )' % decl.info.return_array
          self.__post_call_marshal.append(loop_decl)
