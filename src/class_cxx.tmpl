@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.15 2003-11-03 20:41:13 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.16 2003-11-03 21:50:32 patrick Exp $
 
 \#include "sharppy.h"
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
@@ -105,7 +105,7 @@ extern "C"
 #set $return_visitor = CPlusPlusReturnVisitor()
 #silent $m.result.accept($return_visitor)
 #silent $m.accept($method_visitor)
-   ## XXX: Need to handle marshaling the return type here.
+   // Wrapper for non-virtual method ${method_visitor.getRawName()}()
    SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
@@ -130,7 +130,7 @@ extern "C"
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($return_visitor)
-   ## XXX: Need to handle marshaling the return type here.
+   // Wrapper for virtual method ${method_visitor.getRawName()}()
    SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
@@ -146,7 +146,6 @@ extern "C"
 
 #end for
 
-#*
 #set $method_visitor = CPlusPlusVisitor()
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.static_methods
@@ -156,7 +155,7 @@ extern "C"
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)
 #silent $m.result.accept($return_visitor)
-   ## XXX: Need to handle marshaling the return type here.
+   // Wrapper for static method ${method_visitor.getRawName()}()
    SHARPPY_API $return_visitor.getUsage() ${method_visitor.getGenericName()}($p)
    {
 #set $method_name = $m.name[0]
@@ -171,7 +170,6 @@ extern "C"
    }
 
 #end for
-*#
 } // extern "C" for $class_visitor.getRawName()
 
 #set $nested_visitor = CPlusPlusVisitor()
