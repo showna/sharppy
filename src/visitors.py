@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.38 2004-02-19 16:46:07 patrick Exp $
+# $Id: visitors.py,v 1.39 2004-02-20 21:08:01 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -828,6 +828,7 @@ class CSharpMethodVisitor(CSharpVisitor):
       self.__initialize()
 
    def __initialize(self):
+      self.__param_count              = -1
       self.__has_base_class           = False
       self.__sealed_class             = False
       self.__method_kind              = ''
@@ -848,11 +849,19 @@ class CSharpMethodVisitor(CSharpVisitor):
    def setSealed(self, sealed):
       self.__sealed_class = sealed
 
+   def setParamCount(self, count):
+      self.__param_count = count
+
    def setHasBaseClass(self, hasBase):
       self.__has_base_class = hasBase
 
    def visit(self, decl):
       CSharpVisitor.visit(self, decl)
+
+      if self.__param_count == -1:
+         self.__param_count = len(decl.parameters)
+      else:
+         self.generic_name += str(self.__param_count)
 
       # Determine if we need a delegate right away so that code below can take
       # advantage of that knowledge.
@@ -904,7 +913,8 @@ class CSharpMethodVisitor(CSharpVisitor):
 
       unsafe = False
 
-      for p in decl.parameters:
+      for i in range(self.__param_count):
+         p = decl.parameters[i]
          param_visitor.setParamName(p[1])
          p[0].accept(param_visitor)
          p[0].accept(pi_param_visitor)
