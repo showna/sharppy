@@ -1,5 +1,6 @@
-# $Id: visitors.py,v 1.8 2003-11-10 20:57:05 patrick Exp $
+# $Id: visitors.py,v 1.9 2003-11-11 20:57:00 patrick Exp $
 
+import re
 from declarations import Function
 
 class DeclarationVisitor:
@@ -8,6 +9,7 @@ class DeclarationVisitor:
       self.generic_name = None
       self.usage        = None
       self.no_ns_name   = None
+      self.problem_type = False
 
    def visit(self, decl):
       assert("Not implemented")
@@ -44,6 +46,12 @@ class DeclarationVisitor:
       param_types = [x[0].getCleanName() for x in decl.parameters]
       return base_name + '__' +'_'.join(param_types)
 
+   def _handleProblemTypes(self, decl):
+      '''
+      Template method.
+      '''
+      assert(False)
+
 class CPlusPlusVisitor(DeclarationVisitor):
    '''
    Basic, general-purpose C++ visitor.
@@ -52,7 +60,7 @@ class CPlusPlusVisitor(DeclarationVisitor):
       DeclarationVisitor.__init__(self)
 
    def visit(self, decl):
-      full_name = decl.getFullNameAbstract()
+      self.problem_type = False
       self.name = decl.FullName()
 
       if isinstance(decl, Function):
@@ -64,14 +72,18 @@ class CPlusPlusVisitor(DeclarationVisitor):
       self.usage = self.name
 
       # Deal with types that need special handling.
+      self._handleProblemTypes(decl)
+
+   def _handleProblemTypes(self, decl):
+      full_name = decl.getFullNameAbstract()
       for s in full_name:
          if s.find('basic_string') != -1:
             const = ''
             if decl.const:
                const = 'const '
 
-            # XXX: How do we deal with by-reference parameters?
-            self.usage = const + 'char*' # + decl.suffix
+            self.usage = const + 'char*'
+            self.problem_type = True
             decl.must_marshal = False
             break
 
@@ -85,6 +97,17 @@ class CPlusPlusParamVisitor(CPlusPlusVisitor):
 
    def visit(self, decl):
       CPlusPlusVisitor.visit(self, decl)
+
+      # If the parameter is passed by reference, we need to translate that into
+      # being passed as a pointer instead.
+      if decl.suffix == '&':
+         if self.problem_type:
+            # XXX: This seems sloppy.  Should this be handled in our own
+            # overloaded version of _handleProblemTypes()?
+            if not decl.const:
+               self.usage += '*'
+         else:
+            self.usage = re.sub(r"&", "*", self.name)
 
 class CPlusPlusReturnVisitor(CPlusPlusVisitor):
    '''
@@ -106,6 +129,7 @@ class CSharpVisitor(DeclarationVisitor):
       DeclarationVisitor.__init__(self)
 
    def visit(self, decl):
+      self.problem_type = False
       full_name = decl.getFullNameAbstract()
       self.name = '.'.join(full_name)
 
@@ -116,14 +140,19 @@ class CSharpVisitor(DeclarationVisitor):
 
       self.no_ns_name = '.'.join(decl.name)
       self.usage = self.name
-
       # Deal with types that need special handling.
+      self._handleProblemTypes(decl)
+
+   def _handleProblemTypes(self, decl):
+      full_name = decl.getFullNameAbstract()
+
       # XXX: Figure out if there is a simpler way of dealing with unsigned
       # integers.  It depends largely on the order that the type information
       # is returned ("int unsigned" versus "unsigned int").
       for s in full_name:
          if s.find('basic_string') != -1:
             self.usage = 'String'
+            self.problem_type = True
             decl.must_marshal = False
             break
          # Using long long probably indicates a desire for a 64-bit integer.
