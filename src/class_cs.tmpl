@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.17 2003-11-06 17:31:51 patrick Exp $
+## $Id: class_cs.tmpl,v 1.18 2003-11-06 17:45:28 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -219,7 +219,10 @@ public class $class_visitor.getRawName(False) : $b
 #end for
    // End of static methods.
 #end if
-   // Static data.
+## ---------------------------- Static data members ---------------------------
+#if $classObj.hasStaticData()
+
+   // Start of static data.
 #set $data_visitor = CSharpVisitor()
 #set $data_type_visitor = CSharpVisitor()
 #for $m in $classObj.static_members
@@ -260,7 +263,10 @@ public class $class_visitor.getRawName(False) : $b
    }
 
 #end for
+   // End of static data.
+#end if
 
+## ---------------------------- Nested enumerations ---------------------------
 #set $nested_visitor = CSharpVisitor()
 #for $ne in $classObj.nested_enums
 #silent $ne.enum.accept($nested_visitor)

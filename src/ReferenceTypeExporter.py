@@ -453,6 +453,14 @@ class ReferenceTypeExporter(Exporter):
 
         return False
 
+    def hasStaticData(self):
+        # Check to see if this class has any static data members.
+        for member in self.class_:
+            if type(member) == ClassVariable and member.static:
+                return True
+
+        return False
+
     def hasDestructor(self):
         # Check to see if this class has a public destructor.
         for member in self.class_:
