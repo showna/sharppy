@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.53 2003-12-31 01:25:23 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.54 2003-12-31 02:03:59 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -333,9 +333,10 @@ class ReferenceTypeExporter(Exporter.Exporter):
          #    * It is a function
          #    * It is not an ignored function type (see above)
          #    * It is not private
-         # 
+         #
          # and if any one of the following is true:
          #
+         #    * It is a public method
          #    * It is a virtual method
          #    * This class has virtual methods
          return not method_info.exclude and \
