@@ -1,5 +1,5 @@
-## $Id: class_cs.tmpl,v 1.53 2003-12-22 23:11:31 patrick Exp $
-// Generated from \$Revision: 1.53 $ of \$RCSfile: class_cs.tmpl,v $
+## $Id: class_cs.tmpl,v 1.54 2003-12-23 20:05:51 patrick Exp $
+// Generated from \$Revision: 1.54 $ of \$RCSfile: class_cs.tmpl,v $
 using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -55,7 +55,7 @@ using System.Reflection;
 #end if
 ## If this method is virtual and abstract, declare it as such.
 #if $methodDecl.virtual and $methodDecl.abstract
-   public abstract $result_visitor.getUsage() ${method_name}($method_params);
+   $methodDecl.visibility abstract $result_visitor.getUsage() ${method_name}($method_params);
 ## Otherwise, set up the P/Invoke information and the method body.
 #else
 #set $unsafe = False
@@ -100,7 +100,7 @@ using System.Reflection;
 #else
 #set $method_type = ''
 #end if
-   public $method_type $result_visitor.getUsage() ${method_name}($method_params)
+   $methodDecl.visibility $method_type $result_visitor.getUsage() ${method_name}($method_params)
    {
 ## Pre-call parameter marshaling.
 #for $param in $methodDecl.parameters
@@ -449,7 +449,7 @@ public class $marshaler_name : ICustomMarshaler
 #end if
       private #if $unsafe then 'unsafe ' else ''#extern static $result_visitor.getUsage() ${pi_name}($pi_p);
 
-      public #if $isInterface then '' else 'override '#$result_visitor.getUsage() ${method_name}($p)
+      $m.visibility #if $isInterface then '' else 'override '#$result_visitor.getUsage() ${method_name}($p)
       {
 ## Pre-call parameter marshaling.
 #set $pi_call_args = ['mRawObject']
