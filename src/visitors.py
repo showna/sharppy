@@ -1,4 +1,6 @@
-# $Id: visitors.py,v 1.6 2003-11-06 21:30:47 patrick Exp $
+# $Id: visitors.py,v 1.7 2003-11-10 20:38:24 patrick Exp $
+
+from declarations import Function
 
 class DeclarationVisitor:
    def __init__(self):
@@ -34,6 +36,14 @@ class DeclarationVisitor:
       '''
       return self.usage
 
+   def _makeGenericName(self, decl):
+      return '_'.join(decl.getFullNameAbstract())
+
+   def _makeGenericFuncName(self, decl):
+      base_name = self._makeGenericName(decl)
+      param_types = [x[0].getCleanName() for x in decl.parameters]
+      return base_name + '__' +'_'.join(param_types)
+
 class CPlusPlusVisitor(DeclarationVisitor):
    '''
    Basic, general-purpose C++ visitor.
@@ -44,7 +54,12 @@ class CPlusPlusVisitor(DeclarationVisitor):
    def visit(self, decl):
       full_name = decl.getFullNameAbstract()
       self.name = decl.FullName()
-      self.generic_name = '_'.join(full_name)
+
+      if isinstance(decl, Function):
+         self.generic_name = self._makeGenericFuncName(decl)
+      else:
+         self.generic_name = self._makeGenericName(decl)
+
       self.no_ns_name = '::'.join(decl.name)
       self.usage = self.name
 
@@ -82,7 +97,12 @@ class CSharpVisitor(DeclarationVisitor):
    def visit(self, decl):
       full_name = decl.getFullNameAbstract()
       self.name = '.'.join(full_name)
-      self.generic_name = '_'.join(full_name)
+
+      if isinstance(decl, Function):
+         self.generic_name = self._makeGenericFuncName(decl)
+      else:
+         self.generic_name = self._makeGenericName(decl)
+
       self.no_ns_name = '.'.join(decl.name)
       self.usage = self.name
 

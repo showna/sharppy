@@ -1,10 +1,11 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.12 2003-11-10 19:50:36 patrick Exp $
+# $Id: declarations.py,v 1.13 2003-11-10 20:38:24 patrick Exp $
 
 from utils import makeid
 import copy
+import re
 
 '''
 Defines classes that represent declarations found in C++ header files.
@@ -68,6 +69,13 @@ class Declaration(object):
         if self.namespace:
             name[0:0] = self.namespace
         return name
+
+    def getCleanName(self):
+        name = self.getFullNameAbstract()
+        cleaner = re.compile(r"[<:>,\s]")
+        for i in xrange(len(name)):
+            name[i] = cleaner.sub("_", name[i])
+        return '_'.join(name)
 
     def accept(self, visitor):
         visitor.visit(self)

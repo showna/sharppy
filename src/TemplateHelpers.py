@@ -1,4 +1,4 @@
-# $Id: TemplateHelpers.py,v 1.4 2003-11-04 23:37:39 patrick Exp $
+# $Id: TemplateHelpers.py,v 1.5 2003-11-10 20:38:24 patrick Exp $
 
 def getDeclName(decl, visitor):
    decl.accept(visitor)
@@ -24,3 +24,10 @@ def makeCPlusPlusTypedef(funcHolder):
              (getCPlusPlusName(func.result), getCallbackTypedefName(funcHolder),
               param_types)
    return typedef
+
+def getDelegateName(methodDecl):
+   name = methodDecl.name[0] + 'Delegate'
+   if len(methodDecl.parameters) > 0:
+      params = [x[0].getCleanName() for x in methodDecl.parameters]
+      name = name + '_' + '_'.join(params)
+   return name

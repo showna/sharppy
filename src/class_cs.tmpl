@@ -1,9 +1,9 @@
-## $Id: class_cs.tmpl,v 1.22 2003-11-10 19:50:36 patrick Exp $
+## $Id: class_cs.tmpl,v 1.23 2003-11-10 20:38:24 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
 
-#from TemplateHelpers import getDeclName, getDeclUsage
+#from TemplateHelpers import getDeclName, getDeclUsage, getDelegateName
 #from visitors import CSharpVisitor
 
 #set $marsharler_visitor = CSharpVisitor()
@@ -57,7 +57,8 @@ class $class_visitor.getRawName(False) : $b
 #if $classObj.hasVirtualMethods()
 #set $i = 0
 #for $m in $classObj.virtual_methods
-#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $m.name[0] + 'Delegate d' + str($i))
+#set $delegate_name = getDelegateName($m)
+#silent $pi_params.append('[MarshalAs(UnmanagedType.FunctionPtr)] ' + $delegate_name + ' d' + str($i))
 #set $i = $i + 1
 #end for
 #end if
@@ -70,8 +71,9 @@ class $class_visitor.getRawName(False) : $b
    {
 #if $classObj.hasVirtualMethods()
 #for $m in $classObj.virtual_methods
-      m_${m.name[0]}Delegate = new ${m.name[0]}Delegate($m.name[0]);
-#silent $cons_args.append('m_' + $m.name[0] + 'Delegate')
+#set $delegate_name = getDelegateName($m)
+      m_$delegate_name = new ${delegate_name}($m.name[0]);
+#silent $cons_args.append('m_' + $delegate_name)
 #end for
 #end if
 #set $arg_list = ', '.join($cons_args)
@@ -162,11 +164,12 @@ class $class_visitor.getRawName(False) : $b
 #set $pi_name = $method_visitor.getGenericName()
 ## XXX: More marshaling is necessary here.
 #set $pi_params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
+#set $delegate_name = getDelegateName($m)
 #set $delegate_params = ', '.join($pi_params)
    // Delegate for the ${method_name}() callback.
 ## XXX: Filling in the parameter list here could be tricky... marshal, marshal, marshal!
-   public delegate $result_visitor.getUsage() ${method_name}Delegate($delegate_params);
-   protected ${method_name}Delegate m_${method_name}Delegate;
+   public delegate $result_visitor.getUsage() ${delegate_name}($delegate_params);
+   protected $delegate_name m_${delegate_name};
 
 ## XXX: More marshaling is necessary here.
 #set $p = ', '.join(['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters])
