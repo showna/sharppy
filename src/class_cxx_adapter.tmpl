@@ -1,5 +1,5 @@
-## $Id: class_cxx_adapter.tmpl,v 1.14 2004-01-26 22:16:56 patrick Exp $
-// Generated from \$Revision: 1.14 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
+## $Id: class_cxx_adapter.tmpl,v 1.15 2004-01-27 18:07:28 patrick Exp $
+// Generated from \$Revision: 1.15 $ of \$RCSfile: class_cxx_adapter.tmpl,v $
 #import TemplateHelpers
 #import visitors
 
@@ -53,7 +53,6 @@ public:
    }
 
 #end for
-#del $method_visitor
 #set $return_visitor = visitors.CPlusPlusReturnVisitor()
 #for $m in $classObj.protected_virtual_methods
 #silent $m.result.accept($return_visitor)
@@ -68,32 +67,34 @@ public:
    }
 
 #end for
+#del $return_visitor
 #for $m in $classObj.protected_non_virtual_methods
-#silent $m.result.accept($return_visitor)
-#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
-#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+#silent $m.accept($method_visitor)
+#set $param_types = ', '.join($method_visitor.getParamTypeList())
    /// Public wrapper for protected non-virtual function $m.getFullCPlusPlusName().
-   $return_visitor.getRawName() ${m.name[0]}($p)
+   $method_visitor.getReturnType() ${m.name[0]}($param_types)
    {
-#set $returns = $return_visitor.getRawName() != 'void'
-#set $call = '%s::%s(%s)' % ($base_name, $m.name[0], $arg_list)
-      #if $returns then 'return ' else ''#$call;
+      $method_visitor.getMethodCall();
+#if $method_visitor.returns()
+      $method_visitor.getReturnStatement();
+#end if
    }
 
 #end for
 #for $m in $classObj.protected_static_methods
-#silent $m.result.accept($return_visitor)
-#set $p = ', '.join(['%s %s' % (TemplateHelpers.getDeclName(x[0], $generic_visitor), x[1]) for x in $m.parameters])
-#set $arg_list = ', '.join([x[1] for x in $m.parameters])
+#silent $m.accept($method_visitor)
+#set $param_types = ', '.join($method_visitor.getParamTypeList())
    /// Public wrapper for protected static function $m.getFullCPlusPlusName().
-   static $return_visitor.getRawName() ${m.name[0]}($p)
+   static $method_visitor.getReturnType() ${m.name[0]}($param_types)
    {
-#set $returns = $return_visitor.getRawName() != 'void'
-#set $call = '%s::%s(%s)' % ($base_name, $m.name[0], $arg_list)
-      #if $returns then 'return ' else ''#$call;
+      $method_visitor.getMethodCall();
+#if $method_visitor.returns()
+      $method_visitor.getReturnStatement();
+#end if
    }
 
 #end for
+#del $method_visitor
 }; // class $class_name
 
 #set $nested_visitor = visitors.CPlusPlusVisitor()
