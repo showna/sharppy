@@ -1,5 +1,5 @@
-## $Id: class_cxx.tmpl,v 1.36 2003-11-18 21:47:36 patrick Exp $
-
+## $Id: class_cxx.tmpl,v 1.37 2003-11-19 16:47:03 patrick Exp $
+// Generated from \$Revision: 1.37 $ of \$RCSfile: class_cxx.tmpl,v $
 #from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName, getSelfType
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
 
@@ -148,7 +148,7 @@ extern "C"
    }
 ## We have a class that does not necessarily appear as a smart pointer.  The
 ## handling of this case is much more complicated.
-#else
+#elif not $classObj.class_.abstract
 #for $c in $classObj.constructors
 #silent $c.accept($method_visitor)
 #set $cons_name = $method_visitor.getGenericName()
