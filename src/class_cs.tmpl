@@ -1,4 +1,4 @@
-## $Id: class_cs.tmpl,v 1.30 2003-11-13 17:14:09 patrick Exp $
+## $Id: class_cs.tmpl,v 1.31 2003-11-13 22:21:06 patrick Exp $
 
 using System;
 using System.Runtime.InteropServices;
@@ -322,6 +322,7 @@ $generateClass($nc)
 
 #if not $classObj.class_.abstract
 #set $marshaler_name = $class_visitor.getRawName(False) + 'Marshaler'
+## XXX: Change this over to the C# documentation format.
 // Custom marshaler for $class_visitor.getRawName().  Use this with P/Invoke
 // calls when a C# object of this type needs to be passed to native code.
 public class $marshaler_name : ICustomMarshaler
@@ -339,15 +340,17 @@ public class $marshaler_name : ICustomMarshaler
       return -1;
    }
 
+   // Marshaling for managed data being passed to C++.
    public IntPtr MarshalManagedToNative(Object obj)
    {
       return (($class_visitor.getRawName()) obj).mRawObject;
    }
 
+   // Marshaling for native memory coming from C++.
    public Object MarshalNativeToManaged(IntPtr nativeObj)
    {
-## XXX: For now, use the internal constructor rather than calling the C++
-## copy constructor.
+## XXX: We cannot instantiate abstract types, but pointers to abstract types
+## can be returned from C++.
       return new ${class_visitor.getRawName()}(nativeObj, false);
    }
 
