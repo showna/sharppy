@@ -132,7 +132,6 @@ class CppParser:
                     os.remove(filename)
             except OSError: pass                
 
-            
     def Parse(self, header, interface, tail=None):
         '''Parses the given filename related to the given interface and returns
         the (declarations, headerfile). The header returned is normally the
@@ -150,10 +149,9 @@ class CppParser:
             self.CreateCache(header, interface, tail, declarations)
         return declarations, header
 
-
     def CacheFileName(self, interface):
         interface_name = os.path.basename(interface)
-        cache_file = os.path.splitext(interface_name)[0] + '.pystec'
+        cache_file = os.path.splitext(interface_name)[0] + '.sharppyc'
         cache_file = os.path.join(self.cache_dir, cache_file) 
         return cache_file
         
