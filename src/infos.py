@@ -8,7 +8,7 @@ import exporters
 import ReferenceTypeExporter
 import ValueTypeExporter
 import FreeTypesExporter
-import HeaderExporter
+#import HeaderExporter
 import VarExporter
 import CodeExporter
 import exporterutils
@@ -208,15 +208,15 @@ class ValueTypeTemplateInfo(DeclarationInfo):
 #==============================================================================
 # HeaderInfo
 #==============================================================================
-class HeaderInfo(DeclarationInfo):
-
-    def __init__(self, include):
-        DeclarationInfo.__init__(self)
-        self._Attribute('include', include)
-        exporter = HeaderExporter.HeaderExporter(InfoWrapper(self))
-        if exporter not in exporters.exporters: 
-            exporters.exporters.append(exporter)
-        exporter.interface_file = exporters.current_interface 
+#class HeaderInfo(DeclarationInfo):
+#
+#    def __init__(self, include):
+#        DeclarationInfo.__init__(self)
+#        self._Attribute('include', include)
+#        exporter = HeaderExporter.HeaderExporter(InfoWrapper(self))
+#        if exporter not in exporters.exporters: 
+#            exporters.exporters.append(exporter)
+#        exporter.interface_file = exporters.current_interface 
 
 
 #==============================================================================

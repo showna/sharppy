@@ -3,7 +3,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.20 2004-02-05 17:38:17 patrick Exp $
+# $Id: sharppy.py,v 1.21 2004-02-05 17:47:11 patrick Exp $
 
 """
 Sharppy version %s
@@ -147,7 +147,7 @@ def CreateContext():
    context['ReferenceType'] = infos.ReferenceTypeInfo
    context['ReferenceTemplate'] = infos.ReferenceTypeTemplateInfo
    context['ValueTemplate'] = infos.ValueTypeTemplateInfo
-   context['AllFromHeader'] = infos.HeaderInfo
+#   context['AllFromHeader'] = infos.HeaderInfo
    context['Var'] = infos.VarInfo
    # functions
    context['rename'] = infos.rename
