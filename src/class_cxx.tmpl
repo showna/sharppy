@@ -1,6 +1,6 @@
-## $Id: class_cxx.tmpl,v 1.30 2003-11-13 20:46:25 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.31 2003-11-13 22:58:20 patrick Exp $
 
-#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName
+#from TemplateHelpers import makeCPlusPlusTypedef, getDeclName, getCallbackName, getBridgeName, getHolderName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor, CPlusPlusParamVisitor
 
 #def fillMethodWrapperBody($methodDecl, $methodCall, $classVisitor = None)
@@ -70,22 +70,22 @@ $return_visitor.getMethodCall($method_call, '      ')
 #end for
 
 #if $classObj.hasVirtualMethods()
-#set $class_name = $classObj.bridge_name
+#set $class_name = getBridgeName($class_visitor)
 #set $class_id   = $class_name
 #set $base_list = ['public %s' % x for x in $classObj.bridge_bases]
 #set $bases = ', '.join($base_list)
-class SHARPPY_API $classObj.bridge_name : $bases
+class $class_name : $bases
 {
 public:
 #for $c in $classObj.constructors
 #set $p = ', '.join(['%s %s' % (getDeclName(x[0], $generic_visitor), x[1]) for x in $c.parameters])
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-   ${classObj.bridge_name}($p)
+   ${class_name}($p)
       : ${classObj.bridge_bases[0]}($arg_list)
    {;}
 
 #end for
-   virtual ~${classObj.bridge_name}()
+   virtual ~${class_name}()
    {;}
 
 #set $return_visitor = CPlusPlusVisitor()
@@ -103,10 +103,18 @@ public:
    }
 
 #end for
-}; // class $classObj.bridge_name
+}; // class $class_name
 #else
 #set $class_name = $class_visitor.getRawName()
 #set $class_id   = $class_visitor.getGenericName()
+#end if
+
+#if $classObj.smart_ptr
+struct $getHolderName($class_visitor)
+{
+#set $decl = $classObj.info.smart_ptr_decl % $class_visitor.getRawName()
+   $decl mPtr;
+};
 #end if
 
 extern "C"
@@ -168,13 +176,10 @@ extern "C"
    }
 
 #end for
-#if $classObj.hasDestructor() or $classObj.hasVirtualMethods()
    SHARPPY_API void delete_${class_id}($class_visitor.getRawName()* self_)
    {
       delete self_;
    }
-
-#end if
 
 ## ---------------------------- Non-virtual methods ---------------------------
 #for $m in $classObj.non_virtual_methods

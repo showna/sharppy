@@ -240,11 +240,15 @@ def instantiate(template, types, rename=None):
         types = types.split()
     return template.Instantiate(types, rename)
 
-def use_shared_ptr(info):
-    info._Attribute('smart_ptr', 'boost::shared_ptr< %s >')
+def use_shared_ptr(info, exclusive = False):
+    info._Attribute('smart_ptr', True)
+    info._Attribute('smart_ptr_decl', 'boost::shared_ptr< %s >')
+    info._Attribute('only_smart_ptr', exclusive)
 
-def use_auto_ptr(info):
-    info._Attribute('smart_ptr', 'std::auto_ptr< %s >')
+def use_auto_ptr(info, exclusive = False):
+    info._Attribute('smart_ptr', True)
+    info._Attribute('smart_ptr_decl', 'std::auto_ptr< %s >')
+    info._Attribute('only_smart_ptr', exclusive)
         
 def holder(info, function):
     msg = "Expected a callable that accepts one string argument."

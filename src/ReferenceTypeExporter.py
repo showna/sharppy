@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.27 2003-11-10 23:47:26 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.28 2003-11-13 22:58:20 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -56,11 +56,6 @@ class ReferenceTypeExporter(Exporter):
 
    def getClassName(self):
       return makeid(self.class_.FullName())
-
-   # The "holder name" is used for the name of the class that will handle
-   # smart pointer instances.
-   def getHolderName(self):
-      return makeid(self.class_.FullName()) + '_holder'
 
    def isInterface(self):
       '''
@@ -355,10 +350,7 @@ class ReferenceTypeExporter(Exporter):
 
    def ExportBasics(self):
       '''Export the name of the class and its class_ statement.'''
-      if self.hasVirtualMethods():
-         self.bridge_name = makeid(self.class_.FullName()) + '_bridge'
-      else:
-         self.bridge_name = ''
+      pass
 
    def ExportBases(self, exportedNames):
       'Expose the bases of this class.'
@@ -634,11 +626,7 @@ class ReferenceTypeExporter(Exporter):
             self.nested_enums.append(exporter)
 
    def ExportSmartPointer(self):
-      smart_ptr = self.info.smart_ptr
-      if smart_ptr:
-         class_name = self.class_.FullName()
-         smart_ptr = smart_ptr % class_name
-         self.Add('scope', 'register_ptr_to_python< %s >();' % (smart_ptr))
+      self.smart_ptr = self.info.smart_ptr
 
    def ExportOpaquePointerPolicies(self):
       # check all methods for 'return_opaque_pointer' policies
