@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.16 2003-11-19 21:40:36 patrick Exp $
+# $Id: declarations.py,v 1.17 2003-11-24 20:11:11 patrick Exp $
 
 import copy
 import re
@@ -118,13 +118,31 @@ class Class(Declaration):
         self.bases = ()
         self.hierarchy = ()
         self.operator = {}
-
+        self.interface = self.isInterface()
 
     def __iter__(self):
         '''iterates through the class' members.
         '''
         return iter(self.__members)            
 
+    def isInterface(self):
+        '''
+        Determines whether the class associated with can be considered an
+        interface or not.  Being an interface means having nothing but abstract
+        (pure virtual) method declarations in the class body.
+        '''
+        for m in self.__members:
+            if type(m) == Method:
+                if m.virtual and not m.abstract:
+                    return False
+                elif not m.virtual:
+                    return False
+            # NOTE: A publicly accessible constructor is not a true indication
+            # of failure to be an interface, but it's close enough.
+            elif type(m) == Constructor and m.visibility == Scope.public:
+                return False
+
+        return True
 
     def Constructors(self, publics_only=True):
         '''Returns a list of the constructors for this class.
