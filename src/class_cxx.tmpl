@@ -1,4 +1,4 @@
-## $Id: class_cxx.tmpl,v 1.21 2003-11-10 18:13:27 patrick Exp $
+## $Id: class_cxx.tmpl,v 1.22 2003-11-10 22:36:50 patrick Exp $
 
 #from TemplateHelpers import getCallbackTypedefName, makeCPlusPlusTypedef, getDeclName
 #from visitors import CPlusPlusVisitor, CPlusPlusReturnVisitor
@@ -14,6 +14,8 @@
 #end for
 
 #if $classObj.hasVirtualMethods()
+#set $class_name = $classObj.bridge_name
+#set $class_id   = $class_name
 #set $base_list = ['public %s' % x for x in $classObj.bridge_bases]
 #set $bases = ', '.join($base_list)
 class SHARPPY_API $classObj.bridge_name : $bases
@@ -45,17 +47,20 @@ public:
    }
 #end for
 }; // class $classObj.bridge_name
+#else
+#set $class_name = $class_visitor.getRawName()
+#set $class_id   = $class_visitor.getGenericName()
 #end if
 
 extern "C"
 {
 #set $i = 0
 #for $c in $classObj.constructors
-#set $cons_name = "new_" + $classObj.bridge_name + "_" + str($i)
+#set $cons_name = "new_" + $class_id + "_" + str($i)
 #set $i = $i + 1
 #if $c.IsCopy()
    // Copy constructor wrapper.
-   SHARPPY_API $class_name* ${cons_name}(const ${classObj.bridge_name}* p)
+   SHARPPY_API $class_visitor.getRawName()* ${cons_name}(const ${class_name}* p)
 #else
 #set $param_list = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
@@ -64,11 +69,11 @@ extern "C"
 #end for
 #set $p = ', '.join($param_list)
    // Constructor wrapper.
-   SHARPPY_API $class_name* ${cons_name}($p)
+   SHARPPY_API $class_visitor.getRawName()* ${cons_name}($p)
 #end if
    {
 #if $c.IsCopy()
-      $classObj.bridge_name* obj = new ${classObj.bridge_name}(*p);
+      $class_name* obj = new ${class_name}(*p);
 #set $count = 0
 #for $m in $classObj.virtual_methods
       obj->${m.name[0]}_callback = p->${m.name[0]}_callback;
@@ -76,20 +81,20 @@ extern "C"
 #end for
 #else
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
-      $classObj.bridge_name* obj = new ${classObj.bridge_name}($arg_list);
+      $class_name* obj = new ${class_name}($arg_list);
 #set $count = 0
 #for $m in $classObj.virtual_methods
       obj->${m.name[0]}_callback = cb$count;
 #set $count = $count + 1
 #end for
 #end if
-      return ($class_name*) obj;
+      return ($class_visitor.getRawName()*) obj;
    }
 
 #end for
 
 #if $classObj.hasDestructor() or $classObj.hasVirtualMethods()
-   SHARPPY_API void delete_${classObj.bridge_name}($class_name* self_)
+   SHARPPY_API void delete_${class_id}($class_visitor.getRawName()* self_)
    {
       delete self_;
    }
@@ -100,7 +105,7 @@ extern "C"
 #set $method_visitor = CPlusPlusVisitor()
 #for $m in $classObj.non_virtual_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $class_name]
+#silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #set $return_visitor = CPlusPlusReturnVisitor()
@@ -127,7 +132,7 @@ extern "C"
 #set $return_visitor = CPlusPlusReturnVisitor()
 #for $m in $classObj.virtual_methods
 #set $params = ['%s %s' % (getDeclUsage(x[0], $generic_visitor), x[1]) for x in $m.parameters]
-#silent $params[0:0] = ["%s* self_" % $class_name]
+#silent $params[0:0] = ["%s* self_" % $class_visitor.getRawName()]
 #set $p = ', '.join($params)
 #set $arg_list = ', '.join([x[1] for x in $m.parameters])
 #silent $m.accept($method_visitor)

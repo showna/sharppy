@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.25 2003-11-10 21:10:49 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.26 2003-11-10 22:36:50 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -56,17 +56,6 @@ class ReferenceTypeExporter(Exporter):
 
    def getClassName(self):
       return makeid(self.class_.FullName())
-
-   # The "bridge name" is used for the name of the class that will handle
-   # bridging of virtual methods.
-   # XXX: This is mis-used for getting the generic name of a class.  Some
-   # rethinking of how to handle the bridge name versus the generic name is
-   # needed.
-   def getBridgeName(self):
-      bridge_name = makeid(self.class_.FullName())
-      if self.hasVirtualMethods():
-         bridge_name += '_bridge'
-      return bridge_name
 
    # The "holder name" is used for the name of the class that will handle
    # smart pointer instances.
@@ -364,7 +353,10 @@ class ReferenceTypeExporter(Exporter):
 
    def ExportBasics(self):
       '''Export the name of the class and its class_ statement.'''
-      self.bridge_name = self.getBridgeName()
+      if self.hasVirtualMethods():
+         self.bridge_name = makeid(self.class_.FullName()) + '_bridge'
+      else:
+         self.bridge_name = ''
 
    def ExportBases(self, exportedNames):
       'Expose the bases of this class.'
@@ -538,9 +530,6 @@ class ReferenceTypeExporter(Exporter):
                      # class that is not being exported.
                      if member.name == base_mem.name and \
                         member.FullName() != base_mem.FullName():
-                        print "%s: Marking %s as override of %s" % \
-                              (self.class_.FullName(), member.FullName(),
-                               base_mem.FullName())
                         member.override = True
                self.virtual_methods.append(member)
       else:
