@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FreeTypesExporter.py,v 1.1 2004-02-05 17:38:17 patrick Exp $
+# $Id: FreeTypesExporter.py,v 1.2 2004-02-18 23:40:09 patrick Exp $
 
 import Exporter
 import os
@@ -52,7 +52,7 @@ class FreeTypesExporter(Exporter.Exporter):
       for c in self.info.constants:
          decl = self.GetDeclaration(c)
          if decl:
-            self.enums.append(decl)
+            self.constants.append(decl)
             exportedNames[c] = 1
 
    def Write(self):
