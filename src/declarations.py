@@ -142,7 +142,7 @@ class Class(Declaration):
                 ClassOperator, ConverterOperator, ClassEnumeration)   
     ValidMemberTypes = staticmethod(ValidMemberTypes)
 
-                          
+
 #==============================================================================
 # NestedClass
 #==============================================================================
@@ -637,9 +637,6 @@ class Typedef(Declaration):
         self.visibility = Scope.public
 
 
-
-
-                          
 #==============================================================================
 # Unknown        
 #==============================================================================
