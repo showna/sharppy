@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.7 2003-10-31 17:24:56 patrick Exp $
+# $Id: sharppy.py,v 1.8 2003-11-18 22:43:53 patrick Exp $
 
 """
 Sharppy version %s
@@ -289,8 +289,11 @@ def GenerateCode(parser, module, out_cxx, out_csharp, interfaces):
    # now generate the code in the correct order
    #print exported_names
    tails = JoinTails(exports)
+   export_count = len(exports)
    for i in xrange(len(exports)):
       export = exports[i]
+      progress = float(i) / float(export_count)
+      print "Exporting %s (%d%%)" % (export.Name(), progress * 100)
       interface = export.interface_file
       header = export.Header()
       if header:
