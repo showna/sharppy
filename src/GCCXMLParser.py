@@ -5,6 +5,7 @@ import declarations
 import elementtree.ElementTree
 import xml.parsers.expat
 import copy
+import re
 import utils
 
 
@@ -103,7 +104,7 @@ class GCCXMLParser(object):
             if decl is None:
                 raise ParserError, 'Could not parse element: %s' % elem.tag
         return decl
-    
+
 
     def GetType(self, id):
         def Check(id, feature):
@@ -130,25 +131,21 @@ class GCCXMLParser(object):
             res.volatile = volatile
             res.restricted = restricted
         return res            
-        
-                
+
     def GetLocation(self, location):
         file, line = location.split(':')
         file = self.GetDecl(file)
         return file, int(line)
 
-        
     def Update(self, id, decl):
         element, _ = self.elements[id]
         self.elements[id] = element, decl
 
-        
     def ParseUnknown(self, id, element):
         name = '__Unknown_Element_%s' % id
         decl = declarations.Unknown(name)
         self.Update(id, decl)
-        
-        
+
     def ParseNamespace(self, id, element):
         namespace = element.get('name')
         context = element.get('context')
@@ -166,7 +163,6 @@ class GCCXMLParser(object):
         filename = element.get('name')
         self.Update(id, filename)
 
-        
     def ParseVariable(self, id, element):
         # in gcc_xml, a static Field is declared as a Variable, so we check
         # this and call the Field parser.
@@ -331,20 +327,41 @@ class GCCXMLParser(object):
         array = declarations.ArrayType(type.FullName(), type.const, min, max)
         self.Update(id, array)
 
-        
+    type_re = re.compile(r"(_\d+)")
+
     def ParseReferenceType(self, id, element):
-        type = self.GetType(element.get('type'))
+        type_attr = element.get('type')
+        type = self.GetType(type_attr)
+
+        type_match = self.type_re.match(type_attr)
+        if None != type_match:
+#            print "Looking up declaration for %s (id = %s)" % (type, type_match.group(1))
+            decl = self.GetDecl(type_match.group(1))
+#            print "\t", decl
+        else:
+            assert(False)
+
         expand = not isinstance(type, declarations.FunctionType)
-        ref = declarations.ReferenceType(type.FullName(), type.const, None, expand,
-                                         type.suffix)
+        ref = declarations.ReferenceType(decl, type.FullName(), type.const,
+                                         None, expand, type.suffix)
         self.Update(id, ref)
 
 
     def ParsePointerType(self, id, element):
-        type = self.GetType(element.get('type'))
+        type_attr = element.get('type')
+        type = self.GetType(type_attr)
+
+        type_match = self.type_re.match(type_attr)
+        if None != type_match:
+#            print "Looking up declaration for %s (id = %s)" % (type, type_match.group(1))
+            decl = self.GetDecl(type_match.group(1))
+#            print "\t", decl
+        else:
+            assert(False)
+
         expand = not isinstance(type, declarations.FunctionType)
-        ref = declarations.PointerType(type.FullName(), type.const, None, expand,
-                                       type.suffix)
+        ref = declarations.PointerType(decl, type.FullName(), type.const, None,
+                                       expand, type.suffix)
         self.Update(id, ref)
 
 
