@@ -44,13 +44,13 @@ public:
 extern "C"
 {
 #for $c in $classObj.constructors
-#set $p = ', '.join(['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters])
-   $classObj.getCPlusPlusName()* new_${classObj.bridge_name}($p
+#set $param_list = ['%s %s' % (getCPlusPlusName(x[0]), x[1]) for x in $c.parameters]
 #for $i in range(len($classObj.virtual_methods))
 #set $q = '%s cb%s' % (getCallbackTypedefName($classObj.virtual_methods[$i].callback, True), $i)
-      , $q
+#silent $param_list.append($q)
 #end for
-      )
+#set $p = ', '.join($param_list)
+   $classObj.getCPlusPlusName()* new_${classObj.bridge_name}($p)
    {
 #set $arg_list = ', '.join([x[1] for x in $c.parameters])
       $classObj.bridge_name* obj = new ${classObj.bridge_name}($arg_list);
