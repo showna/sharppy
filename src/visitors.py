@@ -1,4 +1,4 @@
-# $Id: visitors.py,v 1.49 2004-02-26 17:47:01 patrick Exp $
+# $Id: visitors.py,v 1.50 2004-05-18 21:21:08 patrick Exp $
 
 import re
 import TemplateHelpers as th
@@ -244,6 +244,10 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
             self.__must_marshal = True
             self.usage += '*'
 
+         # The CLI universe has no notion of const variables (as far as I
+         # know).
+         self.usage = re.sub(r"const ", "", self.usage)
+
          if self.__must_marshal:
             return_type = re.sub(r'\*', '', self.usage)
             self.__call_marshal = self.__result_var + ' = new ' + return_type + '(%s);'
@@ -255,6 +259,11 @@ class CPlusPlusReturnVisitor(CPlusPlusVisitor):
       # reference.
       elif decl.suffix == '&':
          self.usage = re.sub(r"(const|&)", "", self.name)
+      # If we have a type that is being returned as a pointer, we do not care
+      # about preserving const-ness.  The CLI universe has no notion of const
+      # variables (as far as I know).
+      elif decl.suffix == '*':
+         self.usage = re.sub(r"const ", "", self.name)
 
    def mustMarshal(self):
       return self.__must_marshal
