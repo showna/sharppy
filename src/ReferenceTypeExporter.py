@@ -1,7 +1,7 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.41 2003-12-04 21:37:33 patrick Exp $
+# $Id: ReferenceTypeExporter.py,v 1.42 2003-12-08 17:25:24 patrick Exp $
 
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
@@ -85,7 +85,7 @@ class ReferenceTypeExporter(Exporter.Exporter):
          self.all_bases = self.getAllClassBases()
 
          # Set up the Cheetah template file names.
-         base_fname = '_'.join(self.class_.getFullNameAbstract())
+         base_fname = self.class_.getCleanName()
          self.cxx_bridge_output_file = base_fname + '_Bridge.h'
          self.c_wrapper_output_file = base_fname + '.cpp'
          self.csharp_output_file = base_fname + '.cs'
