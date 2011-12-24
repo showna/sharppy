@@ -1,8 +1,6 @@
 # This is derived from the Pyste version of ClassExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: ReferenceTypeExporter.py,v 1.74 2004-05-25 21:33:52 patrick Exp $
-
 # For Python 2.1 compatibility.
 #from __future__ import nested_scope
 

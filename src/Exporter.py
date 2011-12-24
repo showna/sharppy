@@ -1,8 +1,6 @@
 # This is derived from the Pyste version of Exporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: Exporter.py,v 1.16 2004-02-04 06:08:28 patrick Exp $
-
 import os
 
 #==============================================================================

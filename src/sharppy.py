@@ -3,8 +3,6 @@
 # This is derived from the Pyste version of pyste.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: sharppy.py,v 1.22 2004-02-24 18:15:44 patrick Exp $
-
 """
 Sharppy version %s
 

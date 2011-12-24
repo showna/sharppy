@@ -1,8 +1,6 @@
 # This is derived from the Pyste version of EnumExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: EnumExporter.py,v 1.6 2004-02-05 17:44:40 patrick Exp $
-
 import Exporter
 
 #==============================================================================

@@ -1,5 +1,3 @@
-# $Id: visitors.py,v 1.55 2004-05-24 18:21:07 patrick Exp $
-
 import re
 import TemplateHelpers as th
 

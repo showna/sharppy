@@ -1,8 +1,6 @@
 # This is derived from the Pyste version of FunctionExporter.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: FreeTypesExporter.py,v 1.6 2004-02-24 18:10:48 patrick Exp $
-
 import Exporter
 import os
 import sys

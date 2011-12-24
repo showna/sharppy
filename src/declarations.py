@@ -1,8 +1,6 @@
 # This is derived from the Pyste version of declarations.py.
 # See http://www.boost.org/ for more information.
 
-# $Id: declarations.py,v 1.44 2004-05-24 16:32:29 patrick Exp $
-
 import copy
 import re
 import utils

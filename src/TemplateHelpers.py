@@ -1,5 +1,3 @@
-# $Id: TemplateHelpers.py,v 1.16 2004-05-21 21:42:37 patrick Exp $
-
 def getDeclName(decl, visitor):
    decl.accept(visitor)
    return visitor.getRawName()
